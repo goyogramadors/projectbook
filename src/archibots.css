@@ -1,0 +1,776 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&family=Fira+Code:wght@400;500;700&family=Inter:wght@400;500;600&family=Lora:ital,wght@0,400;0,500;0,600;1,400&display=swap');
+
+/* =============================================================================
+   _ARCHIBOTS · HOJA DE ESTILOS UNIFICADA — THEMING DINÁMICO (shadcn vars)
+   -----------------------------------------------------------------------------
+   4 temas vía :root[data-theme="cad"|"washi"|"matrix"|"white"]. Nomenclatura shadcn.
+   v3: tipografías dinámicas (--font-primary / --font-heading) + tema "matrix"
+   re-diseñado a estética VS Code (editor de código).
+   ⟲ v2.2: "brutalist" → "cad" (Terminal/Wireframe puro; estética al final del archivo).
+   Los nombres antiguos (--bg-grey, --sumi…) se conservan como ALIASES.
+   ============================================================================= */
+
+/* ===== TOKENS POR TEMA (shadcn nomenclature) =============================== */
+/* TEMA 1 · CAD (Terminal / Wireframe puro) — también default :root.
+   ⟲ v2.2: antes "brutalist". 100% plano: sin sombras, borde 1px, monospace,
+   barra inferior CLARA. La estética de terminal vive aislada en [data-theme="cad"]
+   (ver bloque al final del archivo). */
+:root, :root[data-theme="cad"] {
+  --background:#FAF8F6; --foreground:#2E2E2E; --card:#FFFFFF; --card-foreground:#2E2E2E;
+  --primary:#2E2E2E; --primary-foreground:#FFFFFF; --destructive:#D32F2F; --destructive-foreground:#FFFFFF;
+  --border:#2E2E2E; --border-thickness:1px; --radius:0px;
+  --shadow-hard:none; --bg-texture:none;
+  --font-primary:'JetBrains Mono', 'Fira Code', 'Courier New', ui-monospace, monospace;
+  --font-heading:'JetBrains Mono', 'Fira Code', 'Courier New', ui-monospace, monospace;
+  /* extensiones semánticas */
+  --muted:#E8E6E1; --muted-foreground:#6f6c66; --success:#15803d;
+  --accent:#E8E6E1; --accent-foreground:#2E2E2E;
+  --tab-bg:#EFEFEF; --tab-hover:#E2E2E2;
+  /* Barra inferior CLARA (sin barra negra pesada): fondo claro, borde negro 1px. */
+  /* (G) Barra inferior CONTRASTANTE en CAD: gris oscuro con texto/bordes claros,
+     para despegarla del fondo blanco de la página. */
+  --bar:#242424; --bar-foreground:#F4F4F4; --bar-accent:#1A1A1A; --bar-border:#5A5A5A; --bar-muted:#B5B5B5;
+}
+
+/* TEMA 2 · WASHI & SUMI CLÁSICO (suave / editorial · Inter + Lora) */
+:root[data-theme="washi"] {
+  --background:#FCFAF5; --foreground:#2C2C2C; --card:#FFFFFF; --card-foreground:#2C2C2C;
+  --primary:#2C2C2C; --primary-foreground:#FFFFFF; --destructive:#D64035; --destructive-foreground:#FFFFFF;
+  --border:#E5E5E5; --border-thickness:1px; --radius:6px;
+  --shadow-hard:0 4px 12px rgba(44,44,44,0.06); --bg-texture:radial-gradient(#d6403511 1px, transparent 1px);
+  --font-primary:'Inter', system-ui, sans-serif;
+  --font-heading:'Lora', Georgia, serif;
+  --muted:#F2EFE9; --muted-foreground:#8a857c; --success:#2e7d32;
+  --accent:#EFE9DF; --accent-foreground:#2C2C2C;
+  --tab-bg:#efece6; --tab-hover:#e4e0d8;
+  --bar:#2C2C2C; --bar-foreground:#FFFFFF; --bar-accent:#222222; --bar-border:#454545; --bar-muted:#cfcfcf;
+}
+
+/* TEMA 3 · CÓDIGO / VS CODE (editor de código moderno, oscuro) */
+:root[data-theme="matrix"] {
+  --background:#1E1E1E; --foreground:#D4D4D4; --card:#252526; --card-foreground:#D4D4D4;
+  --primary:#569CD6; --primary-foreground:#FFFFFF; --destructive:#F44747; --destructive-foreground:#FFFFFF;
+  --border:#333333; --border-thickness:1.5px; --radius:4px;
+  --shadow-hard:0 4px 6px rgba(0,0,0,0.30); --bg-texture:none;
+  --font-primary:'JetBrains Mono', ui-monospace, monospace;
+  --font-heading:'JetBrains Mono', ui-monospace, monospace;
+  --muted:#2D2D30; --muted-foreground:#858585; --success:#4EC9B0;
+  --accent:#DCDCAA; --accent-foreground:#1E1E1E; /* amarillo "funciones" VS Code */
+  --tab-bg:#2D2D30; --tab-hover:#37373D;
+  --bar:#007ACC; --bar-foreground:#FFFFFF; --bar-accent:#0E639C; --bar-border:#1177BB; --bar-muted:#CFE8FA;
+}
+
+/* ===== ALIASES: nombres antiguos → tokens shadcn (no tocar las clases/vistas) */
+:root {
+  --bg-body: var(--background);
+  --bg-paper: var(--card);
+  --bg-grey: var(--muted);
+  --text-primary: var(--foreground);
+  --accent-red: var(--destructive);
+  --border-color: var(--border);
+  --hover-bg: color-mix(in srgb, var(--destructive) 8%, transparent);
+}
+
+/* ===== BLOQUE A · CLASES MAESTRAS (vistas recuperadas) ===================== */
+.free-text-section{ padding:10px 0; max-width:1000px; text-align:left; }
+.page-main-title{ font-size:2.4rem; font-weight:700; text-transform:uppercase; letter-spacing:-1px; margin-bottom:6px; line-height:1; color:var(--foreground); font-family:var(--font-heading); }
+.page-intro{ font-size:.9rem; opacity:.8; max-width:760px; }
+.tech-quote{ border-left:3px solid var(--foreground); padding-left:15px; margin-bottom:20px; font-style:italic; font-size:.82rem; opacity:.7; }
+@keyframes techPulse{0%,100%{opacity:1}50%{opacity:.25}}
+.tech-pulse{ animation:techPulse 1.4s ease-in-out infinite; display:inline-block; }
+
+.technical-btn{ padding:8px 16px; border:var(--border-thickness) solid var(--border); background:var(--primary); color:var(--primary-foreground); font-weight:700; text-transform:uppercase; cursor:pointer; font-size:.82rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:var(--radius); transition:all .12s; font-family:inherit; }
+.technical-btn:hover{ background:var(--destructive); border-color:var(--destructive); color:var(--destructive-foreground); }
+.technical-btn:disabled{ opacity:.45; cursor:not-allowed; }
+.technical-btn.secondary{ background:var(--accent); color:var(--accent-foreground); }
+.technical-btn.secondary:hover{ background:var(--primary); color:var(--primary-foreground); border-color:var(--primary); }
+.btn-tech-gray{ background:var(--muted); color:var(--foreground); border:var(--border-thickness) solid var(--border); font-weight:700; text-transform:uppercase; cursor:pointer; padding:4px 12px; font-size:10px; transition:all .15s; border-radius:var(--radius); }
+.btn-tech-gray:hover{ background:var(--primary); color:var(--primary-foreground); }
+
+.tool-panel{ border:var(--border-thickness) solid var(--border); background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-hard); }
+.module-header{ min-height:48px; padding:0 15px; border-bottom:var(--border-thickness) solid var(--border); background:var(--muted); color:var(--card-foreground); font-weight:700; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; font-size:.82rem; text-align:left; }
+.panel-content{ padding:20px; text-align:left; }
+
+.tech-input-group{ display:flex; flex-direction:column; margin-bottom:15px; text-align:left; }
+.tech-input-group label{ font-size:.72rem; font-weight:700; margin-bottom:5px; text-transform:uppercase; opacity:.7; }
+.tech-input,.tech-select{ background:var(--card); border:var(--border-thickness) solid var(--border); color:var(--foreground); padding:10px 12px; font-size:.88rem; width:100%; border-radius:var(--radius); font-family:inherit; }
+.tech-input:focus,.tech-select:focus{ outline:none; border-color:var(--destructive); }
+
+.tool-panel input[type="range"], .panel-content input[type="range"]{ -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; }
+input[type="range"]::-webkit-slider-runnable-track{ background:var(--muted); border:var(--border-thickness) solid var(--border); height:10px; }
+input[type="range"]::-webkit-slider-thumb{ -webkit-appearance:none; appearance:none; margin-top:-4px; background:var(--primary); border:var(--border-thickness) solid var(--border); height:16px; width:16px; }
+input[type="range"]::-moz-range-track{ background:var(--muted); border:var(--border-thickness) solid var(--border); height:10px; }
+input[type="range"]::-moz-range-thumb{ background:var(--primary); border:var(--border-thickness) solid var(--border); height:16px; width:16px; border-radius:0; }
+
+.tech-table{ width:100%; border-collapse:collapse; font-size:.82rem; }
+.tech-table th,.tech-table td{ border:var(--border-thickness) solid var(--border); padding:10px 12px; text-align:left; }
+.tech-table th{ background:var(--muted); text-transform:uppercase; font-weight:700; }
+.tech-table tbody tr:hover{ background:var(--hover-bg); }
+
+.counter-box{ display:inline-flex; align-items:center; border:var(--border-thickness) solid var(--border); background:var(--card); height:32px; }
+.counter-btn{ width:28px; height:100%; background:none; border:none; font-weight:700; cursor:pointer; font-size:14px; color:var(--foreground); }
+.counter-btn:hover{ background:var(--muted); }
+
+/* ===== BLOQUE B · CARCASA (.ab-) ========================================== */
+.ab-root{
+  --washi: var(--background); --paper: var(--card); --grey: var(--muted);
+  --sumi: var(--foreground); --red: var(--destructive); --bw: var(--border-thickness);
+  font-family:var(--font-primary); background:var(--background); color:var(--foreground);
+  background-image:var(--bg-texture);
+  /* (G) padding inferior amplio: reserva el espacio de las DOS barras fijas
+     (TopToolsBar + footer) que viven en .ab-bottom-dock. */
+  padding:22px 22px 330px; min-height:100vh; line-height:1.5; -webkit-font-smoothing:antialiased; }
+@media(max-width:900px){ .ab-root{ padding-bottom:460px; } }
+
+/* (G) DOCK INFERIOR FIJO — TopToolsBar arriba + footer de metadatos debajo,
+   apilados y anclados permanentemente al borde inferior de la pantalla. */
+.ab-bottom-dock{ position:fixed; left:0; right:0; bottom:0; z-index:50; display:flex; flex-direction:column; max-height:66vh; }
+.ab-bottom-dock .ab-toptools-bar{ position:static !important; margin:0 !important; max-width:none !important; }
+.ab-bottom-dock .ab-cfooter{ margin:0; border-top:0; }
+@media(max-width:560px){ .ab-bottom-dock{ overflow-y:auto; } }
+.ab-root *{ box-sizing:border-box; border-radius:var(--radius); }
+.ab-root button{ font-family:inherit; cursor:pointer; }
+.ab-root select,.ab-root input,.ab-root textarea{ font-family:inherit; }
+.ab-root a{ color:inherit; }
+.ab-container{ width:100%; max-width:none; margin:0 auto; display:flex; flex-direction:column; gap:16px; }
+/* Tope opcional de legibilidad en monitores ultra-anchos: a partir de 2200px
+   el contenido se centra para no estirarse en exceso. Hasta ahí, ancho completo. */
+@media(min-width:2200px){ .ab-container{ max-width:2160px; } }
+
+/* masthead */
+.ab-masthead{ display:flex; justify-content:space-between; align-items:flex-end; gap:16px; padding-bottom:2px; }
+.ab-masthead-text{ text-align:right; margin-left:auto; }
+.ab-logo-link{ font-size:3.4rem; font-weight:800; letter-spacing:-1.5px; text-transform:none; color:var(--muted-foreground); text-decoration:none; display:inline-block; line-height:1; transition:color .15s; font-family:var(--font-heading); }
+.ab-logo-link:hover{ color:var(--red); }
+.ab-masthead-sub{ font-size:.72rem; font-weight:700; opacity:.65; text-transform:uppercase; margin-top:8px; letter-spacing:.04em; }
+.ab-pulse{ animation:abpulse 1.2s infinite ease-in-out; display:inline-block; color:var(--red); }
+@keyframes abpulse{0%,100%{opacity:.15}50%{opacity:1}}
+/* (v2.3) Logo escalado +50% para mayor presencia (antes 120×80 → ahora 180×120). */
+.ab-masthead-logo{ width:180px; height:120px; flex-shrink:0; opacity:.9; color:var(--foreground); }
+@media(max-width:760px){ .ab-masthead-logo{display:none} .ab-logo-link{font-size:2.6rem} }
+/* Logo oficial dentro del badge del Hero (reemplaza el ícono Lucide antiguo). */
+.ab-hero-logo{ height:27px; width:auto; object-fit:contain; display:inline-block; vertical-align:middle; }
+
+.ab-hr{ height:0; border-top:2px solid var(--border); margin:-2px 0 0; }
+.ab-blink{ animation:abblink 1.6s infinite ease-in-out; display:inline-block; }
+@keyframes abblink{0%,100%{opacity:.25}50%{opacity:1}}
+
+/* status + usuario */
+.ab-statusbar{ display:flex; flex-wrap:wrap; align-items:center; gap:14px; justify-content:space-between; border:var(--bw) solid var(--sumi); background:var(--paper); padding:9px 14px; font-size:11px; box-shadow:var(--shadow-hard); }
+.ab-status-group{ display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+.ab-path{ font-weight:700; opacity:.8; white-space:nowrap; }
+.ab-caret{ color:var(--red); margin-right:6px; font-weight:800; }
+.ab-divider{ width:1px; height:22px; background:var(--sumi); opacity:.2; }
+.ab-mini-label{ font-size:9px; font-weight:800; opacity:.5; text-transform:uppercase; white-space:nowrap; }
+.ab-select{ border:var(--bw) solid var(--sumi); background:var(--washi); color:var(--sumi); padding:5px 26px 5px 10px; font-size:11px; font-weight:700; appearance:none; cursor:pointer; }
+.ab-select:focus{ outline:none; border-color:var(--red); }
+.ab-user{ display:flex; align-items:center; gap:9px; }
+.ab-username{ font-size:11px; font-weight:700; text-transform:uppercase; }
+.ab-badge{ display:inline-flex; align-items:center; gap:4px; font-size:9px; font-weight:800; padding:3px 8px; border:var(--bw) solid var(--sumi); text-transform:uppercase; letter-spacing:.05em; transition:all .12s; }
+.ab-badge.premium{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.ab-badge.free{ background:var(--muted); color:var(--foreground); }
+.ab-badge:hover{ transform:translateY(-1px); }
+.ab-sysok{ display:inline-flex; align-items:center; gap:5px; font-size:10px; font-weight:700; color:var(--success); }
+
+/* botones carcasa */
+.ab-btn{ padding:7px 13px; border:var(--bw) solid var(--sumi); background:var(--primary); color:var(--primary-foreground); font-weight:700; text-transform:uppercase; font-size:10px; display:inline-flex; align-items:center; gap:5px; transition:all .12s; white-space:nowrap; }
+.ab-btn:hover{ background:var(--destructive); border-color:var(--destructive); color:var(--destructive-foreground); }
+.ab-btn:active{ transform:translateY(1px); }
+.ab-btn.sec{ background:var(--accent); color:var(--accent-foreground); }
+.ab-btn.sec:hover{ background:var(--primary); color:var(--primary-foreground); }
+.ab-btn.add{ background:var(--accent); color:var(--accent-foreground); }
+.ab-btn.add:hover{ background:var(--primary); color:var(--primary-foreground); }
+.ab-btn.add.added{ background:var(--success); color:#fff; border-color:var(--success); }
+.ab-btn.add.added:hover{ background:var(--destructive); border-color:var(--destructive); }
+.ab-btn.sm{ padding:3px 8px; font-size:9px; }
+
+/* workspace grid */
+.ab-workspace{ display:grid; grid-template-columns:1fr 430px; gap:16px; align-items:start; }
+@media(max-width:1080px){ .ab-workspace{ grid-template-columns:1fr; } }
+
+/* binder */
+.ab-binder-tabs{ display:flex; flex-wrap:wrap-reverse; align-items:flex-end; gap:3px; position:relative; z-index:3; }
+.ab-tab{ border:var(--bw) solid var(--sumi); border-bottom:none; background:var(--tab-bg); color:var(--muted-foreground); padding:6px 10px; font-size:9.5px; font-weight:800; display:inline-flex; align-items:center; gap:5px; text-transform:uppercase; transition:all .12s; position:relative; top:2px; z-index:1; }
+.ab-tab:hover{ background:var(--tab-hover); color:var(--foreground); }
+.ab-tab.active{ background:var(--card); color:var(--destructive); border-top:3px solid var(--destructive); top:0; padding-top:8px; padding-bottom:9px; margin-bottom:-2px; z-index:8; }
+.ab-binder-body{ position:relative; z-index:2; border:var(--bw) solid var(--sumi); background:var(--paper); min-height:470px; box-shadow:var(--shadow-hard); }
+.ab-binder-head{ display:flex; justify-content:space-between; align-items:center; padding:11px 16px; border-bottom:var(--bw) solid var(--sumi); background:var(--muted); font-weight:800; text-transform:uppercase; font-size:13px; }
+.ab-binder-head .ref{ font-size:10px; opacity:.6; font-weight:700; }
+.ab-ficha{ display:grid; grid-template-columns:1.4fr 1fr; }
+@media(max-width:680px){ .ab-ficha{ grid-template-columns:1fr; } }
+.ab-ficha-main{ padding:20px; border-right:var(--bw) solid var(--sumi); }
+.ab-photo{ width:100%; height:230px; border:var(--bw) solid var(--sumi); background:var(--muted); display:flex; align-items:center; justify-content:center; overflow:hidden; position:relative; margin-bottom:16px; }
+.ab-photo img{ width:100%; height:100%; object-fit:cover; filter:grayscale(85%) contrast(115%); }
+.ab-photo-tag{ position:absolute; bottom:6px; left:6px; background:var(--primary); color:var(--primary-foreground); padding:3px 7px; font-size:9px; font-weight:700; }
+.ab-ficha-side{ padding:20px; background:color-mix(in srgb, var(--card) 80%, var(--background)); }
+.ab-data-title{ font-weight:800; border-bottom:1px solid var(--border); padding-bottom:6px; margin-bottom:10px; font-size:11px; text-transform:uppercase; }
+.ab-data-row{ display:flex; justify-content:space-between; gap:10px; border-bottom:1px dashed var(--border); padding:7px 0; font-size:12px; }
+.ab-data-row:last-child{ border-bottom:none; }
+.ab-data-label{ font-weight:700; opacity:.55; text-transform:uppercase; font-size:10px; }
+.ab-data-value{ font-weight:700; text-align:right; }
+.ab-origin{ font-size:8px; font-weight:800; color:var(--destructive); border:1px solid var(--destructive); padding:0 4px; margin-left:6px; }
+.ab-linked{ padding:20px; }
+.ab-linked h3{ font-size:12px; border-bottom:1px solid var(--border); padding-bottom:8px; margin-bottom:14px; text-transform:uppercase; }
+.ab-linked-card{ border:var(--bw) solid var(--sumi); margin-bottom:10px; }
+.ab-linked-card-head{ display:flex; justify-content:space-between; align-items:center; padding:8px 12px; background:var(--muted); gap:8px; }
+.ab-linked-card-title{ display:flex; align-items:center; gap:8px; font-weight:700; font-size:12px; }
+.ab-chip{ background:var(--primary); color:var(--primary-foreground); padding:4px; display:inline-flex; }
+.ab-linked-card-body{ display:flex; justify-content:space-between; align-items:center; gap:10px; padding:10px 12px; background:color-mix(in srgb, var(--card) 70%, var(--background)); flex-wrap:wrap; }
+.ab-check{ display:inline-flex; align-items:center; gap:6px; font-size:11px; font-weight:700; }
+.ab-check.done{ color:var(--success); }
+.ab-empty{ border:2px dashed var(--border); padding:30px; text-align:center; color:var(--muted-foreground); font-size:11px; text-transform:uppercase; font-weight:700; line-height:1.7; }
+
+/* catálogo */
+.ab-catalog{ border:var(--bw) solid var(--sumi); background:var(--paper); display:flex; flex-direction:column; max-height:760px; box-shadow:var(--shadow-hard); }
+.ab-catalog-head{ display:flex; justify-content:space-between; align-items:center; padding:11px 16px; background:var(--muted); border-bottom:var(--bw) solid var(--sumi); font-weight:800; text-transform:uppercase; font-size:13px; }
+.ab-catalog-filter{ display:flex; align-items:center; gap:8px; padding:10px 12px; border-bottom:var(--bw) solid var(--sumi); background:color-mix(in srgb, var(--card) 70%, var(--background)); }
+.ab-catalog-scroll{ overflow-y:auto; flex:1; }
+.ab-folder{ border-bottom:1px solid var(--border); }
+.ab-folder:last-child{ border-bottom:none; }
+.ab-folder-head{ width:100%; text-align:left; background:none; border:none; color:var(--foreground); padding:11px 14px; font-size:12px; font-weight:800; display:flex; align-items:center; justify-content:space-between; text-transform:uppercase; transition:background .12s; }
+.ab-folder-head:hover{ background:var(--hover-bg); }
+.ab-folder-body{ background:color-mix(in srgb, var(--card) 70%, var(--background)); }
+.ab-sub{ border-top:1px solid var(--border); }
+.ab-sub-head{ width:100%; text-align:left; background:none; border:none; padding:8px 14px 8px 20px; font-size:10px; font-weight:800; color:var(--muted-foreground); text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; letter-spacing:.03em; transition:color .12s; }
+.ab-sub-head:hover{ color:var(--foreground); }
+.ab-sub-body{ padding:6px 10px 10px 16px; }
+.ab-tool{ border:var(--bw) solid var(--sumi); background:var(--card); padding:9px 10px; margin-bottom:7px; transition:all .12s; }
+.ab-tool:last-child{ margin-bottom:0; }
+.ab-tool.soon{ opacity:.6; background:var(--muted); }
+.ab-tool.active{ border-color:var(--destructive); outline:1px solid var(--destructive); }
+.ab-tool-row{ display:flex; justify-content:space-between; align-items:flex-start; gap:8px; }
+.ab-tool-title{ display:flex; align-items:center; gap:7px; font-size:11px; font-weight:700; flex:1; }
+.ab-tool-code{ font-size:8px; font-weight:800; opacity:.4; }
+.ab-tool-actions{ display:flex; gap:4px; flex-wrap:wrap; justify-content:flex-end; align-items:center; }
+.ab-pill{ font-size:7.5px; font-weight:800; padding:1px 5px; border:1px solid var(--border); text-transform:uppercase; letter-spacing:.03em; display:inline-flex; align-items:center; gap:3px; }
+.ab-pill.soon{ background:var(--muted); color:var(--muted-foreground); border-color:var(--border); }
+.ab-pill.prem{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.ab-explore{ margin-top:8px; background:var(--muted); border-left:3px solid var(--border); padding:8px 10px; font-size:10px; }
+.ab-explore .lab{ font-weight:800; }
+.ab-phase-badges{ display:flex; gap:5px; flex-wrap:wrap; margin-top:5px; }
+.ab-phase{ font-size:8px; padding:1px 4px; border:1px solid var(--border); color:var(--muted-foreground); }
+.ab-phase.on{ border-color:var(--foreground); color:var(--foreground); font-weight:800; }
+
+/* tool host */
+.ab-toolhost{ border:var(--bw) solid var(--sumi); background:var(--paper); box-shadow:var(--shadow-hard); }
+.ab-module-header{ display:flex; justify-content:space-between; align-items:center; padding:11px 16px; background:var(--muted); border-bottom:var(--bw) solid var(--sumi); font-weight:800; text-transform:uppercase; font-size:13px; }
+.ab-toolhost-body{ padding:30px; min-height:300px; display:flex; align-items:center; justify-content:center; }
+.ab-toolhost-body.mounted{ display:block; padding:24px; }
+.ab-host-empty{ text-align:center; color:var(--muted-foreground); font-size:13px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; }
+.ab-render{ width:100%; max-width:780px; border:2px solid var(--border); background:var(--background); padding:36px; text-align:center; box-shadow:var(--shadow-hard); }
+.ab-render.prem{ border-color:var(--destructive); }
+.ab-render-icon{ display:inline-flex; padding:18px; border:2px solid var(--border); background:var(--card); margin-bottom:18px; }
+.ab-render-title{ font-size:18px; font-weight:800; text-transform:uppercase; letter-spacing:-.5px; }
+.ab-render-sub{ font-size:11px; opacity:.6; font-weight:700; text-transform:uppercase; margin-top:6px; }
+.ab-loadbar{ margin:22px auto 0; width:62%; height:10px; border:var(--bw) solid var(--sumi); background:var(--muted); overflow:hidden; }
+.ab-loadbar-fill{ height:100%; background:var(--destructive); }
+.ab-loadtext{ font-size:10px; font-weight:800; text-transform:uppercase; margin-top:10px; opacity:.7; display:inline-flex; align-items:center; gap:6px; }
+
+/* corporate footer */
+.ab-cfooter{ border:var(--bw) solid var(--sumi); background:var(--paper); box-shadow:var(--shadow-hard); }
+.ab-metagrid{ display:grid; grid-template-columns:repeat(4,1fr); border-bottom:var(--bw) solid var(--sumi); }
+@media(max-width:900px){ .ab-metagrid{ grid-template-columns:repeat(2,1fr); } }
+@media(max-width:520px){ .ab-metagrid{ grid-template-columns:1fr; } }
+.ab-meta{ padding:10px 14px; border-right:var(--bw) solid var(--sumi); border-bottom:1px solid var(--border); }
+.ab-meta-label{ font-size:9px; font-weight:800; opacity:.5; text-transform:uppercase; display:block; }
+.ab-meta-value{ font-size:11px; font-weight:700; margin-top:3px; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+.ab-feedback{ display:flex; gap:10px; align-items:center; padding:14px 16px; border-bottom:var(--bw) solid var(--sumi); flex-wrap:wrap; }
+.ab-feedback label{ font-size:11px; font-weight:800; text-transform:uppercase; display:inline-flex; align-items:center; gap:6px; }
+.ab-feedback input{ flex:1; min-width:200px; border:var(--bw) solid var(--sumi); background:var(--card); color:var(--foreground); padding:8px 10px; font-size:11px; }
+.ab-feedback input:focus{ outline:none; border-color:var(--destructive); }
+.ab-legal{ display:flex; gap:14px; align-items:center; justify-content:space-between; padding:10px 16px; flex-wrap:wrap; font-size:9px; opacity:.65; text-transform:uppercase; font-weight:700; }
+.ab-legal a{ text-decoration:underline; }
+.ab-legal a:hover{ color:var(--destructive); }
+
+/* barra inferior persistente */
+.ab-toptools-bar{ position:sticky; bottom:0; z-index:40; margin:6px auto 0; width:100%; max-width:none; border:var(--bw) solid var(--sumi); background:var(--bar); display:flex; flex-direction:column; }
+@media(min-width:2200px){ .ab-toptools-bar{ max-width:2160px; } }
+.ab-tt-active{ display:flex; align-items:center; justify-content:space-between; gap:12px; padding:13px 18px; background:var(--bar-accent); border-bottom:var(--bw) solid var(--bar-border); flex-wrap:wrap; }
+.ab-tt-active-label{ font-size:10px; font-weight:800; text-transform:uppercase; color:var(--bar-muted); letter-spacing:.06em; display:inline-flex; align-items:center; gap:7px; }
+.ab-tt-active-name{ font-size:14px; font-weight:800; text-transform:uppercase; color:var(--bar-foreground); letter-spacing:-.3px; display:inline-flex; align-items:center; gap:9px; }
+.ab-tt-row{ display:flex; }
+.ab-tt-row:not(:last-child){ border-bottom:var(--bw) solid var(--bar-border); }
+.ab-tt{ flex:1; min-width:120px; display:flex; align-items:center; justify-content:center; gap:8px; padding:10px; color:var(--bar-foreground); font-size:10px; font-weight:800; text-transform:uppercase; border:none; border-right:var(--bw) solid var(--bar-border); background:none; transition:all .12s; }
+.ab-tt:last-child{ border-right:none; }
+.ab-tt:hover{ background:var(--destructive); color:var(--destructive-foreground); }
+.ab-tt:active{ filter:brightness(0.85); }
+.ab-tt-select{ flex:1; display:flex; align-items:center; gap:8px; padding:8px 14px; min-width:220px; }
+.ab-select-dark{ flex:1; background:var(--card); color:var(--foreground); }
+
+/* indicador de avance del expediente (Ficha) */
+.ab-progress{ margin-top:16px; border:1.5px solid var(--border); padding:12px; background:color-mix(in srgb, var(--card) 80%, var(--background)); }
+.ab-progress-head{ display:flex; justify-content:space-between; align-items:center; font-size:10px; font-weight:800; text-transform:uppercase; }
+.ab-progress-head span:first-child{ display:inline-flex; align-items:center; gap:6px; }
+.ab-progress-pct{ color:var(--destructive); }
+.ab-progress-bar{ height:12px; border:1.5px solid var(--border); background:var(--muted); margin:8px 0 12px; }
+.ab-progress-fill{ height:100%; background:var(--primary); transition:width .3s; }
+.ab-progress-grid{ display:grid; grid-template-columns:repeat(5,1fr); gap:6px; }
+.ab-chk{ display:flex; flex-direction:column; align-items:center; gap:3px; text-align:center; font-size:7.5px; font-weight:700; text-transform:uppercase; opacity:.45; color:var(--foreground); }
+.ab-chk.on{ opacity:1; color:var(--success); }
+
+/* toast */
+.ab-toast{ position:fixed; bottom:160px; left:50%; transform:translateX(-50%); z-index:9999; background:var(--primary); color:var(--primary-foreground); border:2px solid var(--border); padding:11px 20px; font-size:11px; font-weight:800; text-transform:uppercase; display:flex; align-items:center; gap:10px; max-width:90%; }
+.ab-toast .dot{ color:var(--destructive); }
+
+/* =============================================================================
+   v7 · TOKENS Y CLASES AÑADIDAS (overrides por orden de cascada)
+   ============================================================================= */
+/* checklist de avance: B&N en cad y washi; con color sólo en VS Code */
+:root, :root[data-theme="cad"] { --progress-accent:#2E2E2E; }
+:root[data-theme="washi"] { --progress-accent:#2C2C2C; }
+:root[data-theme="matrix"] { --progress-accent:#4EC9B0; }
+.ab-chk.on{ color:var(--progress-accent); }
+.ab-progress-fill{ background:var(--progress-accent); }
+.ab-progress-pct{ color:var(--progress-accent); }
+
+/* selector de proyecto de la barra inferior, mucho más angosto */
+.ab-tt-select{ flex:0 0 300px; min-width:300px; }
+.ab-tt-spacer{ flex:1; }
+
+/* réplica mini del selector de tema (barra superior) */
+.ab-theme-mini{ display:inline-flex; align-items:center; gap:4px; font-size:9px; font-weight:800; padding:3px 8px; border:var(--bw) solid var(--sumi); text-transform:uppercase; letter-spacing:.05em; background:var(--accent); color:var(--accent-foreground); cursor:pointer; transition:all .12s; }
+.ab-theme-mini:hover{ background:var(--primary); color:var(--primary-foreground); }
+
+/* tarjeta carpeta de proyecto (Ficha "otros" + Home) */
+.ab-otros{ border-top:var(--bw) solid var(--sumi); padding:16px 20px; }
+.ab-otros-title{ font-size:11px; font-weight:800; text-transform:uppercase; opacity:.7; margin-bottom:10px; display:flex; align-items:center; gap:7px; }
+.ab-otros-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(185px,1fr)); gap:10px; }
+.ab-folder-card{ position:relative; text-align:left; cursor:pointer; border:var(--bw) solid var(--sumi); background:var(--card); color:var(--foreground); padding:12px; display:flex; flex-direction:column; gap:6px; transition:all .12s; font-family:inherit; }
+.ab-folder-card:hover{ background:var(--muted); transform:translateY(-2px); }
+.ab-folder-card .fc-top{ display:flex; align-items:center; justify-content:space-between; }
+.ab-folder-card .fc-name{ font-size:12px; font-weight:800; text-transform:uppercase; line-height:1.25; }
+.ab-folder-card .fc-meta{ display:flex; gap:6px; flex-wrap:wrap; }
+.ab-folder-card .fc-badge{ font-size:8px; font-weight:800; text-transform:uppercase; padding:1px 5px; border:1px solid var(--border); background:var(--muted); color:var(--foreground); }
+.ab-folder-card .fc-ref{ font-size:8px; opacity:.45; font-weight:700; }
+.ab-folder-card.new{ align-items:center; justify-content:center; text-align:center; border-style:dashed; color:var(--muted-foreground); font-weight:800; text-transform:uppercase; font-size:11px; gap:8px; min-height:96px; }
+.ab-folder-card.new:hover{ color:var(--destructive); border-color:var(--destructive); }
+
+/* HOME / página de inicio */
+.ab-home{ display:flex; flex-direction:column; gap:18px; }
+.ab-home-toptools{ display:flex; align-items:center; gap:10px; flex-wrap:wrap; background:var(--muted); border:var(--bw) solid var(--sumi); padding:12px 16px; box-shadow:var(--shadow-hard); }
+.ab-home-tt-label{ font-size:10px; font-weight:800; text-transform:uppercase; opacity:.55; letter-spacing:.06em; margin-right:6px; display:inline-flex; align-items:center; gap:6px; }
+.ab-home-tt{ display:inline-flex; align-items:center; gap:7px; font-size:11px; font-weight:800; text-transform:uppercase; padding:8px 14px; border:var(--bw) solid var(--sumi); background:var(--card); color:var(--foreground); cursor:pointer; transition:all .12s; font-family:inherit; }
+.ab-home-tt:hover{ background:var(--primary); color:var(--primary-foreground); }
+.ab-home-section{ border:var(--bw) solid var(--sumi); background:var(--paper); box-shadow:var(--shadow-hard); }
+.ab-home-section-head{ display:flex; justify-content:space-between; align-items:center; padding:11px 16px; background:var(--muted); border-bottom:var(--bw) solid var(--sumi); font-weight:800; text-transform:uppercase; font-size:13px; }
+.ab-home-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(225px,1fr)); gap:14px; padding:18px; }
+.ab-home-empty{ padding:48px 30px; text-align:center; }
+.ab-home-empty h3{ font-size:18px; font-weight:800; text-transform:uppercase; margin-bottom:8px; }
+.ab-home-empty p{ font-size:12px; opacity:.7; margin-bottom:18px; }
+.ab-home-empty-actions{ display:flex; gap:10px; justify-content:center; flex-wrap:wrap; }
+
+/* =============================================================================
+   v8 · OVERRIDES DE TEMA (cascada — ganan sobre los bloques previos)
+   ============================================================================= */
+/* WASHI · papel amarillento cálido + encabezados grises más cálidos */
+:root[data-theme="washi"] {
+  --background:#F6EFDD; --foreground:#34302A; --card:#FFFCF3; --card-foreground:#34302A;
+  --primary:#34302A; --primary-foreground:#FFFCF3; --destructive:#C24A33; --destructive-foreground:#FFFFFF;
+  --border:#DCCFB3;
+  --muted:#EBDEC2; --muted-foreground:#8a7c5e; --success:#4d7c2f;
+  --accent:#EFE4C9; --accent-foreground:#34302A;
+  --tab-bg:#E2D3AF; --tab-hover:#D8C89E; --progress-accent:#34302A;
+  --bar:#34302A; --bar-foreground:#FFFCF3; --bar-accent:#2a2620; --bar-border:#5b5443; --bar-muted:#cdbf9f;
+  --bg-texture:radial-gradient(#c24a3314 1px, transparent 1px);
+}
+/* MATRIX · VS Code: tipografía propia (Fira Code) + barra inferior gris (sin azul) */
+:root[data-theme="matrix"] {
+  --font-primary:'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+  --font-heading:'Fira Code', 'JetBrains Mono', ui-monospace, monospace;
+  /* (G) En Matrix (página oscura), la barra inferior va en gris CLARO con texto
+     oscuro para contrastar. */
+  --bar:#D4D4D4; --bar-foreground:#1E1E1E; --bar-accent:#C4C4C4; --bar-border:#9D9D9D; --bar-muted:#4A4A4A;
+}
+
+/* =============================================================================
+   v9 · matrix: botón primario menos disonante (teal en vez de azul) +
+        contraste garantizado en inputs sin color propio dentro del ToolHost
+   ============================================================================= */
+:root[data-theme="matrix"] { --primary:#178C7C; --primary-foreground:#FFFFFF; }
+.ab-toolhost-body input:not([type="range"]):not([type="checkbox"]):not([type="radio"]),
+.ab-toolhost-body select,
+.ab-toolhost-body textarea { background-color: var(--card); color: var(--foreground); }
+
+/* =============================================================================
+   v10 · UTILIDADES shadcn (clases planas basadas en nuestras variables)
+   Para Pricing, Modales, Tabla Admin y Ranking — temables en los 3 modos.
+   ============================================================================= */
+.bg-background{ background-color:var(--background); }
+.bg-card{ background-color:var(--card); }
+.bg-primary{ background-color:var(--primary); }
+.bg-destructive{ background-color:var(--destructive); }
+.bg-muted{ background-color:var(--muted); }
+.bg-accent{ background-color:var(--accent); }
+.text-foreground{ color:var(--foreground); }
+.text-card-foreground{ color:var(--card-foreground); }
+.text-primary{ color:var(--primary); }
+.text-primary-foreground{ color:var(--primary-foreground); }
+.text-destructive{ color:var(--destructive); }
+.text-destructive-foreground{ color:var(--destructive-foreground); }
+.text-muted-foreground{ color:var(--muted-foreground); }
+.text-accent-foreground{ color:var(--accent-foreground); }
+.border-border{ border-color:var(--border); }
+.border-primary{ border-color:var(--primary); }
+.border-destructive{ border-color:var(--destructive); }
+.border-theme{ border:var(--border-thickness) solid var(--border); }
+.rounded-theme{ border-radius:var(--radius); }
+.shadow-hard{ box-shadow:var(--shadow-hard); }
+
+/* =============================================================================
+   v11 · TEMA 4 · "WHITE" — neutro, sobrio, casi cero color (base shadcn
+   "neutral" / interfaz tipo Claude). Grises puros (croma 0), borde fino 1px,
+   esquinas suaves 8px, sombra muy sutil, tipografía Inter. Rojo = único acento.
+   ============================================================================= */
+:root[data-theme="white"] {
+  --background:#F7F7F7; --foreground:#232323; --card:#FFFFFF; --card-foreground:#232323;
+  --primary:#2E2E2E; --primary-foreground:#FAFAFA; --destructive:#DC2626; --destructive-foreground:#FFFFFF;
+  --border:#E4E4E4; --border-thickness:1px; --radius:8px;
+  --shadow-hard:0 1px 2px rgba(0,0,0,0.04), 0 1px 3px rgba(0,0,0,0.06); --bg-texture:none;
+  --font-primary:'Inter', system-ui, -apple-system, sans-serif;
+  --font-heading:'Inter', system-ui, -apple-system, sans-serif;
+  --muted:#F4F4F4; --muted-foreground:#737373; --success:#16A34A;
+  --accent:#F4F4F4; --accent-foreground:#2E2E2E;
+  --tab-bg:#ECECEC; --tab-hover:#E2E2E2;
+  --bar:#262626; --bar-foreground:#FAFAFA; --bar-accent:#171717; --bar-border:#3F3F3F; --bar-muted:#A3A3A3;
+}
+:root[data-theme="white"] { --progress-accent: #DC2626; }
+@keyframes ab-spin{from{transform:rotate(0deg)}to{transform:rotate(360deg)}}
+
+/* =============================================================================
+   v2.1 · ESTÉTICA ARQUITECTÓNICA — esquinas biseladas (clip-path) + grid de
+   formularios + landing/hero + repositorio + selector de imagen.
+   (Bloque al final del archivo: gana en orden a `.ab-root *{border-radius}`.)
+   ============================================================================= */
+
+/* (E) Sin curvas suaves en los contenedores principales — aspecto técnico. */
+.tool-panel, .ab-binder-body, .ab-catalog, .ab-home-section, .ab-home-toptools,
+.ab-render, .ab-linked-card, .ab-statusbar, .ab-toptools-bar, .ab-hero, .ab-photo,
+.ab-repo-card { border-radius:0 !important; }
+
+/* (E·fix v3) CHAFLÁN superior-derecho — TÉCNICA "CUADRADO ROTADO MÁSCARA".
+   -----------------------------------------------------------------------------
+   Reemplaza el truco del `clip-path`, que recortaba la geometría y dejaba la línea
+   diagonal DESALINEADA de los vértices en TODOS los temas (no solo CAD). Ahora:
+     1. La pestaña/panel conserva sus bordes normales de 1px (var(--bw)/var(--border)).
+     2. Un pseudo-elemento `::after` absoluto, cuadrado, se CENTRA exactamente en la
+        esquina superior derecha y se gira 45° (queda como rombo).
+     3. Su fondo = color de la PÁGINA que está DETRÁS (var(--background)) "borra"
+        visualmente la esquina real cuadrada (y su borde) sin tocar el resto.
+     4. Solo su `border-bottom` (la arista inferior-izquierda del rombo, ya rotada)
+        dibuja la HIPOTENUSA: una diagonal a 45° matemáticamente perfecta.
+   Como el color del fondo y del borde salen de variables del tema, funciona en los
+   4 temas (cad · washi · matrix · white) sin reglas por-tema. */
+.ab-tab, .module-header, .ab-catalog-head, .ab-binder-head,
+.ab-module-header, .ab-home-section-head {
+  position: relative;
+  border-radius: 0 !important;
+}
+/* El chaflán diagonal SOLO se aplica en el tema CAD: en washi/matrix/white la
+   línea queda de muy bajo contraste (color de borde sutil del tema) y no se
+   percibe, por lo que ahí se prefiere la esquina recta sin diagonal. */
+:root[data-theme="cad"] .ab-tab::after, :root[data-theme="cad"] .module-header::after, :root[data-theme="cad"] .ab-catalog-head::after,
+:root[data-theme="cad"] .ab-binder-head::after, :root[data-theme="cad"] .ab-module-header::after, :root[data-theme="cad"] .ab-home-section-head::after {
+  content:''; position:absolute; top:0; right:0;
+  width:16px; height:16px;
+  border-radius:0 !important;
+  transform: translate(50%, -50%) rotate(45deg);
+  transform-origin: center;
+  background: var(--background);
+  border-bottom: var(--bw) solid var(--border);
+  pointer-events:none; z-index:3;
+}
+/* Las pestañas llevan un chaflán algo menor, proporcional a su tamaño. */
+:root[data-theme="cad"] .ab-tab::after { width:12px; height:12px; }
+
+/* (A) Contenedor acotado en rutas sin proyecto (Landing/Admin/Pricing): la barra
+   superior y el contenido comparten una columna centrada, sin estirarse al infinito.
+   El workspace (con proyecto) conserva el ancho completo. */
+.ab-container--narrow { max-width:1280px; margin-left:auto; margin-right:auto; }
+
+/* (F) Grid estricto para formularios de ancho completo (alineación perfecta). */
+.ab-form-grid { display:grid; grid-template-columns:1fr; gap:16px; align-items:end; }
+@media(min-width:768px){ .ab-form-grid{ grid-template-columns:repeat(3, minmax(0,1fr)); } }
+@media(min-width:1280px){ .ab-form-grid{ grid-template-columns:repeat(4, minmax(0,1fr)); } }
+.ab-form-grid .tech-input-group{ margin-bottom:0; min-width:0; }
+.ab-form-grid .tech-input, .ab-form-grid .tech-select, .ab-form-grid textarea{ width:100%; }
+.ab-form-grid .col-span-full{ grid-column:1 / -1; }
+
+/* (C) Landing/Home con ancho ACOTADO: el catálogo no ocupa toda la pantalla. */
+/* (D) El Home llena el contenedor (acotado por .ab-container--narrow) para que la
+   barra de estado/dirección y el contenido compartan exactamente la misma columna. */
+.ab-home{ max-width:none; width:100%; }
+
+/* (C) Hero de usuario nuevo. */
+/* (D) Hero SIN caja: el título y los botones flotan libres sobre el fondo de la
+   página (sin borde, sin fondo, sin sombra) para dar respiro visual. */
+.ab-hero{ border:none; background:none; box-shadow:none; padding:40px 4px 28px; text-align:left; }
+.ab-hero-badge{ display:inline-flex; align-items:center; gap:6px; font-size:10px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; margin-bottom:18px; opacity:.7; }
+.ab-hero-title{ font-size:clamp(1.4rem, 2.4vw, 2.2rem); font-weight:800; line-height:1.2; letter-spacing:-.5px; max-width:880px; margin:0 0 22px; font-family:var(--font-heading); }
+.ab-hero-actions{ display:flex; gap:12px; flex-wrap:wrap; }
+
+/* (D) Selector de imagen de la Ficha. */
+.ab-photo-tools{ display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:10px; }
+.ab-photo-tools-label{ font-size:9px; font-weight:800; text-transform:uppercase; opacity:.5; margin-left:4px; }
+
+/* (B) Repositorio (esqueleto · próximamente). */
+.ab-repo-banner{ display:flex; align-items:center; gap:10px; border:1.5px dashed var(--border); background:var(--muted); padding:12px 14px; font-size:12px; font-weight:600; margin-bottom:16px; }
+.ab-repo-grid{ display:grid; grid-template-columns:repeat(auto-fill, minmax(190px,1fr)); gap:12px; }
+.ab-repo-card{ border:var(--bw) solid var(--sumi); background:var(--card); padding:14px; display:flex; flex-direction:column; gap:10px; opacity:.85; }
+.ab-repo-card-top{ display:flex; align-items:center; justify-content:space-between; }
+.ab-repo-card-name{ font-size:12px; font-weight:800; text-transform:uppercase; line-height:1.25; }
+
+/* =============================================================================
+   v2.4 · SPLIT-SCREEN (Workspace / Preview) + LÁMINA IMPRIMIBLE ESTILO WORD.
+   -----------------------------------------------------------------------------
+   Layout de 2 columnas: IZQUIERDA = workspace interactivo; DERECHA = vista previa
+   de exportación (lámina de SOLO LECTURA + botón EXPORTAR). La lámina
+   (DocumentExportWrapper) está DESVINCULADA del tema: sus colores van HARD en el
+   componente (blanco/negro). Aquí solo se define el grid y el comportamiento de
+   impresión. (No afecta al Expediente Municipal ni a las herramientas excluidas:
+   no usan este wrapper ni el split.) */
+.ab-split{ display:grid; grid-template-columns:1fr; gap:24px; align-items:start; }
+@media(min-width:1024px){ .ab-split{ grid-template-columns:1fr 1fr; } }
+.ab-split-right{ position:relative; }
+@media(min-width:1024px){ .ab-split-right{ position:sticky; top:12px; } }
+.ab-preview-head{ display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:12px; }
+.ab-preview-title{ font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.05em; opacity:.7; display:inline-flex; align-items:center; gap:7px; margin:0; }
+
+/* (P3) Modal genérico de la página (Nuevo Proyecto, etc.). Temable. */
+.ab-modal-overlay{ position:fixed; inset:0; z-index:120; background:rgba(0,0,0,.45); display:flex; align-items:center; justify-content:center; padding:20px; }
+.ab-modal{ width:100%; max-width:440px; background:var(--card); box-shadow:var(--shadow-hard); }
+
+/* (P5) Menú de cuenta del usuario (popover bajo el badge de plan). */
+.ab-menu-backdrop{ position:fixed; inset:0; z-index:90; }
+.ab-user-menu{ position:absolute; top:calc(100% + 8px); right:0; z-index:100; min-width:230px; background:var(--card); border:var(--bw) solid var(--sumi); box-shadow:var(--shadow-hard); display:flex; flex-direction:column; }
+.ab-user-menu-head{ padding:12px 14px; border-bottom:var(--bw) solid var(--border); display:flex; flex-direction:column; align-items:flex-start; }
+.ab-menu-item{ display:flex; align-items:center; gap:9px; padding:10px 14px; font-size:11px; font-weight:700; text-transform:uppercase; background:none; border:none; border-bottom:1px solid var(--border); color:var(--foreground); text-align:left; transition:all .12s; }
+.ab-menu-item:last-child{ border-bottom:none; }
+.ab-menu-item:hover{ background:var(--muted); }
+.ab-menu-item.danger{ color:var(--destructive); }
+.ab-menu-item.danger:hover{ background:var(--destructive); color:var(--destructive-foreground); }
+.doc-export{ display:block; width:100%; }
+/* La lámina hereda colores HARD desde el componente; aquí no se aplican var(). */
+
+@media print {
+  @page { size: A4 portrait; margin: 12mm; }
+  html, body{ background:#fff !important; }
+  .ab-root{ padding:0 !important; background:#fff !important; }
+  /* 1) Ocultar TODO el layout web (sidebar, header, barras, footer, botones…). */
+  body *{ visibility:hidden !important; }
+  /* 2) Ocultar la COLUMNA IZQUIERDA (workspace) y la cabecera de preview/botón. */
+  .ab-split-left, .ab-preview-head{ display:none !important; }
+  /* 3) Mostrar SOLO la lámina y su contenido, a página completa. */
+  .doc-export, .doc-export *{ visibility:visible !important; }
+  .ab-split, .ab-split-right{ display:block !important; position:static !important; }
+  .doc-export{ position:absolute; left:0; top:0; width:100% !important; }
+  .doc-sheet{ background:#fff !important; border:1px solid #000 !important; box-shadow:none !important; }
+}
+
+/* =============================================================================
+   v2.2 · TEMA "CAD" — TERMINAL / WIREFRAME PURO (AutoCAD / consola de comandos).
+   -----------------------------------------------------------------------------
+   TODO lo de abajo está ESTRICTAMENTE acotado a :root[data-theme="cad"], de modo
+   que los temas Washi, Matrix (VS Code) y White NO se ven afectados.
+   ============================================================================= */
+
+/* 1 · CERO SOMBRAS — interfaz 100% plana (paneles, botones, modales, barras). */
+:root[data-theme="cad"] *,
+:root[data-theme="cad"] *::before,
+:root[data-theme="cad"] *::after { box-shadow:none !important; text-shadow:none !important; }
+:root[data-theme="cad"] .shadow-hard,
+:root[data-theme="cad"] .tool-panel,
+:root[data-theme="cad"] .ab-toptools-bar,
+:root[data-theme="cad"] .ab-statusbar { box-shadow:none !important; }
+
+/* 2 · TIPOGRAFÍA ESTRICTAMENTE MONOSPACE — todo el texto de UI como terminal. */
+:root[data-theme="cad"],
+:root[data-theme="cad"] * { font-family:'JetBrains Mono','Fira Code','Courier New',ui-monospace,monospace !important; }
+
+/* 3 · BORDES DELGADOS Y ESTRICTOS — todo a 1px (se eliminan los bordes gruesos). */
+:root[data-theme="cad"] .ab-render,
+:root[data-theme="cad"] .ab-render-icon,
+:root[data-theme="cad"] .ab-empty,
+:root[data-theme="cad"] .ab-toast,
+:root[data-theme="cad"] .ab-progress,
+:root[data-theme="cad"] .ab-progress-bar,
+:root[data-theme="cad"] .ab-repo-banner { border-width:1px !important; }
+:root[data-theme="cad"] .ab-hr { border-top-width:1px; }
+
+/* 4 · BOTONES ESTILO "COMANDO" — sin fondo pesado; texto de consola con corchetes
+      [ TEXTO ] vía ::before/::after; hover = colores invertidos (fondo oscuro). */
+:root[data-theme="cad"] .ab-btn {
+  background:transparent !important; color:var(--foreground) !important;
+  border:1px solid var(--foreground) !important; font-weight:700;
+}
+:root[data-theme="cad"] .ab-btn::before { content:"[ "; }
+:root[data-theme="cad"] .ab-btn::after  { content:" ]"; }
+:root[data-theme="cad"] .ab-btn:hover {
+  background:var(--foreground) !important; color:var(--background) !important;
+}
+/* Botones de herramienta / grises: planos con borde 1px e inversión en hover
+   (sus etiquetas ya incluyen corchetes, por eso NO se les inyectan pseudo-corchetes). */
+:root[data-theme="cad"] .technical-btn,
+:root[data-theme="cad"] .btn-tech-gray {
+  background:transparent !important; color:var(--foreground) !important;
+  border:1px solid var(--foreground) !important;
+}
+:root[data-theme="cad"] .technical-btn:hover,
+:root[data-theme="cad"] .btn-tech-gray:hover {
+  background:var(--foreground) !important; color:var(--background) !important;
+}
+
+/* 5 · (G) BARRA INFERIOR CONTRASTANTE — gris oscuro despegado del fondo blanco.
+      Usa los tokens --bar* (ahora oscuros para CAD). Hover = rojo de comando. */
+:root[data-theme="cad"] .ab-toptools-bar { background:var(--bar) !important; }
+:root[data-theme="cad"] .ab-tt:hover { background:var(--destructive) !important; color:#fff !important; }
+
+/* 6 · ÍCONOS MINIMALISTAS — trazo técnico fino de 1px. */
+:root[data-theme="cad"] svg { stroke-width:1px; }
+
+/* =============================================================================
+   (P1) NEUTRALIZADOR DE LA LÁMINA IMPRIMIBLE — DESVINCULA DEL TEMA.
+   -----------------------------------------------------------------------------
+   La lámina (.doc-export / DocumentExportWrapper) debe verse SIEMPRE igual (hoja
+   de papel Word) sin importar el tema. Estas reglas vencen a los globales del
+   tema (p. ej. CAD fuerza `* { font-family: monospace !important }` y el global
+   `.ab-root * { border-radius: var(--radius) }`). Por eso se usan selectores de
+   ALTA especificidad (incluyen :root[data-theme]) y van AL FINAL del archivo. */
+.doc-export, .doc-export *,
+:root[data-theme] .doc-export, :root[data-theme] .doc-export *,
+:root[data-theme="cad"] .doc-export, :root[data-theme="cad"] .doc-export * {
+  font-family: Arial, "Helvetica Neue", Helvetica, "Segoe UI", sans-serif !important;
+  border-radius: 0 !important;
+  box-shadow: none !important;
+  text-shadow: none !important;
+  letter-spacing: normal !important;
+}
+/* La lámina nunca lleva borde exterior ni sombra; fondo blanco y tinta negra. */
+:root .doc-export .doc-sheet, :root[data-theme] .doc-export .doc-sheet {
+  background:#ffffff !important; color:#1a1a1a !important; border:0 !important; box-shadow:none !important;
+}
+
+/* =============================================================================
+   SPRINT S7 · NUEVO LAYOUT UNIFICADO (aprobado en maquetas /test y /test-inicio)
+   -----------------------------------------------------------------------------
+   Reemplaza el shell de 6 bloques por: TOP de alto contraste (controles izq +
+   marca/logo der) · MAIN (workspace 3-col ó landing) · DOCK inferior ancho
+   completo. Reutiliza las clases internas existentes (ab-binder*, ab-catalog*,
+   ab-tool*, ab-ficha*, ab-folder-card, ab-user-menu, ab-modal…). Va al FINAL
+   para ganar a los bloques previos por orden de cascada.
+   ============================================================================= */
+
+/* Root en modo shell: columna a pantalla completa, sin el padding del dock fijo. */
+.ab-root.ab-shell{ padding:0 !important; min-height:100vh; display:flex; flex-direction:column; }
+.ab-root.ab-shell .ab-toast{ bottom:24px; }
+.ab-outlet{ flex:1; min-height:0; display:flex; flex-direction:column; }
+.ab-outlet--mini{ width:100%; max-width:1280px; margin:0 auto; padding:22px; }
+
+/* Esquinas RECTAS en las barras (vencen al redondeo global .ab-root *). */
+.ab-top, .ab-topbar, .ab-brand, .ab-topbtn, .ab-topsel, .ab-dock, .ab-dock-tools,
+.ab-dock-tools .lbl, .ab-dock-nav, .ab-dock-last, .ab-dock-btn, .ab-workbar,
+.ab-workbar-btn{ border-radius:0 !important; }
+
+/* — TOP UNIFICADO — */
+.ab-top{ display:flex; align-items:stretch; gap:12px; background:var(--bar); color:var(--bar-foreground); border-bottom:var(--bw) solid var(--bar-border); }
+.ab-topbar{ flex:1; display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; padding:10px 14px 12px; }
+.ab-brand{ display:flex; align-items:center; gap:16px; padding:4px 9px 4px 0; text-align:right; flex:0 0 auto; }
+.ab-brand-title{ font-family:var(--font-heading); font-size:2.7rem; font-weight:800; letter-spacing:-1.5px; line-height:1; color:var(--bar-foreground); cursor:pointer; }
+.ab-brand-title .pulse{ color:var(--destructive); }
+.ab-brand-sub{ font-size:.78rem; font-weight:700; opacity:.6; text-transform:uppercase; margin-top:5px; letter-spacing:.04em; max-width:560px; }
+.ab-brand-logo{ height:140px; width:auto; object-fit:contain; }
+.ab-topbtn{ display:inline-flex; align-items:center; gap:6px; padding:7px 12px; font-size:11px; font-weight:800; text-transform:uppercase; background:transparent; color:var(--bar-foreground); border:var(--bw) solid var(--bar-border); cursor:pointer; }
+.ab-topbtn:hover{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.ab-topsel{ display:flex; align-items:center; gap:8px; padding:7px 10px; border:var(--bw) solid var(--bar-border); background:var(--bar-accent); min-width:300px; flex:0 0 330px; }
+.ab-topsel select{ flex:1; background:transparent; color:var(--bar-foreground); border:none; font-size:11px; font-weight:700; outline:none; }
+.ab-topsel select option{ color:#111; }
+.ab-topsysok{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:700; }
+@media(max-width:760px){ .ab-brand-logo{ height:96px; } .ab-brand-title{ font-size:2rem; } .ab-brand-sub{ display:none; } }
+
+/* Pestañas del binder más compactas para encajar las 8 etiquetas. */
+.ab-shell .ab-binder-tabs{ gap:2px; }
+.ab-shell .ab-tab{ padding:6px 6px; gap:3px; }
+.ab-shell .ab-tab.active{ padding-left:6px; padding-right:6px; }
+
+/* — MAIN · WORKSPACE 3 COLUMNAS — */
+.ab-main3{ flex:1; min-height:0; display:grid; grid-template-columns:minmax(280px,1.05fr) 392px minmax(320px,1.35fr); grid-template-rows:auto 1fr; gap:12px; padding:12px 14px; }
+.ab-wc1{ grid-column:1; grid-row:1; display:flex; flex-direction:column; gap:10px; }
+.ab-wc2{ grid-column:2; grid-row:1; display:flex; flex-direction:column; min-height:0; }
+.ab-wc3{ grid-column:3; grid-row:1 / 3; display:flex; flex-direction:column; min-height:0; border:var(--bw) solid var(--border); background:var(--card); }
+.ab-wavance{ grid-column:1 / 3; grid-row:2; align-self:end; }
+@media(max-width:1040px){
+  .ab-main3{ grid-template-columns:1fr 392px; grid-template-rows:auto auto auto; }
+  .ab-wc3{ grid-column:1 / 3; grid-row:1; min-height:440px; }
+  .ab-wc1{ grid-column:1; grid-row:2; } .ab-wc2{ grid-column:2; grid-row:2; }
+  .ab-wavance{ grid-column:1 / 3; grid-row:3; align-self:start; }
+}
+@media(max-width:680px){ .ab-main3{ grid-template-columns:1fr; } .ab-wc1,.ab-wc2,.ab-wc3,.ab-wavance{ grid-column:1; } }
+.ab-wc2 .ab-catalog{ max-height:none; }
+.ab-wc3 .ab-toolhost{ border:0; box-shadow:none; display:flex; flex-direction:column; flex:1; min-height:0; }
+.ab-wc3 .ab-toolhost-body{ flex:1; overflow-y:auto; }
+
+/* Fila "Mis Proyectos" compacta (col1, pegada abajo). */
+.ab-myrow{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; }
+.ab-myrow .card{ flex:0 0 auto; width:128px; border:var(--bw) solid var(--border); background:var(--card); padding:9px; cursor:pointer; text-align:left; color:var(--foreground); font-family:inherit; }
+.ab-myrow .card.new{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:6px; color:var(--muted-foreground); font-weight:800; font-size:10px; text-transform:uppercase; }
+
+/* Herramientas AGREGADAS en una carpeta del binder (estado + papelera). */
+.ab-linkrow{ display:flex; align-items:center; gap:8px; padding:7px 9px; border:var(--bw) solid var(--border); background:var(--card); }
+.ab-linkrow .lbl{ flex:1; min-width:0; font-size:11px; font-weight:600; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+.ab-iconbtn{ display:inline-flex; align-items:center; gap:5px; padding:4px 8px; font-size:9px; font-weight:800; text-transform:uppercase; border:var(--bw) solid var(--border); background:var(--card); color:var(--foreground); cursor:pointer; }
+.ab-iconbtn:hover{ background:var(--muted); }
+.ab-iconbtn.danger:hover{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+
+/* Barra inferior de acciones del área de trabajo (col3). */
+.ab-workbar{ display:flex; align-items:center; gap:8px; padding:10px; min-height:46px; border-top:var(--bw) solid var(--bar-border); background:var(--bar); }
+.ab-workbar-btn{ flex:0 0 auto; display:inline-flex; align-items:center; justify-content:center; gap:8px; padding:9px 14px; font-size:11px; font-weight:800; text-transform:uppercase; border:var(--bw) solid var(--bar-border); background:transparent; color:var(--bar-foreground); cursor:pointer; }
+.ab-workbar-btn:hover{ filter:brightness(1.12); }
+
+/* Avance del Expediente LIBRE bajo col1-2. */
+.ab-avancefree{ display:flex; flex-wrap:wrap; gap:4px 16px; }
+.ab-avancefree .chk{ display:inline-flex; align-items:center; gap:6px; padding:3px 4px; background:none; border:none; cursor:pointer; font-size:10px; color:var(--foreground); max-width:100%; }
+.ab-avancefree .chk:hover .t{ text-decoration:underline; }
+.ab-avancefree .chk .t{ overflow:hidden; text-overflow:ellipsis; white-space:nowrap; font-weight:600; }
+
+/* — DOCK INFERIOR (footer ancho completo) — */
+.ab-dock{ border-top:var(--bw) solid var(--border); background:var(--bar); color:var(--bar-foreground); }
+.ab-dock-tools{ display:flex; align-items:stretch; background:var(--bar-accent); border-bottom:var(--bw) solid var(--bar-border); flex-wrap:wrap; }
+.ab-dock-tools .lbl{ display:inline-flex; align-items:center; gap:6px; padding:8px 14px; font-size:9px; font-weight:800; text-transform:uppercase; opacity:.7; border-right:var(--bw) solid var(--bar-border); }
+.ab-dock-nav{ display:flex; align-items:stretch; border-bottom:var(--bw) solid var(--bar-border); flex-wrap:wrap; }
+.ab-dock-btn{ flex:1; min-width:120px; display:flex; align-items:center; justify-content:center; gap:7px; padding:9px; font-size:11px; font-weight:800; text-transform:uppercase; border:none; border-right:var(--bw) solid var(--bar-border); background:none; color:var(--bar-foreground); cursor:pointer; }
+.ab-dock-btn:last-child{ border-right:none; }
+.ab-dock-btn:hover{ background:var(--destructive); color:var(--destructive-foreground); }
+.ab-dock-last{ display:flex; align-items:center; justify-content:space-between; gap:14px; flex-wrap:wrap; padding:7px 14px; font-size:10px; }
+.ab-dock-last a{ text-decoration:underline; color:inherit; }
+.ab-dock-last input{ border:var(--bw) solid var(--bar-border); background:var(--bar-accent); color:var(--bar-foreground); }
+
+/* — MAIN · LANDING (página de inicio) — */
+.ab-land{ flex:1; width:100%; padding:26px 26px 20px; display:flex; flex-direction:column; }
+.ab-land-body{ flex:1; display:grid; grid-template-columns:1fr; gap:24px; align-items:stretch; }
+.ab-land-body.with-tools{ grid-template-columns:minmax(0,1.05fr) 330px minmax(0,1.25fr); }
+@media(max-width:1100px){ .ab-land-body.with-tools{ grid-template-columns:1fr 330px; } }
+@media(max-width:760px){ .ab-land-body.with-tools{ grid-template-columns:1fr; } }
+.ab-land-content{ display:flex; flex-direction:column; gap:20px; min-width:0; }
+.ab-land-bottom{ margin-top:auto; display:flex; flex-direction:column; gap:18px; }
+@keyframes abFade{ from{ opacity:0; } to{ opacity:1; } }
+.ab-fade2{ animation:abFade 2s ease both; }
+.ab-land-hero h1{ font-family:var(--font-heading); font-size:clamp(2rem,4vw,3.2rem); font-weight:800; letter-spacing:-1px; margin:0 0 16px; line-height:1.05; }
+.ab-land-hero p{ font-size:clamp(.96rem,1.5vw,1.18rem); line-height:1.55; max-width:920px; margin:0 0 10px; opacity:.85; }
+.ab-land-hero .welcome{ font-weight:800; color:var(--destructive); font-size:1.25rem; opacity:1; margin-top:6px; }
+.ab-land-cta{ display:flex; gap:12px; flex-wrap:wrap; margin-top:22px; }
+.ab-landbtn{ display:inline-flex; align-items:center; gap:8px; padding:12px 22px; font-size:13px; font-weight:800; text-transform:uppercase; border:var(--bw) solid var(--border); background:var(--primary); color:var(--primary-foreground); cursor:pointer; font-family:inherit; }
+.ab-landbtn.sec{ background:transparent; color:var(--foreground); }
+.ab-landbtn.sec.on{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.ab-landbtn:hover{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.ab-land-sech{ font-size:10px; font-weight:800; text-transform:uppercase; opacity:.55; display:inline-flex; align-items:center; gap:6px; margin-bottom:12px; letter-spacing:.05em; }
+.ab-land-proj{ display:flex; gap:12px; flex-wrap:wrap; }
+.ab-land-proj .card{ flex:0 0 auto; width:200px; border:var(--bw) solid var(--border); background:var(--card); padding:14px; cursor:pointer; text-align:left; color:var(--foreground); font-family:inherit; }
+.ab-land-proj .card.new{ display:flex; flex-direction:column; align-items:center; justify-content:center; gap:8px; color:var(--muted-foreground); font-weight:800; text-transform:uppercase; font-size:11px; min-height:104px; border-style:dashed; }
+.ab-landcat{ position:sticky; top:12px; min-width:0; align-self:start; }
+.ab-landcat .ab-catalog{ max-height:none; }
+.ab-landwork{ position:sticky; top:12px; min-width:0; align-self:start; }
+.ab-landwork .inner{ border:var(--bw) solid var(--border); background:var(--card); display:flex; flex-direction:column; min-height:640px; }
+.ab-landwork .head{ min-height:40px; display:flex; align-items:center; justify-content:space-between; gap:10px; padding:0 14px; background:var(--bar); color:var(--bar-foreground); border-bottom:var(--bw) solid var(--bar-border); font-weight:700; text-transform:uppercase; font-size:.82rem; }
+.ab-landwork .foot{ min-height:46px; border-top:var(--bw) solid var(--bar-border); background:var(--bar); }
+.ab-land-demo{ border:1.5px dashed var(--border); background:var(--muted); padding:22px; text-align:center; color:var(--muted-foreground); font-size:11px; font-weight:700; text-transform:uppercase; }
+@media (prefers-reduced-motion: reduce){ .ab-fade2{ animation:none; } }

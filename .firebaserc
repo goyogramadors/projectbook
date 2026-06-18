@@ -1,0 +1,7 @@
+{
+  "projects": {
+    "default": "archibots-497423",
+    "prod": "archibots-497423",
+    "dev": "archibots-dev"
+  }
+}

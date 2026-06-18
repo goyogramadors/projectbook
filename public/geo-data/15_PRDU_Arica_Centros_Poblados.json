@@ -1,0 +1,25 @@
+{
+"type": "FeatureCollection",
+"name": "15_PRDU_Arica_Centros_Poblados",
+"crs": { "type": "name", "properties": { "name": "urn:ogc:def:crs:OGC:1.3:CRS84" } },
+"features": [
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.60202934566496, -18.264044962588525 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.709498244059958, -18.819112251727873 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.691506755571439, -18.750657990163468 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.536249443233217, -18.394879753240478 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.529024634194812, -18.429717010533839 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.514914799505533, -18.467725946444276 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.499492147444982, -18.547843110015712 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.493800225027528, -18.580935684132061 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.412515605896857, -17.767815365859143 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.344628698673603, -17.759367551389953 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.325330653239561, -17.870436082646442 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.348973321244245, -17.899824774376324 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.201058460417045, -18.054791007006195 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.153765007920697, -18.498019793647195 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.85992610995865, -19.01045361681506 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.530503276747382, -18.936198316147102 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.50383582389334, -18.949661673380099 ] } },
+{ "type": "Feature", "properties": { }, "geometry": { "type": "Point", "coordinates": [ -69.212936567814779, -18.87781887955142 ] } }
+]
+}

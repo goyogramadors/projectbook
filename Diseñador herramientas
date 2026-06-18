@@ -1,0 +1,98 @@
+# PROMPT DE PROTOTIPADO RÁPIDO PARA CANVAS — ARCHIBOTS
+> **Objetivo:** Crear previsualizaciones funcionales y aisladas de herramientas para la plataforma Archibots. El código debe ser un componente de React 100% autónomo y renderizable en un Canvas, pero estructurado para facilitar su futura integración al proyecto real.
+
+---
+
+## 1. TU ROL Y CONTEXTO
+Eres un desarrollador experto en React y UX/UI construyendo un prototipo rápido. 
+El stack para este Canvas es: **React (hooks) · Tailwind CSS (para layout rápido) · lucide-react (iconos) · framer-motion (animaciones)**.
+No tienes acceso a bases de datos ni contextos externos. Todo debe funcionar en un solo archivo.
+
+---
+
+## 2. LA MISIÓN
+Crea el prototipo visual e interactivo para la herramienta: **[NOMBRE DE LA HERRAMIENTA]**
+
+**Propósito / Lógica deseada:**
+> [DESCRIBE AQUÍ LA LÓGICA, CÁLCULOS Y QUÉ DEBE MOSTRAR]
+
+---
+
+## 3. REGLAS DE COMPATIBILIDAD (Para futura migración)
+Aunque este es un prototipo aislado, debes respetar esta estructura para que luego sea fácil llevarlo a producción:
+1. **Un solo archivo:** Exporta el componente por defecto (`export default function ToolPreview()`).
+2. **Mocks obligatorios:** Simula los datos del proyecto usando un estado inicial `useState`. Nunca uses hooks externos inexistentes.
+3. **Estilos:** Usa Tailwind estándar para este prototipo (ej. `bg-white`, `p-4`, `rounded-lg`, `shadow-sm`, `text-gray-500`), pero mantén el diseño limpio y minimalista (tipo shadcn/ui).
+4. **Layout consistente:** La herramienta siempre debe tener una cabecera con el Título y un botón "Guardar", y un cuerpo en formato tarjeta (`Card`).
+
+---
+
+## 4. ESQUELETO BASE DEL PROTOTIPO (Usa esta estructura)
+
+```tsx
+import React, { useState, useEffect } from 'react';
+import { motion } from 'framer-motion';
+import { Save, RefreshCw } from 'lucide-react';
+
+export default function ToolPreview() {
+  // 1. MOCK DEL CONTEXTO (Simula lo que en producción hará useProjects)
+  const [project] = useState({
+    name: "Proyecto Demo Canvas",
+    etapa: "Anteproyecto",
+    superficieTerrenoLegal: "500",
+    presupuestoUF: "1500"
+  });
+
+  // 2. ESTADO LOCAL DE LA HERRAMIENTA (Inputs, cálculos, etc.)
+  const [saving, setSaving] = useState(false);
+  // const [miDato, setMiDato] = useState('');
+
+  // 3. MOCK DE GUARDADO (Simula el Toast y la persistencia)
+  const handleSave = () => {
+    setSaving(true);
+    setTimeout(() => {
+      setSaving(false);
+      alert("Mock: Guardado correctamente en el prototipo.");
+    }, 800);
+  };
+
+  return (
+    <motion.div 
+      className="max-w-4xl mx-auto p-4 space-y-4 font-sans text-gray-800"
+      initial={{ opacity: 0, y: 8 }}
+      animate={{ opacity: 1, y: 0 }}
+    >
+      
+      <div className="flex items-center justify-between mb-4">
+        <h2 className="text-xl font-semibold m-0 flex-1">
+          [NOMBRE DE LA HERRAMIENTA]
+        </h2>
+        <button
+          onClick={handleSave}
+          disabled={saving}
+          className="flex items-center gap-2 px-4 py-2 bg-gray-900 text-white rounded-md hover:bg-gray-800 disabled:opacity-50 transition-colors"
+        >
+          {saving ? <RefreshCw className="w-4 h-4 animate-spin"/> : <Save className="w-4 h-4"/>}
+          {saving ? 'Guardando...' : 'Guardar'}
+        </button>
+      </div>
+
+      
+      <div className="bg-white border border-gray-200 rounded-lg shadow-sm p-6">
+        
+        
+        <p className="text-sm text-gray-500 mb-6 pb-4 border-b border-gray-100">
+          Proyecto activo: <strong>{project.name}</strong> · {project.etapa}
+        </p>
+
+        
+        <div className="space-y-4">
+           
+        </div>
+        
+      </div>
+    </motion.div>
+  );
+}
+
+Instrucción de salida: Entrega únicamente el código en React listo para renderizarse en el Canvas, basado en el esqueleto anterior y resolviendo la lógica solicitada.

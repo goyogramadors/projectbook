@@ -1,0 +1,35 @@
+# ── Dependencias ─────────────────────────────────────────────────────────────
+node_modules/
+functions/node_modules/
+Mockup/**/node_modules/
+
+# ── Salidas de compilación ───────────────────────────────────────────────────
+dist/
+functions/lib/
+tsconfig.tsbuildinfo
+functions/tsconfig.tsbuildinfo
+
+# ── Firebase (estado local / caché de deploy) ────────────────────────────────
+.firebase/
+
+# ── Variables de entorno y secretos ──────────────────────────────────────────
+# Ignora .env, .env.local, .env.production, etc. — NUNCA versionar claves.
+.env*
+*.local
+# …pero conserva las plantillas de ejemplo (sin valores reales).
+!.env.example
+!.env.local.example
+!.env*.example
+
+# ── Proyecto paralelo de referencia (no productivo) ──────────────────────────
+Mockup/
+
+# ── Sistema operativo / editor ───────────────────────────────────────────────
+.DS_Store
+Thumbs.db
+*.log
+.vscode/
+.idea/
+
+# ── Artefactos residuales del árbol ──────────────────────────────────────────
+.fuse_hidden*

@@ -1,0 +1,17 @@
+{
+  "name": "archibots-scripts",
+  "type": "module",
+  "version": "1.0.0",
+  "description": "Scripts de administración y migración de datos para ArchiBots",
+  "scripts": {
+    "migrate:dry":  "node migrate-projects.mjs --env dev --dry-run",
+    "migrate:dev":  "node migrate-projects.mjs --env dev",
+    "migrate:prod": "node migrate-projects.mjs --env prod"
+  },
+  "dependencies": {
+    "firebase-admin": "^12.0.0"
+  },
+  "engines": {
+    "node": ">=20"
+  }
+}

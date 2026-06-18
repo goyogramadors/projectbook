@@ -1,0 +1,196 @@
+// firestore.rules — F5.1 · Zero-Trust (Constitución §12, §13, §15)
+// Deploy: firebase deploy --only firestore:rules
+// Verificar en: Firebase Console → Firestore → Rules → Simulador
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // ── Funciones auxiliares ──────────────────────────────────────────────────
+
+    function isAuth()  { return request.auth != null; }
+    function isAdmin() { return isAuth() && request.auth.token.admin == true; }
+    function uid()     { return request.auth.uid; }
+
+    /** §13 — Solo usuarios activos pueden operar.
+        Nota: el estado canónico es 'Suspendido' (mayúscula inicial), tal como lo
+        escribe la Cloud Function setUserState y lo declara types.ts (User.estado). */
+    function isActive() {
+      return isAuth() &&
+        (!exists(/databases/$(database)/documents/users/$(uid())) ||
+          get(/databases/$(database)/documents/users/$(uid())).data.estado != 'Suspendido');
+    }
+
+    /** §14 — Plan efectivo: compPremium ó plan=='premium' */
+    function isPremium() {
+      return isAuth() && (
+        get(/databases/$(database)/documents/users/$(uid())).data.compPremium == true ||
+        get(/databases/$(database)/documents/users/$(uid())).data.plan == 'premium'
+      );
+    }
+
+    /** §11 — Tiene Pase permanente para ESTE proyecto.
+        Corrige el bug: se evalúa el projectId recibido contra la lista de pases
+        del usuario (antes comparaba su propio uid, lo que nunca autorizaba). */
+    function hasPase(projectId) {
+      return isAuth() &&
+        exists(/databases/$(database)/documents/entitlements/$(uid())) &&
+        projectId in get(/databases/$(database)/documents/entitlements/$(uid())).data.projects;
+    }
+
+    /** Nivel de acceso al proyecto (§10, §11) */
+    function isOwner(project) {
+      return isAuth() && project.data.ownerId == uid();
+    }
+    function isEditor(project) {
+      return isAuth() && uid() in project.data.members &&
+             project.data.members[uid()] == 'editor';
+    }
+    function isViewer(project) {
+      return isAuth() && uid() in project.data.members &&
+             project.data.members[uid()] == 'viewer';
+    }
+    /** §11: colaborador Free con Pase del propietario → solo lectura */
+    function canEditProject(project) {
+      return isOwner(project) && (isPremium() || hasPase(project.__name__.split('/')[1]));
+    }
+    function canReadProject(project) {
+      return isOwner(project) || isEditor(project) || isViewer(project);
+    }
+
+    // ── Colección: users ──────────────────────────────────────────────────────
+
+    match /users/{userId} {
+      allow read:   if isAuth() && (uid() == userId || isAdmin());
+      allow create: if isAuth() && uid() == userId;
+      allow update: if isAuth() && uid() == userId &&
+                       // El usuario no puede cambiarse a sí mismo el plan ni el estado
+                       !('plan'    in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('estado'  in request.resource.data.diff(resource.data).affectedKeys()) &&
+                       !('compPremium' in request.resource.data.diff(resource.data).affectedKeys());
+      allow update: if isAdmin(); // Admin puede cambiar cualquier campo
+      allow delete: if isAdmin();
+    }
+
+    // ── Colección: projects ───────────────────────────────────────────────────
+
+    match /projects/{projectId} {
+      allow read:   if isActive() && canReadProject(resource);
+      allow create: if isActive() && isPremium() &&
+                       request.resource.data.ownerId == uid() &&
+                       // §15: tope de 50 proyectos (validación adicional en frontend)
+                       true; // el conteo lo hace getCountFromServer en el cliente
+      allow update: if isActive() && canEditProject(resource);
+      allow delete: if isActive() && isOwner(resource);
+
+      // Sub-colecciones: solo dueños y editores con plan activo
+      match /formularios/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      match /simulaciones/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      // F4/F5 — Participantes del proyecto (T-03, doc 'ficha').
+      match /participantes/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      // F4/F5 — Estado de seguimiento de obra (T-43, doc 'estado').
+      match /seguimiento/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      // F4/F5 — Bitácora de obra (T-43, una entrada por documento).
+      match /bitacora/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      // Dimensionador Edificios Públicos (T-15, doc 'estado').
+      match /dim-publicos/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      // Volumen Teórico / Cabida (T-10, doc 'estado').
+      match /volumen/{docId} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+      // Persistencia gobernada de datos de herramienta (hook useToolData):
+      // projects/{projectId}/toolData/{toolId}. Mismo modelo de acceso que las
+      // sub-colecciones hermanas (formularios/simulaciones): lectura para miembros
+      // del proyecto, escritura solo para dueño/editor con plan activo (Zero-Trust).
+      match /toolData/{document=**} {
+        allow read:   if isActive() && canReadProject(get(/databases/$(database)/documents/projects/$(projectId)));
+        allow write:  if isActive() && canEditProject(get(/databases/$(database)/documents/projects/$(projectId)));
+      }
+    }
+
+    // ── Colección: customers (Stripe extension) ───────────────────────────────
+
+    match /customers/{userId} {
+      allow read:  if isAuth() && uid() == userId;
+      allow write: if false; // solo la extensión Stripe y Cloud Functions escriben
+    }
+    match /customers/{userId}/subscriptions/{subId} {
+      allow read:  if isAuth() && uid() == userId;
+      allow write: if false;
+    }
+    match /customers/{userId}/payments/{payId} {
+      allow read:  if isAuth() && uid() == userId;
+      allow write: if false;
+    }
+
+    // ── Colección: entitlements (Pases por proyecto) ──────────────────────────
+
+    match /entitlements/{userId} {
+      allow read:  if isAuth() && (uid() == userId || isAdmin());
+      allow write: if false; // solo Cloud Functions (webhook Stripe)
+    }
+
+    // ── Colección: config ─────────────────────────────────────────────────────
+
+    match /config/{docId} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ── Colección: feedback ───────────────────────────────────────────────────
+
+    match /feedback/{docId} {
+      allow create: if true; // §16: cualquiera puede enviar feedback (incluso anónimo)
+      allow read, update, delete: if isAdmin();
+    }
+
+    // ── Colección: biblioteca ─────────────────────────────────────────────────
+
+    match /biblioteca/{docId} {
+      allow read:  if isAuth();
+      allow write: if isAdmin();
+    }
+
+    // ── Colección: invitations ────────────────────────────────────────────────
+
+    match /invitations/{token} {
+      // Cierra la enumeración: solo el invitado (por su correo verificado) o quien
+      // creó la invitación pueden leerla. Resuelve el flujo /invite/:token sin
+      // exponer todos los tokens/correos a cualquier usuario autenticado.
+      allow read:  if isAuth() && (
+        resource.data.invitedEmail == request.auth.token.email ||
+        resource.data.invitedBy == uid()
+      );
+      allow create: if isActive() && canEditProject(
+        get(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
+      );
+      allow update: if isAuth() && resource.data.invitedEmail == request.auth.token.email;
+      allow delete: if isAdmin() ||
+        (isAuth() && resource.data.invitedBy == uid());
+    }
+
+    // ── DB coordenadasnormativas — solo lectura desde cliente ─────────────────
+    // Base de datos NOMBRADA, con ruleset SEPARADO: firestore.coordenadasnormativas.rules
+    // (declarado como segundo target en firebase.json → firestore[]). Allí
+    // normativas_prc es read-only autenticado y write:false (curaduría vía Admin SDK).
+  }
+}

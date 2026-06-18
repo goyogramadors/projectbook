@@ -1,0 +1,28 @@
+// firestore.coordenadasnormativas.rules — F5 · Zero-Trust para la DB NOMBRADA
+// 'coordenadasnormativas' (capa PRC / fichas normativas). Reglas SEPARADAS de la
+// base de datos principal (cada base tiene su propio ruleset).
+// Deploy: firebase deploy --only firestore:coordenadasnormativas
+//
+// Principio: la normativa es DATO PÚBLICO DE REFERENCIA, de SOLO LECTURA desde el
+// cliente. La escritura/curaduría se hace exclusivamente por backend/Admin SDK
+// (que ignora estas reglas), nunca desde la app.
+
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    function isAuth() { return request.auth != null; }
+
+    // Colección de fichas normativas por zona PRC (normativas_prc/{comuna}_{zona}).
+    match /normativas_prc/{docId} {
+      allow read:  if isAuth();   // solo usuarios autenticados pueden consultar la ficha
+      allow write: if false;      // nadie escribe desde el cliente (curaduría vía Admin SDK)
+    }
+
+    // Cualquier otra colección de esta DB: solo lectura autenticada, sin escritura.
+    match /{document=**} {
+      allow read:  if isAuth();
+      allow write: if false;
+    }
+  }
+}

@@ -1,0 +1,1890 @@
+/**
+ * @license
+ * SPDX-License-Identifier: Apache-2.0
+ */
+
+import React, { useState, useMemo } from "react";
+import { 
+  Building2, 
+  ChevronRight, 
+  ChevronLeft, 
+  Check, 
+  Star, 
+  MapPin, 
+  Briefcase, 
+  Play, 
+  RefreshCw, 
+  Printer, 
+  Wand2, 
+  Layers, 
+  Cpu, 
+  BookOpen, 
+  Sparkles,
+  Info,
+  HelpCircle,
+  ExternalLink,
+  DollarSign,
+  TrendingUp,
+  Activity
+} from "lucide-react";
+import { ROLES, SCALES, PHASES, PROCESSES, BIM_USES } from "./data";
+import { SelectionState, RoleType, OperationScale, PhasePonderation, BimFicha, BimUseInfo } from "./types";
+import { BimMatrix } from "./components/BimMatrix";
+import { Glossary } from "./components/Glossary";
+import { RoleIcon } from "./components/RoleIcon";
+import { VisualExample } from "./components/VisualExample";
+
+export interface ExtendedBimFicha extends BimFicha {
+  costoImplementacion?: string;
+  roiEstimado?: string;
+  esfuerzoAdopcion?: string;
+}
+
+export interface ExtendedSelectionState extends Omit<SelectionState, "customFichas"> {
+  customFichas: Record<string, ExtendedBimFicha>;
+}
+
+const SOFTWARE_LINKS: Record<string, string> = {
+  "Autodesk ReCap": "https://www.autodesk.com/products/recap",
+  "Bentley ContextCapture": "https://www.bentley.com/software/contextcapture/",
+  "Leica Cyclone": "https://leica-geosystems.com/products/laser-scanners/software/leica-cyclone",
+  "Revit": "https://www.autodesk.com/products/revit",
+  "Autodesk Revit": "https://www.autodesk.com/products/revit",
+  "Graphisoft Archicad": "https://graphisoft.com/solutions/archicad",
+  "Archicad": "https://graphisoft.com/solutions/archicad",
+  "Vectorworks": "https://www.vectorworks.net/",
+  "Allplan": "https://www.allplan.com/",
+  "Robot Structural Analysis": "https://www.autodesk.com/products/robot-structural-analysis",
+  "CYPECAD": "https://www.cype.es/",
+  "DesignBuilder": "https://designbuilder.co.uk/",
+  "IES VE": "https://www.iesve.com/",
+  "OpenStudio": "https://www.openstudio.net/",
+  "Autodesk Navisworks": "https://www.autodesk.com/products/navisworks",
+  "Navisworks Simulate": "https://www.autodesk.com/products/navisworks",
+  "Solibri Connection": "https://www.solibri.com/",
+  "BIMcollab HUB": "https://www.bimcollab.com/",
+  "Revizto": "https://revizto.com/",
+  "Synchro 4D Pro": "https://www.bentley.com/software/synchro/",
+  "Bexel Manager": "https://bexelmanager.com/",
+  "Fuzor": "https://www.kalloc.com/",
+  "Presto + Cost-it": "https://www.presto.es/",
+  "Vico Office": "https://building.trimble.com/en/products/vico-office",
+  "Archimedes CYPE": "https://www.cype.es/",
+  "SketchUp": "https://www.sketchup.com/",
+  "Tekla Structures": "https://www.tekla.com/products/tekla-structures",
+  "Trimble Connect": "https://connect.trimble.com/",
+  "Autodesk Build": "https://construction.autodesk.com/products/autodesk-build/",
+  "Autodesk Tandem": "https://intandem.autodesk.com/",
+  "YouBIM": "https://youbim.com/",
+  "Dalux FM": "https://www.dalux.com/dalux-fm",
+  "IBM Maximo Assets": "https://www.ibm.com/products/maximo"
+};
+
+export default function App() {
+  // Wizard view tracking: 0 = Landing, 1 = Perfil, 2 = Ciclo Vida, 3 = Procesos, 4 = Recomendación Usos, 5 = Detalle/Ficha, 6 = Resumen
+  const [step, setStep] = useState<number>(0);
+
+  // Core Wizard selections
+  const [selection, setSelection] = useState<ExtendedSelectionState>({
+    actorType: null,
+    role: null,
+    scale: null,
+    phases: {},
+    processes: [],
+    customFichas: {}
+  });
+
+  // Current selected BIM use for specialized editing in Step 5
+  const [activeBimUseId, setActiveBimUseId] = useState<string | null>(null);
+
+  // UI state for AI generation
+  const [isGenerating, setIsGenerating] = useState<boolean>(false);
+  const [generationError, setGenerationError] = useState<string | null>(null);
+  const [generationFeedback, setGenerationFeedback] = useState<string>("");
+
+  // Step 3 (Procesos) Sub-navigation state: indexes which phase the user is configuring processes for
+  const [activeProcessPhaseIndex, setActiveProcessPhaseIndex] = useState<number>(0);
+
+  // Glossary and inline visual examples states
+  const [isGlossaryOpen, setIsGlossaryOpen] = useState<boolean>(false);
+  const [expandedVisualUseId, setExpandedVisualUseId] = useState<string | null>(null);
+
+  // Selected phases list sorted by order
+  const selectedPhases = useMemo(() => {
+    return PHASES.filter(p => selection.phases[p.id] === "trabaja" || selection.phases[p.id] === "critica")
+      .sort((a, b) => a.order - b.order);
+  }, [selection.phases]);
+
+  // Gantt-style macro-stages groupings matching page 52 from the Planbim Chile Standard
+  const ganttGroups = useMemo(() => {
+    const groups = [
+      {
+        id: "planificacion",
+        name: "Planificación",
+        colorText: "text-[#E61E32]",
+        borderColor: "border-[#E61E32]/30",
+        bgColor: "bg-[#E61E32]/5",
+        headerBg: "bg-[#E61E32]",
+        phaseIds: ["planificacion"],
+        rangeText: "Usos 1 a 5"
+      },
+      {
+        id: "diseno",
+        name: "Diseño",
+        colorText: "text-[#b5362e]",
+        borderColor: "border-[#b5362e]/30",
+        bgColor: "bg-[#b5362e]/5",
+        headerBg: "bg-[#b5362e]",
+        phaseIds: ["conceptual", "detalle", "documentacion"],
+        rangeText: "Usos 6 a 15"
+      },
+      {
+        id: "construccion",
+        name: "Construcción",
+        colorText: "text-[#e65c50]",
+        borderColor: "border-[#e65c50]/30",
+        bgColor: "bg-[#e65c50]/5",
+        headerBg: "bg-[#e65c50]",
+        phaseIds: ["construccion", "puesta"],
+        rangeText: "Usos 16 a 20"
+      },
+      {
+        id: "operacion",
+        name: "Operación",
+        colorText: "text-[#8f2821]",
+        borderColor: "border-[#8f2821]/30",
+        bgColor: "bg-[#8f2821]/5",
+        headerBg: "bg-[#8f2821]",
+        phaseIds: ["operacion"],
+        rangeText: "Usos 21 a 25"
+      }
+    ];
+
+    return groups.map(g => {
+      const activePhases = selectedPhases.filter(p => g.phaseIds.includes(p.id));
+      return {
+        ...g,
+        activePhases
+      };
+    });
+  }, [selectedPhases]);
+
+  // Handle setting Role
+  const handleSelectRole = (role: RoleType) => {
+    setSelection(prev => ({ ...prev, role: prev.role === role ? null : role }));
+  };
+
+  // Handle setting Scale
+  const handleSelectScale = (scale: OperationScale) => {
+    setSelection(prev => ({ ...prev, scale: prev.scale === scale ? null : scale }));
+  };
+
+  // Toggle stage selection cycle: none -> trabaja -> critica -> none
+  const togglePhase = (phaseId: string) => {
+    setSelection(prev => {
+      const current = prev.phases[phaseId];
+      const nextPhases = { ...prev.phases };
+      
+      if (!current) {
+        nextPhases[phaseId] = "trabaja";
+      } else if (current === "trabaja") {
+        nextPhases[phaseId] = "critica";
+      } else {
+        delete nextPhases[phaseId];
+        // Clean up associated processes
+        const phaseProcesses = PROCESSES.filter(p => p.phaseId === phaseId).map(p => p.id);
+        prev.processes = prev.processes.filter(pId => !phaseProcesses.includes(pId));
+      }
+      
+      return {
+        ...prev,
+        phases: nextPhases
+      };
+    });
+  };
+
+  // Directly set a phase as Critical
+  const togglePhaseCritical = (e: React.MouseEvent, phaseId: string) => {
+    e.stopPropagation();
+    setSelection(prev => {
+      const current = prev.phases[phaseId];
+      const nextPhases = { ...prev.phases };
+      
+      if (current === "critica") {
+        nextPhases[phaseId] = "trabaja";
+      } else {
+        nextPhases[phaseId] = "critica";
+      }
+      
+      return {
+        ...prev,
+        phases: nextPhases
+      };
+    });
+  };
+
+  // Toggle active process selection
+  const toggleProcess = (processId: string) => {
+    setSelection(prev => {
+      const isSelected = prev.processes.includes(processId);
+      const nextProcesses = isSelected 
+        ? prev.processes.filter(id => id !== processId)
+        : [...prev.processes, processId];
+      return {
+        ...prev,
+        processes: nextProcesses
+      };
+    });
+  };
+
+  // Recommendation engine: calculates scores for each BIM Use
+  const scoredBimUses = useMemo(() => {
+    return BIM_USES.map(use => {
+      let score = 0;
+      let reasons: string[] = [];
+
+      // 1. Role match
+      if (selection.role && use.roles.includes(selection.role)) {
+        score += 6;
+        reasons.push(`Alineado con tu rol de ${selection.role}`);
+      }
+
+      // 2. Phase match
+      const matchingPhases = use.phases.filter(pId => selection.phases[pId]);
+      matchingPhases.forEach(pId => {
+        const pond = selection.phases[pId];
+        const phaseName = PHASES.find(p => p.id === pId)?.name || "";
+        if (pond === "critica") {
+          score += 8;
+          reasons.push(`Fase crítica: ${phaseName} (+8 pts)`);
+        } else if (pond === "trabaja") {
+          score += 4;
+          reasons.push(`Trabajas en: ${phaseName} (+4 pts)`);
+        }
+      });
+
+      // 3. Process matches
+      const useProcesses = use.processes; // associated key processes
+      const matchingProcesses = selection.processes.filter(procId => useProcesses.includes(procId));
+      if (matchingProcesses.length > 0) {
+        const pts = matchingProcesses.length * 6;
+        score += pts;
+        reasons.push(`${matchingProcesses.length} procesos clave vinculados (+${pts} pts)`);
+      }
+
+      // 4. Actor Type customized matching
+      if (selection.actorType === "Mandante") {
+        if (use.id === "estimacion_5d") {
+          score += 10;
+          reasons.push("Prioridad Mandante: Control presupuestario (+10 pts)");
+        } else if (use.id === "mantenimiento_activos") {
+          score += 10;
+          reasons.push("Prioridad Mandante: Gestión de Activos y FM (+10 pts)");
+        } else if (use.id === "as_built_registro") {
+          score += 8;
+          reasons.push("Prioridad Mandante: Recepción As-Built (+8 pts)");
+        } else if (use.id === "coordinacion_3d") {
+          score += 5;
+          reasons.push("Prioridad Mandante: Aseguramiento de Calidad (+5 pts)");
+        }
+      } else if (selection.actorType === "Consultor") {
+        if (use.id === "coordinacion_3d") {
+          score += 10;
+          reasons.push("Prioridad Consultor: Coordinación espacial multidisciplinar (+10 pts)");
+        } else if (use.id === "planificacion_4d") {
+          score += 8;
+          reasons.push("Prioridad Consultor: Planificación de plazos constructivos (+8 pts)");
+        } else if (use.id === "levantamiento") {
+          score += 6;
+          reasons.push("Prioridad Consultor: Levantamiento de condiciones existentes (+6 pts)");
+        }
+      }
+
+      return {
+        use,
+        score,
+        reasons
+      };
+    }).sort((a, b) => b.score - a.score);
+  }, [selection.actorType, selection.role, selection.phases, selection.processes]);
+
+  // Divide into priority clusters
+  const recommendations = useMemo(() => {
+    const highest = scoredBimUses.filter(item => item.score >= 12);
+    const suggested = scoredBimUses.filter(item => item.score >= 5 && item.score < 12);
+    const rest = scoredBimUses.filter(item => item.score < 5);
+    return { highest, suggested, rest };
+  }, [scoredBimUses]);
+
+  // Automatically opt-in recommended BIM uses in secondary list or report state
+  const [selectedBimUseIds, setSelectedBimUseIds] = useState<Record<string, boolean>>({});
+
+  // When step 4 is entered, pre-initialize selection based on processes selected in step 3
+  React.useEffect(() => {
+    if (step === 4) {
+      setSelectedBimUseIds(prev => {
+        const updated = { ...prev };
+        BIM_USES.forEach(use => {
+          if (selection.processes.includes(use.id)) {
+            updated[use.id] = true;
+          }
+        });
+        return updated;
+      });
+    }
+  }, [step, selection.processes]);
+
+  const toggleBimUseSelection = (useId: string) => {
+    setSelectedBimUseIds(prev => {
+      const isCurrentlySelected = !!prev[useId];
+      const nextSelection = !isCurrentlySelected;
+      
+      // If we are deselecting, let's also remove its custom ficha to be coherent
+      if (!nextSelection) {
+        setSelection(selPrev => {
+          const nextCustom = { ...selPrev.customFichas };
+          delete nextCustom[useId];
+          return {
+            ...selPrev,
+            customFichas: nextCustom
+          };
+        });
+      }
+      return {
+        ...prev,
+        [useId]: nextSelection
+      };
+    });
+  };
+
+  // Get active BIM use object
+  const activeBimUse = useMemo(() => {
+    return BIM_USES.find(u => u.id === activeBimUseId) || null;
+  }, [activeBimUseId]);
+
+  // Trigger Ficha derivation via Gemini API
+  const generateFichaWithAI = async (useInfo: BimUseInfo) => {
+    setIsGenerating(true);
+    setGenerationError(null);
+    setGenerationFeedback("Calculando proyecciones de inversión y estandarización técnica...");
+
+    const phaseLabels = useInfo.phases.map(pId => PHASES.find(p => p.id === pId)?.name || pId).join(", ");
+    const selectedProcsNames = PROCESSES.filter(p => selection.processes.includes(p.id) && useInfo.processes.includes(p.id))
+      .map(p => p.name);
+
+    setTimeout(() => setGenerationFeedback("Sincronizando flujos según estándares de intercambio ISO 19650..."), 800);
+    setTimeout(() => setGenerationFeedback("Evaluando indicadores CAPEX/OPEX y esfuerzos de adopción..."), 1600);
+    setTimeout(() => setGenerationFeedback("Estructurando criterios de éxito económico del proyecto..."), 2400);
+
+    try {
+      const res = await fetch("/api/generate-ficha", {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify({
+          bimUse: useInfo.name,
+          rol: selection.role,
+          scale: selection.scale,
+          phase: phaseLabels,
+          processes: selectedProcsNames
+        })
+      });
+
+      if (!res.ok) {
+        throw new Error("Respuesta de servidor no satisfactoria.");
+      }
+
+      const data = await res.json();
+      
+      setSelection(prev => {
+        const nextCustom = { ...prev.customFichas };
+        nextCustom[useInfo.id] = {
+          objetivo: data.objetivo || "",
+          responsables: data.responsables || "",
+          lodLoin: data.lodLoin || "",
+          entregables: data.entregables || "",
+          criteriosExito: data.criteriosExito || "",
+          costoImplementacion: data.costoImplementacion || "",
+          roiEstimado: data.roiEstimado || "",
+          esfuerzoAdopcion: data.esfuerzoAdopcion || ""
+        };
+        return {
+          ...prev,
+          customFichas: nextCustom
+        };
+      });
+
+      setGenerationFeedback("¡Evaluación técnica y económica generada con éxito!");
+      setTimeout(() => setIsGenerating(false), 500);
+
+    } catch (err: any) {
+      console.error(err);
+      setGenerationError("Ocurrió un error al contactar al motor de IA. Se ha cargado la estructura de evaluación base.");
+      loadDefaultFicha(useInfo);
+      setIsGenerating(false);
+    }
+  };
+
+  const loadDefaultFicha = (useInfo: BimUseInfo) => {
+    const processesJoined = PROCESSES.filter(p => selection.processes.includes(p.id))
+      .map(p => p.name)
+      .slice(0, 3)
+      .join(", ") || "Optimización de flujos informativos";
+
+    const defaultFicha: ExtendedBimFicha = {
+      objetivo: `Implementar el Uso BIM "${useInfo.name}" para resolver desvíos y optimizar el flujo informátivo en las fases de ${useInfo.phases.map(pid => PHASES.find(p => p.id === pid)?.name).join(", ")}. Configurado para el rol de ${selection.role || "Especialista AEC"}.`,
+      responsables: `BIM Manager, Coordinador de Especialidades, y el rol estratégico de ${selection.role || "Representante Técnico"}.`,
+      lodLoin: selection.scale?.includes("Grande") 
+        ? "LOD 350 / LOIN Alto - Parámetros geométricos exactos, enlaces de adquisiciones y atributos de operación continua."
+        : selection.scale?.includes("Mediana")
+        ? "LOD 300 / LOIN Medio - Dimensiones precisas, ensambles estructurales e información específica de fabricantes."
+        : "LOD 200 / LOIN Básico - Geometría aproximada con fines de asignación e interferencia espacial preliminar.",
+      entregables: "Modelo federado estructurado en estándar abierto (.IFC) o formato nativo unificado, informe consolidado de desvíos, matrices de extracción de cantidades (cubicaciones).",
+      criteriosExito: `1. Reducción estimada de un 15% en procesos redundantes asociados a: ${processesJoined}.
+2. Eliminación de asimetrías de información críticas dentro del Entorno de Datos Comunes (CDE).`,
+      costoImplementacion: selection.scale?.includes("Grande") 
+        ? "Mínimo de Infraestructura de SOFTWARE: Autodesk AEC Collection (Revit, Navisworks), Solibri. HARDWARE: Estaciones de trabajo Xeon/Core i9, GPU RTX (8GB+ VRAM), 64GB RAM. Inversión Alta (CAPEX/OPEX): Requiere infraestructura robusta de servidores en la nube (CDE corporativo) y licenciamiento avanzado integrado."
+        : selection.scale?.includes("Mediana")
+        ? "Mínimo de Infraestructura de SOFTWARE: Autodesk Revit, Navisworks Simulate, Archicad. HARDWARE: PC Core i7/Ryzen 7, GPU dedicada (6GB), 32GB RAM, disco SSD. Inversión Moderada: Licenciamiento standalone estándar, uso de plataformas colaborativas en la nube."
+        : "Mínimo de Infraestructura de SOFTWARE: FreeCAD, SketchUp Pro, Autodesk Revit LT, visores gratuitos. HARDWARE: PC Core i5/Ryzen 5, GPU dedicada básica (4GB VRAM), 16GB RAM. Inversión Baja: Flujos de colaboración directa simplificados.",
+      roiEstimado: selection.actorType === "Mandante"
+        ? "Retorno Alto (Foco OPEX): Reducción drástica de órdenes de cambio imprevistas durante la construcción y control presupuestario optimizado del activo. Amortización estimada dentro del primer año de explotación de la infraestructura."
+        : "Retorno Técnico (Foco CAPEX): Mitigación de horas de re-diseño por colisiones multidisciplinares no detectadas. Incremento en la tasa de adjudicación de licitaciones públicas al cumplir con exigencias Planbim.",
+      esfuerzoAdopcion: selection.scale?.includes("Grande")
+        ? "Personal (RRHH) requerido: BIM Manager Senior especialista, 1 Coordinador BIM dedicado por proyecto y 2 a 3 Modeladores BIM certificados con experiencia en ISO 19650. Curva de aprendizaje e implementación de alta complejidad (6 a 12 meses)."
+        : selection.scale?.includes("Mediana")
+        ? "Personal (RRHH) requerido: 1 Coordinador BIM a tiempo parcial (híbrido) y 1 a 2 Modeladores BIM capacitados. Curva de aprendizaje moderada con plantillas y manuales estándar (2 a 3 meses)."
+        : "Personal (RRHH) requerido: 1 Diseñador/Modelador con capacitación básica en modelamiento paramétrico y un consultor externo para auditorías periódicas. Curva de adopción simple."
+    };
+
+    setSelection(prev => {
+      const nextCustom = { ...prev.customFichas };
+      nextCustom[useInfo.id] = defaultFicha;
+      return {
+        ...prev,
+        customFichas: nextCustom
+      };
+    });
+  };
+
+  const handleUpdateFichaField = (useId: string, field: keyof ExtendedBimFicha, value: string) => {
+    setSelection(prev => {
+      const current = prev.customFichas[useId] || {
+        objetivo: "", responsables: "", lodLoin: "", entregables: "", criteriosExito: "", costoImplementacion: "", roiEstimado: "", esfuerzoAdopcion: ""
+      };
+      
+      const nextCustom = { ...prev.customFichas };
+      nextCustom[useId] = {
+        ...current,
+        [field]: value
+      };
+
+      return {
+        ...prev,
+        customFichas: nextCustom
+      };
+    });
+  };
+
+  const ensureFichaExists = (useInfo: BimUseInfo) => {
+    if (!selection.customFichas[useInfo.id]) {
+      loadDefaultFicha(useInfo);
+    }
+  };
+
+  const openBimUseDetail = (useInfo: BimUseInfo) => {
+    setActiveBimUseId(useInfo.id);
+    ensureFichaExists(useInfo);
+    setSelectedBimUseIds(prev => ({
+      ...prev,
+      [useInfo.id]: true
+    }));
+    setStep(5);
+  };
+
+  const handleReset = () => {
+    setSelection({
+      actorType: null,
+      role: null,
+      scale: null,
+      phases: {},
+      processes: [],
+      customFichas: {}
+    });
+    setSelectedBimUseIds({});
+    setActiveBimUseId(null);
+    setActiveProcessPhaseIndex(0);
+    setStep(0);
+  };
+
+  const canGoNext = () => {
+    if (step === 1) return selection.actorType !== null && selection.role !== null && selection.scale !== null;
+    if (step === 2) return selectedPhases.length > 0;
+    if (step === 3) return selection.processes.length > 0;
+    return true;
+  };
+
+  const handleNext = () => {
+    if (step === 1) {
+      setStep(2);
+    } else if (step === 2) {
+      setActiveProcessPhaseIndex(0);
+      setStep(3);
+    } else if (step === 3) {
+      setStep(4);
+    } else if (step === 4) {
+      setStep(6);
+    } else if (step === 5) {
+      setStep(4);
+    }
+  };
+
+  const handleBack = () => {
+    if (step === 1) setStep(0);
+    else if (step === 2) setStep(1);
+    else if (step === 3) setStep(2);
+    else if (step === 4) setStep(3);
+    else if (step === 5) setStep(4);
+    else if (step === 6) setStep(4);
+  };
+
+  const progressPercent = useMemo(() => {
+    if (step === 0) return 5;
+    return Math.min(100, Math.round((step / 6) * 100));
+  }, [step]);
+
+  const finalSelectedUses = useMemo(() => {
+    return BIM_USES.filter(u => selectedBimUseIds[u.id]);
+  }, [selectedBimUseIds]);
+
+  return (
+    <div className="min-h-screen bg-white text-[#222222] flex flex-col font-sans transition-colors duration-200 relative select-none">
+      
+      {/* Layout Estético Subliminal */}
+      <div className="absolute inset-0 pointer-events-none opacity-[0.03] mix-blend-multiply bg-[url('https://www.transparenttextures.com/patterns/natural-paper.png')] z-0"></div>
+      
+      <div className="absolute bottom-24 right-12 pointer-events-none select-none opacity-[0.02] z-0 no-print">
+        <span className="text-[260px] font-serif leading-none">墨</span>
+      </div>
+
+      {/* Cabecera Global de Progreso */}
+      {step > 0 && (
+        <header className="pt-4 pb-2 px-[1cm] flex flex-col md:flex-row items-start md:items-center justify-between border-b border-neutral-250 bg-white z-40 no-print sticky top-0 shadow-sm">
+          <div className="flex flex-col mb-2 md:mb-0">
+            <div className="flex items-center gap-2">
+              <span className="text-[10px] uppercase tracking-[0.2em] font-bold text-neutral-500">
+                Paso 0{step} de 06
+              </span>
+              <span className="text-xs text-[#E61E32]">|</span>
+              <span className="text-xs text-neutral-700 font-medium">Asistente de Inversión y Madurez</span>
+              <span className="text-xs text-neutral-300">|</span>
+              <button
+                onClick={() => setIsGlossaryOpen(true)}
+                className="text-xs text-neutral-800 hover:text-[#E61E32] font-bold flex items-center gap-1 cursor-pointer transition-all"
+                title="Abrir Glosario Técnico"
+              >
+                <BookOpen size={13} />
+                <span>Glosario BIM Normativo</span>
+              </button>
+            </div>
+            <h1 className="text-lg md:text-xl font-light italic tracking-tight font-serif text-neutral-900 mt-0.5">
+              {step === 1 && "Definición del Perfil del Profesional"}
+              {step === 2 && "Mapeo del Ciclo de Vida de los Proyectos"}
+              {step === 3 && "Identificación Operativa de Procesos Clave"}
+              {step === 4 && "Taxonomía y Factibilidad de Usos BIM"}
+              {step === 5 && `Análisis Técnico-Económico: ${activeBimUse?.name}`}
+              {step === 6 && "Hoja de Ruta e Informe de Viabilidad Consolidado"}
+            </h1>
+          </div>
+          <div className="flex flex-col items-end w-full md:w-auto">
+            <div className="flex gap-1.5 mb-1.5">
+              {[1, 2, 3, 4, 5, 6].map(i => (
+                <div 
+                  key={i} 
+                  className={`w-10 h-1 rounded-full transition-all duration-300 ${
+                    i <= step ? "bg-[#E61E32]" : "bg-neutral-200"
+                  }`} 
+                />
+              ))}
+            </div>
+            <span className="text-[10px] font-mono text-neutral-500">Progreso: {progressPercent}%</span>
+          </div>
+        </header>
+      )}
+
+      {/* Área Contenedora Principal */}
+      <main className="flex-grow flex flex-col justify-center px-[1cm] py-6 z-10">
+        
+        {/* ================= STEP 0: LANDING ================= */}
+        {step === 0 && (
+          <div className="max-w-6xl mx-auto w-full py-12 md:py-20 grid grid-cols-1 lg:grid-cols-12 gap-12 items-center">
+            <div className="lg:col-span-8 flex flex-col items-start text-left">
+              <div className="w-16 h-16 bg-white border-2 border-[#E61E32] flex items-center justify-center mb-8 shadow-lg ring-4 ring-[#E61E32]/5 select-none rounded-sm">
+                <Activity className="text-[#E61E32] w-8 h-8" />
+              </div>
+
+              <span className="text-xs uppercase tracking-[0.25em] font-extrabold text-[#E61E32] mb-4">
+                Plataforma Avanzada de Evaluación BIM
+              </span>
+
+              <h1 className="text-4xl md:text-6xl font-light font-serif text-[#222222] tracking-tight leading-tight max-w-3xl mb-6">
+                ¿Qué <span className="italic border-b-3 border-[#E61E32]">Usos BIM</span> justifican realmente tu inversión comercial?
+              </h1>
+
+              <p className="text-lg text-[#555] max-w-2xl font-sans font-light leading-relaxed mb-12">
+                Un diagnóstico estratégico basado en la taxonomía de la Universidad de <span className="font-semibold text-gray-900">Penn State</span> y adoptado en Chile por el <span className="font-semibold text-gray-900">Estándar BIM para Proyectos Públicos (Planbim CORFO)</span>. Evalúa la viabilidad técnica y el retorno económico (CAPEX/OPEX) de la metodología BIM según tu escala operativa.
+              </p>
+
+              <div className="w-full flex justify-center mt-auto pt-8">
+                <button 
+                  onClick={() => setStep(1)}
+                  className="group flex items-center justify-center gap-3 bg-[#E61E32] hover:bg-[#b8332b] text-white px-10 py-4 rounded-none font-bold text-xs tracking-widest uppercase transition-all duration-200 border-2 border-[#222222] cursor-pointer shadow-sm"
+                >
+                  Comenzar Evaluación
+                  <ChevronRight size={16} className="group-hover:translate-x-1 transition-transform" />
+                </button>
+              </div>
+            </div>
+
+            <div className="lg:col-span-4 bg-[#FEFEFE] border border-neutral-200/80 p-4 flex flex-col gap-4 shadow-sm rounded-[4px] self-center justify-center relative overflow-hidden">
+              <div className="absolute top-0 right-0 w-2 h-2 bg-neutral-900" style={{ clipPath: 'polygon(100% 0, 0 0, 100% 100%)' }} />
+              <div className="absolute bottom-0 left-0 w-2 h-2 bg-neutral-900" style={{ clipPath: 'polygon(0 100%, 0 0, 100% 100%)' }} />
+
+              <div className="border-l border-black pl-2">
+                <span className="font-serif italic text-xs bg-black text-white underline inline-block px-1.5 py-0.5 mb-1">01. Filtro Corporativo</span>
+                <p className="text-[10px] text-black leading-relaxed font-light font-sans">Condiciona las recomendaciones técnicas según escala y enfoque financiero (Mandante/Consultor).</p>
+              </div>
+              <div className="border-l border-black pl-2">
+                <span className="font-serif italic text-xs bg-black text-white underline inline-block px-1.5 py-0.5 mb-1">02. Viabilidad Económica</span>
+                <p className="text-[10px] text-black leading-relaxed font-light font-sans">Mapea y proyecta costos estimados (CAPEX/OPEX) y esfuerzos reales de adopción estándar.</p>
+              </div>
+              <div className="border-l border-black pl-2">
+                <span className="font-serif italic text-xs bg-black text-white underline inline-block px-1.5 py-0.5 mb-1">03. Estructuración SDI/PEB</span>
+                <p className="text-[10px] text-black leading-relaxed font-light font-sans">Genera fichas completas listas para licitaciones públicas, contratos u hojas de ruta empresariales.</p>
+              </div>
+              <div className="border-l border-black pl-2">
+                <span className="font-serif italic text-xs bg-black text-white underline inline-block px-1.5 py-0.5 mb-1">04. Evaluación CAPEX/OPEX</span>
+                <p className="text-[10px] text-black leading-relaxed font-light font-sans"><strong>CAPEX:</strong> Inversión de capital en software, hardware y capacitación inicial.<br /><strong>OPEX:</strong> Costos continuos de operación, soporte y mantenimiento del ciclo del activo.</p>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= STEP 1: PERFIL CORPORATIVO ================= */}
+        {step === 1 && (
+          <div className="max-w-7xl mx-auto w-full py-4 flex flex-col min-h-[65vh]">
+            <div className="mb-6 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <p className="text-2xl font-light font-serif italic text-[#222222] mb-1">
+                  Estructura y enfoque operativo en la industria
+                </p>
+                <p className="text-xs text-[#7a7a7a] max-w-2xl font-light">
+                  Configure el ecosistema de su organización seleccionando una alternativa por columna. Los parámetros seleccionados calibrarán los algoritmos de costos, exigencia de entregables y priorización de retornos de inversión.
+                </p>
+              </div>
+            </div>
+
+            <div className="relative px-2 md:px-6">
+              {/* Scroll Left Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("step1-scroll-container");
+                  if (el) el.scrollBy({ left: -360, behavior: "smooth" });
+                }}
+                className="absolute -left-2 md:left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white hover:bg-[#E61E32] text-black hover:text-white border-2 border-black flex items-center justify-center transition-all duration-200 cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_0px_rgba(230,30,50,0.3)] select-none focus:outline-none"
+                aria-label="Desplazar izquierda"
+              >
+                <ChevronLeft size={20} className="stroke-[3]" />
+              </button>
+
+              {/* Scroll Right Button */}
+              <button
+                type="button"
+                onClick={() => {
+                  const el = document.getElementById("step1-scroll-container");
+                  if (el) el.scrollBy({ left: 360, behavior: "smooth" });
+                }}
+                className="absolute -right-2 md:right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white hover:bg-[#E61E32] text-black hover:text-white border-2 border-black flex items-center justify-center transition-all duration-200 cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] hover:shadow-[3px_3px_0px_0px_rgba(230,30,50,0.3)] select-none focus:outline-none"
+                aria-label="Desplazar derecha"
+              >
+                <ChevronRight size={20} className="stroke-[3]" />
+              </button>
+
+              <div 
+                id="step1-scroll-container"
+                className="flex flex-row overflow-x-auto gap-6 pb-6 pt-2 snap-x snap-mandatory scroll-smooth [&::-webkit-scrollbar]:hidden"
+                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+              >
+              {/* COL 1: ENFOQUE DE ACTOR */}
+              <div className="w-[310px] md:w-[350px] shrink-0 snap-align-start bg-neutral-50/60 border border-neutral-200/80 p-5 rounded-tl-[12px] rounded-br-[18px] rounded-tr-none rounded-bl-[6px] flex flex-col gap-4 relative">
+                <div className="flex items-center justify-between border-b border-neutral-200 pb-2 mb-2">
+                  <span className="text-xs uppercase tracking-widest font-extrabold text-[#E61E32]">
+                    1. NATURALEZA DEL ACTOR
+                  </span>
+                  <span className="text-[10px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-mono font-bold">Col 1 / 3</span>
+                </div>
+                
+                <div className="flex flex-col gap-4 overflow-y-auto pr-1 max-h-[460px]">
+                  {[
+                    {
+                      id: "Consultor",
+                      name: "Consultor / Proveedor Técnico (Proyectista / Constructor)",
+                      desc: "Oficina técnica, diseñador o empresa constructora dedicada al modelamiento coordinado y la materialización de obras físicas. Su foco económico prioritario radica en maximizar la eficiencia productiva de modelamiento (reducción de HH), mitigación inmediata de colisiones espaciales en terreno (CAPEX constructivo) e interoperabilidad ágil."
+                    },
+                    {
+                      id: "Mandante",
+                      name: "Mandante / Propietario (Inversionista / Gestor de Activos)",
+                      desc: "Entidad pública o privada que financia, comisiona y opera el activo de infraestructura. Su foco prioritario se centra en el control riguroso de la inversión total, el aseguramiento de la calidad de la información para licitaciones y la explotación continua a largo plazo mediante Asset Management (OPEX operativo)."
+                    }
+                  ].map((act) => {
+                    const isSelected = selection.actorType === act.id;
+                    return (
+                      <button
+                        key={act.id}
+                        onClick={() => setSelection(prev => ({ ...prev, actorType: prev.actorType === act.id ? null : (act.id as "Mandante" | "Consultor") }))}
+                        className={`p-5 border text-left transition-all duration-300 rounded-tl-[12px] rounded-tr-none rounded-br-[18px] rounded-bl-[6px] relative cursor-pointer transform ${
+                          isSelected 
+                            ? "border-[#E61E32] bg-[#E61E32] text-white ring-4 ring-[#E61E32]/20 shadow-md -translate-y-0.5" 
+                            : "border-neutral-200 bg-white text-gray-900 hover:border-gray-400 hover:bg-neutral-50 shadow-xs hover:-translate-y-0.5"
+                        }`}
+                        style={{ clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)' }}
+                      >
+                        <h4 className={`text-xs font-bold uppercase tracking-widest mb-2 ${isSelected ? "text-white" : "text-[#222222]"}`}>{act.name}</h4>
+                        <p className={`text-[9px] leading-relaxed font-light ${isSelected ? "text-red-100" : "text-gray-500"}`}>{act.desc}</p>
+                        {isSelected && (
+                          <div className="absolute bottom-3 right-3 flex items-center justify-center w-5 h-5 bg-white text-[#E61E32] rounded-xs">
+                            <Check size={12} className="stroke-[3]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* COL 2: ROL AEC */}
+              <div className="w-[310px] md:w-[350px] shrink-0 snap-align-start bg-neutral-50/60 border border-neutral-200/80 p-5 rounded-tl-[12px] rounded-br-[18px] rounded-tr-none rounded-bl-[6px] flex flex-col gap-4 relative">
+                <div className="flex items-center justify-between border-b border-neutral-200 pb-2 mb-2">
+                  <span className="text-xs uppercase tracking-widest font-extrabold text-[#E61E32]">
+                    2. SELECCIÓN DE ROL AEC
+                  </span>
+                  <span className="text-[10px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-mono font-bold">Col 2 / 3</span>
+                </div>
+                
+                <div className="flex flex-col gap-3.5 overflow-y-auto pr-1 max-h-[460px]">
+                  {ROLES.map((r) => {
+                    const isSelected = selection.role === r.id;
+                    return (
+                      <button
+                        key={r.id}
+                        onClick={() => handleSelectRole(r.id)}
+                        className={`flex flex-row items-center gap-4 text-left p-4 border transition-all duration-300 rounded-tl-[12px] rounded-tr-none rounded-br-[18px] rounded-bl-[6px] relative cursor-pointer transform ${
+                          isSelected 
+                            ? "border-[#E61E32] bg-[#E61E32] text-white ring-4 ring-[#E61E32]/20 shadow-md -translate-y-0.5" 
+                            : "border-neutral-200 bg-white text-gray-900 hover:border-gray-400 hover:bg-neutral-50 shadow-xs hover:-translate-y-0.5"
+                        }`}
+                        style={{ clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)' }}
+                      >
+                        <span className="text-2xl shrink-0">
+                          <RoleIcon role={r.id} size={32} monochrome={true} selected={isSelected} />
+                        </span>
+                        <div className="flex-1 pr-3">
+                          <span className={`text-[11px] font-bold uppercase tracking-wider mb-0.5 block ${isSelected ? "text-white" : "text-gray-900"}`}>{r.name}</span>
+                          <span className={`text-[9px] leading-relaxed block ${isSelected ? "text-red-100" : "text-gray-500"}`}>{r.description}</span>
+                        </div>
+                        {isSelected && (
+                          <div className="absolute bottom-2 right-2 flex items-center justify-center w-5 h-5 bg-white text-[#E61E32] rounded-xs">
+                            <Check size={12} className="stroke-[3]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+
+              {/* COL 3: ESCALA DE PROYECTOS */}
+              <div className="w-[310px] md:w-[350px] shrink-0 snap-align-start bg-neutral-50/60 border border-neutral-200/80 p-5 rounded-tl-[12px] rounded-br-[18px] rounded-tr-none rounded-bl-[6px] flex flex-col gap-4 relative">
+                <div className="flex items-center justify-between border-b border-neutral-200 pb-2 mb-2">
+                  <span className="text-xs uppercase tracking-widest font-extrabold text-[#E61E32]">
+                    3. ESCALA OPERATIVA
+                  </span>
+                  <span className="text-[10px] bg-neutral-200 text-neutral-600 px-1.5 py-0.5 rounded font-mono font-bold">Col 3 / 3</span>
+                </div>
+                
+                <div className="flex flex-col gap-4 overflow-y-auto pr-1 max-h-[460px]">
+                  {SCALES.map((s) => {
+                    const isSelected = selection.scale === s.id;
+                    return (
+                      <button
+                        key={s.id}
+                        onClick={() => handleSelectScale(s.id)}
+                        className={`p-5 border text-left transition-all duration-300 rounded-tl-[12px] rounded-tr-none rounded-br-[18px] rounded-bl-[6px] relative cursor-pointer transform ${
+                          isSelected 
+                            ? "border-[#E61E32] bg-[#E61E32] text-white ring-4 ring-[#E61E32]/20 shadow-md -translate-y-0.5" 
+                            : "border-neutral-200 bg-white text-gray-900 hover:border-gray-400 hover:bg-neutral-50 shadow-xs hover:-translate-y-0.5"
+                        }`}
+                        style={{ clipPath: 'polygon(0 0, calc(100% - 14px) 0, 100% 14px, 100% 100%, 0 100%)' }}
+                      >
+                        <h4 className={`text-xs font-bold uppercase tracking-widest mb-2 ${isSelected ? "text-white" : "text-gray-900"}`}>{s.name}</h4>
+                        <p className={`text-[10px] leading-relaxed ${isSelected ? "text-red-100" : "text-gray-500"}`}>{s.description}</p>
+                        {isSelected && (
+                          <div className="absolute bottom-3 right-3 flex items-center justify-center w-5 h-5 bg-white text-[#E61E32] rounded-xs">
+                            <Check size={12} className="stroke-[3]" />
+                          </div>
+                        )}
+                      </button>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          </div>
+          </div>
+        )}
+
+        {/* ================= STEP 2: MAPA DEL CICLO DE VIDA ================= */}
+        {step === 2 && (
+          <div className="max-w-5xl mx-auto w-full py-4">
+            <div className="mb-8 text-center md:text-left">
+              <p className="text-2xl md:text-3xl font-light font-serif italic text-[#222222] mb-3">
+                ¿En qué etapas del ciclo de vida se concentran tus operaciones?
+              </p>
+              <p className="text-sm text-gray-500 max-w-3xl leading-relaxed">
+                Especifique las fases contractuales donde interactúa de forma directa. Active el ícono estelar (<Star size={12} className="inline fill-amber-400 text-amber-500" />) para designar una fase como <strong className="text-gray-900 font-semibold">Crítica / Vital</strong>; esto duplicará ponderaciones asociadas a riesgos informativos.
+              </p>
+              {selection.actorType === "Mandante" ? (
+                <p className="text-[11px] text-[#E61E32] font-medium mt-3 bg-red-50/50 py-1.5 px-3 border-l-2 border-[#E61E32] inline-block font-mono uppercase tracking-wider">
+                  💡 Orientación Mandante: Se sugiere priorización crítica en "Planificación", "Puesta en Marcha" y "Operación y Mantenimiento".
+                </p>
+              ) : selection.actorType === "Consultor" ? (
+                <p className="text-[11px] text-[#E61E32] font-medium mt-3 bg-red-50/50 py-1.5 px-3 border-l-2 border-[#E61E32] inline-block font-mono uppercase tracking-wider">
+                  💡 Orientación Proveedor: Se sugiere priorización crítica en fases de desarrollo de "Diseño Detallado" y "Construcción".
+                </p>
+              ) : null}
+            </div>
+
+            <div className="bg-white border border-neutral-200 p-6 md:p-8 mb-6 mt-4 shadow-xs relative">
+              <div className="absolute top-4 right-4 flex items-center gap-3 text-[10px] uppercase font-bold tracking-wider">
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-neutral-200" /> Inactiva</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 border border-[#E61E32] bg-white" /> Habilitada</span>
+                <span className="flex items-center gap-1"><span className="w-2.5 h-2.5 bg-[#E61E32]" /> Crítica ⭐</span>
+              </div>
+
+              <div className="hidden md:block absolute top-[94px] left-[10%] right-[10%] h-0.5 bg-neutral-200 z-0"></div>
+
+              <div className="relative z-10 grid grid-cols-1 md:grid-cols-7 gap-y-8 gap-x-2">
+                {PHASES.map((phase) => {
+                  const state = selection.phases[phase.id]; 
+                  const isSelected = !!state;
+                  const isCritical = state === "critica";
+
+                  return (
+                    <div 
+                      key={phase.id}
+                      onClick={() => togglePhase(phase.id)}
+                      className={`flex flex-col items-center group cursor-pointer transition-all duration-300 relative rounded-md p-3 ${
+                        isCritical ? "bg-red-50/50" : isSelected ? "bg-gray-50/40" : "hover:bg-gray-50/20"
+                      }`}
+                    >
+                      <span className="text-[9px] uppercase font-mono text-gray-400 mb-2">0{phase.order}</span>
+
+                      <div className={`w-14 h-14 rounded-full flex items-center justify-center transition-all duration-300 mb-4 z-10 relative select-none ${
+                        isCritical
+                          ? "bg-[#E61E32] border-2 border-[#E61E32] text-white shadow-md ring-4 ring-[#E61E32]/20"
+                          : isSelected
+                          ? "bg-white border-2 border-[#E61E32] text-[#E61E32]"
+                          : "bg-white border text-gray-400 border-gray-300 group-hover:border-gray-500"
+                      }`}>
+                        {isCritical ? (
+                          <Star className="w-5 h-5 fill-white text-white animate-pulse" />
+                        ) : isSelected ? (
+                          <Check className="w-5 h-5 stroke-[2.5]" />
+                        ) : (
+                          <span className="text-xs font-mono font-bold">{phase.order}</span>
+                        )}
+
+                        {isSelected && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              togglePhaseCritical(e, phase.id);
+                            }}
+                            title="Alternar criticidad estratégica"
+                            className={`absolute -bottom-1 -right-1 w-6 h-6 rounded-full flex items-center justify-center border shadow-xs transition-colors cursor-pointer ${
+                              isCritical ? "bg-amber-400 border-amber-500 text-white" : "bg-white border-gray-200 text-gray-400 hover:text-amber-500"
+                            }`}
+                          >
+                            <Star size={10} className={isCritical ? "fill-white" : ""} />
+                          </button>
+                        )}
+                      </div>
+
+                      <span className={`text-[11px] uppercase tracking-wider font-bold text-center leading-tight ${isCritical ? "text-[#E61E32]" : "text-gray-900"}`}>
+                        {phase.name}
+                      </span>
+                      <span className="text-[10px] text-gray-400 mt-1 italic text-center leading-normal max-w-[110px]">
+                        {phase.description}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+
+            <div className="flex flex-col sm:flex-row items-center justify-between gap-4 mt-6 px-2 text-xs text-gray-500">
+              <span className="flex items-center gap-1.5">
+                <Info size={14} className="text-[#E61E32]" />
+                Filtro adaptativo. Se aconseja registrar un mínimo de 2 fases para estructurar la matriz cruzada.
+              </span>
+              <div className="flex gap-4">
+                <span>Fases Habilitadas: <strong className="text-[#E61E32] font-bold">{selectedPhases.length}</strong></span>
+                <span>Fases Críticas: <strong className="text-amber-500 font-bold">{Object.values(selection.phases).filter(v => v === "critica").length}</strong></span>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= STEP 3: TABLERO OPERACIONAL GANTT ================= */}
+        {step === 3 && (() => {
+          const activeGanttGroups = ganttGroups.filter(g => g.activePhases.length > 0);
+          return (
+            <div className="max-w-7xl mx-auto w-full py-4">
+              <div className="mb-8">
+                <p className="text-2xl md:text-3xl font-light font-serif italic text-[#222222] mb-2">
+                  Mapeo operacional y asignación de hitos
+                </p>
+                <p className="text-sm text-gray-500 font-light leading-relaxed max-w-4xl mb-6">
+                  Estructure las actividades específicas ejecutadas. La distribución horizontal representa las macro-etapas unificadas según la reglamentación técnica de <strong className="text-gray-800">Planbim</strong>. Seleccione las acciones clave asociadas a su flujo de negocio.
+                </p>
+
+                {/* VISUALIZACIÓN DE MATRIZ DE ALINEACIÓN */}
+                <div className="bg-[#fbf9f4] border border-[#f2f1eb] p-3 mb-4 rounded-sm shadow-xs select-none">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-1 mb-2 pb-1.5 border-b border-gray-100">
+                    <div className="flex items-center gap-1.5">
+                      <div className="bg-[#E61E32]/10 p-0.5 rounded-sm text-[#E61E32]">
+                        <Layers size={11} className="stroke-[2.5]" />
+                      </div>
+                      <span className="text-[10px] font-mono uppercase tracking-widest text-[#E61E32] font-extrabold">
+                        ALINEACIÓN TEMPORAL DE ACTIVIDADES
+                      </span>
+                    </div>
+                  </div>
+
+                  <div className="space-y-1">
+                    <div className="grid grid-cols-12 gap-2 pb-1 border-b border-gray-100 text-[8px] font-mono uppercase tracking-widest text-gray-400 font-extrabold text-center">
+                      <div className="col-span-12 md:col-span-4 text-left">Estructura Contractual</div>
+                      <div className="col-span-3 md:col-span-2">01. Planificación</div>
+                      <div className="col-span-3 md:col-span-2">02. Diseño</div>
+                      <div className="col-span-3 md:col-span-2">03. Construcción</div>
+                      <div className="col-span-3 md:col-span-2">04. Operación</div>
+                    </div>
+
+                    {[...PHASES].sort((a, b) => a.order - b.order).map((phase) => {
+                      const isActive = selection.phases[phase.id] !== undefined;
+                      const isCritical = selection.phases[phase.id] === "critica";
+                      
+                      let targetCol = 0;
+                      if (["conceptual", "detalle", "documentacion"].includes(phase.id)) targetCol = 1;
+                      else if (["construccion", "puesta"].includes(phase.id)) targetCol = 2;
+                      else if (["operacion"].includes(phase.id)) targetCol = 3;
+
+                      return (
+                        <div 
+                          key={phase.id} 
+                          className={`grid grid-cols-12 gap-2 items-center text-xs py-0.5 transition-all rounded-xs ${isActive ? "bg-neutral-100 font-bold" : "opacity-35"}`}
+                        >
+                          <div className="col-span-12 md:col-span-4 text-left flex items-center justify-between pr-2">
+                            <div className="flex items-center gap-1.5 min-w-0 pr-1">
+                              <span className={`font-mono text-[8px] w-3.5 h-3.5 rounded-full flex items-center justify-center shrink-0 border ${isActive ? "bg-[#E61E32] text-white" : "bg-gray-100 text-gray-400"}`}>
+                                0{phase.order}
+                              </span>
+                              <span className="truncate text-[10px]">{phase.name}</span>
+                            </div>
+                            <div className="shrink-0 flex items-center gap-1">
+                              {isCritical && <span className="bg-amber-100 border border-amber-200 text-amber-700 text-[7px] px-1 rounded-full font-mono font-bold uppercase">Vital</span>}
+                              {isActive && !isCritical && <span className="bg-[#E61E32]/5 border border-[#E61E32]/20 text-[#E61E32] text-[7px] px-1 rounded-full font-mono font-bold uppercase">Activa</span>}
+                            </div>
+                          </div>
+
+                          {[0, 1, 2, 3].map((colIndex) => {
+                            const isTarget = colIndex === targetCol;
+                            return (
+                              <div key={colIndex} className="col-span-3 md:col-span-2 text-center relative h-3.5 flex items-center justify-center">
+                                {isTarget && isActive ? (
+                                  <div className={`w-full mx-0.5 h-3.5 rounded-xs border text-[7px] uppercase font-extrabold text-white flex items-center justify-center ${isCritical ? "bg-amber-400 border-amber-500" : "bg-[#E61E32] border-[#E61E32]"}`}>
+                                    Fase {phase.order}
+                                  </div>
+                                ) : isTarget ? (
+                                  <div className="w-full mx-0.5 h-3 rounded-xs border border-dashed border-gray-200 bg-gray-50/50 flex items-center justify-center text-[7px] text-gray-300 font-mono">Omitida</div>
+                                ) : (
+                                  <div className="w-full border-t border-gray-100/20" />
+                                )}
+                              </div>
+                            );
+                          })}
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* TABLERO FLUIDO DE CONFIGURACIÓN DE PROCESOS */}
+              <div className="relative px-2 md:px-6">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("gantt-scroll-container");
+                    if (el) el.scrollBy({ left: -360, behavior: "smooth" });
+                  }}
+                  className="absolute -left-2 md:left-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white hover:bg-[#E61E32] text-black hover:text-white border-2 border-black flex items-center justify-center cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] select-none focus:outline-none"
+                >
+                  <ChevronLeft size={20} className="stroke-[3]" />
+                </button>
+
+                <button
+                  type="button"
+                  onClick={() => {
+                    const el = document.getElementById("gantt-scroll-container");
+                    if (el) el.scrollBy({ left: 360, behavior: "smooth" });
+                  }}
+                  className="absolute -right-2 md:right-0 top-1/2 -translate-y-1/2 z-20 w-10 h-10 bg-white hover:bg-[#E61E32] text-black hover:text-white border-2 border-black flex items-center justify-center cursor-pointer shadow-[3px_3px_0px_0px_rgba(0,0,0,1)] select-none focus:outline-none"
+                >
+                  <ChevronRight size={20} className="stroke-[3]" />
+                </button>
+
+                <div 
+                  id="gantt-scroll-container" 
+                  className="flex flex-row gap-6 justify-start items-stretch w-full overflow-x-auto pb-4 select-none scroll-smooth [&::-webkit-scrollbar]:hidden"
+                  style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                >
+                  {activeGanttGroups.map((group) => {
+                    return (
+                      <div 
+                        key={group.id} 
+                        className={`w-fit shrink-0 border flex flex-col rounded-sm bg-white overflow-hidden ${group.borderColor}`}
+                      >
+                        <div className={`p-4 text-white font-mono uppercase tracking-widest text-[11px] font-extrabold flex items-center justify-between ${group.headerBg}`}>
+                          <span>{group.name}</span>
+                          <span className="text-[9px] opacity-80 font-normal">{group.rangeText}</span>
+                        </div>
+
+                        <div className="p-4 flex-grow flex flex-row gap-5 items-stretch overflow-x-auto">
+                          {group.activePhases.map((phase) => {
+                            const phaseProcesses = PROCESSES.filter(p => p.phaseId === phase.id);
+                            const selectedCount = phaseProcesses.filter(p => selection.processes.includes(p.id)).length;
+
+                            return (
+                              <div key={phase.id} className="w-[280px] sm:w-[320px] shrink-0 border border-neutral-200 bg-neutral-50/50 p-3 rounded-xs relative flex flex-col justify-between">
+                                <div>
+                                  <div className="flex items-center justify-between mb-3 pb-1.5 border-b border-gray-100">
+                                    <h4 className="text-[10px] font-extrabold uppercase tracking-wider text-gray-900 truncate">{phase.name}</h4>
+                                    {selectedCount > 0 && (
+                                      <span className="bg-[#E61E32] text-white text-[9px] font-bold w-4 h-4 rounded-full flex items-center justify-center shrink-0">{selectedCount}</span>
+                                    )}
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    {phaseProcesses.map((proc) => {
+                                      const isChecked = selection.processes.includes(proc.id);
+                                      return (
+                                        <button
+                                          key={proc.id}
+                                          onClick={() => toggleProcess(proc.id)}
+                                          className={`w-full text-left p-3 border transform transition-all duration-200 cursor-pointer flex items-start gap-2 rounded-[4px] relative group ${isChecked ? "border-neutral-900 bg-neutral-900 text-white shadow-md -translate-y-0.5" : "border-gray-200 bg-white text-gray-800 hover:border-gray-400 hover:-translate-y-0.5"}`}
+                                        >
+                                          <div className={`mt-0.5 w-3.5 h-3.5 shrink-0 flex items-center justify-center rounded-xs border ${isChecked ? "bg-[#E61E32] border-[#E61E32] text-white" : "border-gray-300 bg-gray-50"}`}>
+                                            {isChecked && <Check size={10} className="stroke-[3.5]" />}
+                                          </div>
+                                          <div className="flex-1 min-w-0">
+                                            <p className={`text-[11px] font-bold leading-tight uppercase tracking-wider ${isChecked ? "text-white" : "text-gray-900"}`}>{proc.name}</p>
+                                            <p className={`text-[10px] leading-relaxed mt-1 ${isChecked ? "text-gray-300" : "text-gray-500 font-light"}`}>{proc.description}</p>
+                                          </div>
+                                        </button>
+                                      );
+                                    })}
+                                  </div>
+                                </div>
+                              </div>
+                            );
+                          })}
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            </div>
+          );
+        })()}
+
+        {/* ================= STEP 4: RECOMENDACIÓN Y EVALUACIÓN DE MATRIZ ================= */}
+        {step === 4 && (
+          <div className="max-w-6xl mx-auto w-full py-4">
+            <div className="mb-6 text-center md:text-left flex flex-col md:flex-row md:items-end justify-between gap-4">
+              <div>
+                <p className="text-2xl md:text-3xl font-light font-serif italic text-[#222222] mb-2">
+                  Usos BIM sugeridos y factibilidad preliminar
+                </p>
+                <p className="text-sm text-gray-500 max-w-2xl font-light">
+                  Nuestra matriz analítica ha procesado sus variables de entrada (<strong className="text-gray-800">{selection.role}</strong> a escala <strong className="text-gray-800">{selection.scale}</strong>). Seleccione los usos requeridos y proceda a estructurar su análisis financiero detallado.
+                </p>
+              </div>
+
+              <div className="bg-red-50 border border-[#E61E32]/20 p-3 rounded-xs text-[11px] max-w-xs text-left leading-relaxed text-gray-700">
+                <span className="font-bold uppercase tracking-widest text-[#E61E32] block text-[10px] mb-1">💡 Análisis Financiero</span>
+                Presione <span className="font-semibold text-gray-900 border-b border-gray-400">Definir Evaluación</span> para proyectar retornos económicos, CAPEX/OPEX y niveles LOD exigidos.
+              </div>
+            </div>
+
+            {selection.actorType && (
+              <div className="mb-6 p-4 bg-neutral-50 border border-[#E61E32]/30 border-l-4 border-l-[#E61E32] flex items-center justify-between gap-4">
+                <div className="flex-1">
+                  <h4 className="text-xs uppercase tracking-wider font-extrabold text-[#E61E32] mb-1">
+                    🎯 Vector de Ponderación Activo: {selection.actorType}
+                  </h4>
+                  <p className="text-xs text-gray-600 leading-relaxed font-light">
+                    {selection.actorType === "Mandante" 
+                      ? "Ponderación estratégica maximizada en: Transferencia limpia de datos as-built para operación, modelos estructurados de registro, estimación automatizada de presupuestos (5D) e integración orientada al ciclo de vida integral (OPEX)."
+                      : "Ponderación optimizada en: Coordinación espacial multidisciplinar tridimensional (mitigación de colisiones), simulación secuencial de plazos constructivos (4D) y levantamiento ágil de preexistencias mediante nubes de puntos."}
+                  </p>
+                </div>
+              </div>
+            )}
+
+            <div className="space-y-8">
+              <div className="space-y-8">
+                <div>
+                  <h3 className="text-xs uppercase tracking-widest font-extrabold text-[#E61E32] mb-4 flex items-center gap-2">
+                    <Sparkles size={14} className="text-[#E61E32]" />
+                    Afinidad Alta (Prioritarios) ({recommendations.highest.length})
+                  </h3>
+                  {recommendations.highest.length === 0 ? (
+                    <div className="p-6 bg-neutral-50 border border-dashed text-center text-xs text-gray-500 font-mono">
+                      No se detectaron usos de afinidad prioritaria. Amplíe la selección de procesos operativos en la fase anterior.
+                    </div>
+                  ) : (
+                    <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                      {recommendations.highest.map(({ use, score }) => {
+                        const isCheckedForReport = !!selectedBimUseIds[use.id];
+                        const hasFicha = !!selection.customFichas[use.id];
+
+                        return (
+                          <div key={use.id} className="relative group aspect-square">
+                            {/* Gradient Shadow Element */}
+                            <div 
+                              className={`absolute inset-0 translate-x-[4px] translate-y-[4px] rounded-lg rounded-bl-none transition-all duration-300 ${
+                                hasFicha
+                                  ? "bg-gradient-to-br from-emerald-400 to-teal-500"
+                                  : isCheckedForReport 
+                                    ? "bg-gradient-to-br from-[#E61E32] to-[#fb923c]" 
+                                    : "bg-gradient-to-br from-gray-200 to-gray-350 opacity-60"
+                              }`}
+                            />
+                            {/* Card Content Element */}
+                            <div 
+                              className={`absolute inset-0 flex flex-col justify-between p-2.5 transition-all duration-300 border rounded-lg rounded-bl-none overflow-hidden ${
+                                hasFicha
+                                  ? "bg-emerald-50 border-emerald-400 text-emerald-950"
+                                  : isCheckedForReport 
+                                    ? "bg-white border-black text-gray-900" 
+                                    : "bg-gray-100 border-gray-200 text-gray-400"
+                              }`}
+                            >
+                              {/* Top row */}
+                              <div className="flex items-start justify-between gap-1">
+                                <span className={`inline-flex items-center gap-0.5 text-[7.5px] uppercase font-bold tracking-wider px-1 py-0.2 rounded-xs select-none ${
+                                  hasFicha
+                                    ? "text-white bg-emerald-600"
+                                    : isCheckedForReport 
+                                      ? "text-white bg-[#E61E32]" 
+                                      : "text-gray-400 bg-gray-200"
+                                }`}>
+                                  {score} pts
+                                </span>
+                                <button
+                                  onClick={() => toggleBimUseSelection(use.id)}
+                                  className={`flex items-center gap-0.5 px-1 py-0.2 text-[7px] uppercase font-bold tracking-wider border cursor-pointer transition-all rounded-[3px] select-none ${
+                                    hasFicha
+                                      ? "bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700"
+                                      : isCheckedForReport 
+                                        ? "bg-[#E61E32] border-[#E61E32] text-white hover:bg-neutral-900 hover:border-neutral-900" 
+                                        : "bg-gray-200 border-gray-300 text-gray-400 hover:bg-gray-300 hover:text-gray-500"
+                                  }`}
+                                  title={isCheckedForReport ? "Haz clic para deseleccionar uso" : "Haz clic para seleccionar uso"}
+                                >
+                                  <Check size={7} className="stroke-[3]" />
+                                  <span>{isCheckedForReport ? "Sí" : "No"}</span>
+                                </button>
+                              </div>
+
+                              {/* Middle section with description */}
+                              <div className="flex-1 flex flex-col justify-center min-h-0 py-1">
+                                <h4 className={`text-[11.5px] font-bold leading-tight uppercase tracking-wide mb-0.5 line-clamp-2 ${
+                                  hasFicha
+                                    ? "text-emerald-950"
+                                    : isCheckedForReport 
+                                      ? "text-gray-900" 
+                                      : "text-gray-450"
+                                }`}>
+                                  {use.name}
+                                </h4>
+                                <p className={`text-[8.5px] sm:text-[9px] leading-tight font-normal line-clamp-2 mb-1 ${
+                                  hasFicha
+                                    ? "text-emerald-800"
+                                    : isCheckedForReport 
+                                      ? "text-gray-600" 
+                                      : "text-gray-400"
+                                }`}>
+                                  {use.benefit}
+                                </p>
+
+                                <div className="flex flex-wrap items-center gap-0.5 text-[7px] font-mono mt-auto">
+                                  <span className={`px-0.5 rounded-xs select-none ${
+                                    hasFicha
+                                      ? "bg-emerald-100 text-emerald-800"
+                                      : isCheckedForReport 
+                                        ? "bg-gray-100 text-gray-600" 
+                                        : "bg-gray-200 text-gray-400"
+                                  }`}>Lvl: {use.maturity}</span>
+                                </div>
+                              </div>
+
+                              {/* Footer row */}
+                              <div className={`border-t pt-1 flex items-center justify-between gap-1 ${
+                                hasFicha 
+                                  ? "border-emerald-200/65"
+                                  : isCheckedForReport 
+                                    ? "border-[#f2f1eb]" 
+                                    : "border-gray-200"
+                              }`}>
+                                <span className={`text-[7.5px] uppercase tracking-tight block truncate max-w-[45%] font-medium ${
+                                  hasFicha
+                                    ? "text-emerald-700 font-bold"
+                                    : "text-gray-400"
+                                }`} title={hasFicha ? "Configurado" : "Pendiente"}>
+                                  {hasFicha ? "✓ Sí" : "Pend."}
+                                </span>
+                                <button
+                                  onClick={() => openBimUseDetail(use)}
+                                  className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded-[3px] font-bold uppercase text-[7px] tracking-wider cursor-pointer transition-all shadow-xs ${
+                                    hasFicha
+                                      ? "bg-emerald-600 border border-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
+                                      : isCheckedForReport 
+                                        ? "bg-white border border-neutral-900 text-gray-900 hover:bg-neutral-900 hover:text-white" 
+                                        : "bg-gray-100 border border-gray-300 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
+                                  }`}
+                                >
+                                  {hasFicha ? "Editar" : "Definir"}
+                                  <ChevronRight size={6} className="stroke-[2.5]" />
+                                </button>
+                              </div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+
+                <div className="pt-4">
+                  <h3 className="text-xs uppercase tracking-widest font-extrabold text-gray-500 mb-4">
+                    Sugerencias Complementarias ({recommendations.suggested.length})
+                  </h3>
+                  <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-5 xl:grid-cols-6 gap-4">
+                    {recommendations.suggested.map(({ use, score }) => {
+                      const isChecked = !!selectedBimUseIds[use.id];
+                      const hasFicha = !!selection.customFichas[use.id];
+                      return (
+                        <div key={use.id} className="relative group aspect-square">
+                          {/* Gradient Shadow Element */}
+                          <div 
+                            className={`absolute inset-0 translate-x-[4px] translate-y-[4px] rounded-lg rounded-bl-none transition-all duration-300 ${
+                              hasFicha
+                                ? "bg-gradient-to-br from-emerald-400 to-teal-500"
+                                : isChecked 
+                                  ? "bg-gradient-to-br from-neutral-800 to-neutral-500" 
+                                  : "bg-gradient-to-br from-gray-200 to-gray-300 opacity-60"
+                            }`}
+                          />
+                          {/* Card Content Element */}
+                          <div 
+                            className={`absolute inset-0 flex flex-col justify-between p-2.5 transition-all duration-300 border rounded-lg rounded-bl-none overflow-hidden ${
+                              hasFicha
+                                ? "bg-emerald-50 border-emerald-400 text-emerald-950"
+                                : isChecked 
+                                  ? "bg-white border-black text-gray-900" 
+                                  : "bg-gray-100 border-gray-200 text-gray-400"
+                            }`}
+                          >
+                            {/* Top row */}
+                            <div className="flex items-start justify-between gap-1">
+                              <span className={`inline-flex items-center gap-0.5 text-[7.5px] uppercase font-bold tracking-wider px-1 py-0.2 rounded-xs select-none ${
+                                hasFicha
+                                  ? "text-white bg-emerald-600"
+                                  : isChecked 
+                                    ? "text-white bg-neutral-800" 
+                                    : "text-gray-400 bg-gray-200"
+                              }`}>
+                                {score} pts
+                              </span>
+                              <button
+                                onClick={() => toggleBimUseSelection(use.id)}
+                                className={`flex items-center gap-0.5 px-1 py-0.2 text-[7px] uppercase font-bold tracking-wider border cursor-pointer transition-all rounded-[3px] select-none ${
+                                  hasFicha
+                                    ? "bg-emerald-600 border-emerald-600 text-white hover:bg-emerald-700 hover:border-emerald-700"
+                                    : isChecked 
+                                      ? "bg-[#E61E32] border-[#E61E32] text-white hover:bg-neutral-900 hover:border-neutral-900" 
+                                      : "bg-gray-200 border-gray-300 text-gray-400 hover:bg-gray-300 hover:text-gray-500"
+                                }`}
+                                title={isChecked ? "Haz clic para deseleccionar uso" : "Haz clic para seleccionar uso"}
+                              >
+                                <Check size={7} className="stroke-[3]" />
+                                <span>{isChecked ? "Sí" : "No"}</span>
+                              </button>
+                            </div>
+
+                            {/* Middle section with description */}
+                            <div className="flex-1 flex flex-col justify-center min-h-0 py-1">
+                              <h4 className={`text-[11px] sm:text-[11.5px] font-bold leading-tight uppercase tracking-wide mb-0.5 line-clamp-2 ${
+                                hasFicha
+                                  ? "text-emerald-950"
+                                  : isChecked 
+                                    ? "text-gray-900" 
+                                    : "text-gray-450"
+                              }`}>
+                                {use.name}
+                              </h4>
+                              <p className={`text-[8.5px] sm:text-[9px] leading-tight font-normal line-clamp-2 mb-1 ${
+                                hasFicha
+                                  ? "text-emerald-800"
+                                  : isChecked 
+                                    ? "text-gray-650" 
+                                    : "text-gray-400"
+                              }`}>
+                                {use.benefit || "Optimización de flujos y asimilación de estándares BIM."}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-0.5 text-[7px] font-mono mt-auto">
+                                <span className={`px-0.5 rounded-xs select-none ${
+                                  hasFicha
+                                    ? "bg-emerald-100 text-emerald-800"
+                                    : isChecked 
+                                      ? "bg-gray-100 text-gray-600" 
+                                      : "bg-gray-200 text-gray-400"
+                                }`}>Lvl: {use.maturity}</span>
+                              </div>
+                            </div>
+
+                            {/* Footer row */}
+                            <div className={`border-t pt-1 flex items-center justify-between gap-1 ${
+                              hasFicha
+                                ? "border-emerald-200/65"
+                                : isChecked 
+                                  ? "border-[#f2f1eb]" 
+                                  : "border-gray-200"
+                            }`}>
+                              <span className={`text-[7px] uppercase tracking-tight block truncate max-w-[45%] font-medium ${
+                                hasFicha
+                                  ? "text-emerald-750 font-bold"
+                                  : "text-gray-400"
+                              }`} title={hasFicha ? "Configurado" : "Pendiente"}>
+                                {hasFicha ? "✓ Sí" : "Pend."}
+                              </span>
+                              <button
+                                onClick={() => openBimUseDetail(use)}
+                                className={`inline-flex items-center gap-0.5 px-1 py-0.5 rounded-[3px] font-bold uppercase text-[7px] tracking-wider cursor-pointer transition-all shadow-xs ${
+                                  hasFicha
+                                    ? "bg-emerald-600 border border-emerald-600 text-white hover:bg-emerald-700 hover:text-white"
+                                    : isChecked 
+                                      ? "bg-white border border-neutral-900 text-gray-900 hover:bg-neutral-900 hover:text-white" 
+                                      : "bg-gray-100 border border-gray-300 text-gray-400 hover:bg-gray-200 hover:text-gray-500"
+                                }`}
+                              >
+                                {hasFicha ? "Editar" : "Definir"}
+                                <ChevronRight size={6} className="stroke-[2.5]" />
+                              </button>
+                            </div>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Informational boxes ordered below the cards */}
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-6 border-t border-neutral-200">
+                <div className="bg-[#f2f1eb]/60 border-2 border-black rounded-lg rounded-bl-none shadow-[5px_5px_0px_0px_#9ca3af] p-6 text-xs text-gray-600 space-y-4">
+                  <h4 className="font-serif italic text-sm text-gray-900 font-bold border-b border-[#e0dfd5] pb-2 uppercase tracking-wider">Métricas de entrada</h4>
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <div>
+                      <span className="block text-[10px] font-mono text-gray-400 uppercase">ENFOQUE DE ACTOR</span>
+                      <strong className="text-gray-900 text-xs sm:text-xs md:text-sm font-semibold">{selection.actorType || "No definido"}</strong>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-mono text-gray-400 uppercase">ROL AEC ACTIVO</span>
+                      <strong className="text-gray-900 text-xs sm:text-xs md:text-sm font-semibold">{selection.role || "No definido"}</strong>
+                    </div>
+                    <div>
+                      <span className="block text-[10px] font-mono text-gray-400 uppercase">ESCALA OPERATIVA</span>
+                      <strong className="text-gray-900 text-xs sm:text-xs md:text-sm font-semibold">{selection.scale || "No definido"}</strong>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border-2 border-black rounded-lg rounded-bl-none shadow-[5px_5px_0px_0px_#9ca3af] p-6 space-y-3 text-xs">
+                  <h4 className="font-bold text-gray-900 uppercase tracking-widest text-[10px] border-b border-gray-100 pb-2">Estructura del Algoritmo de Afinidades</h4>
+                  <ul className="space-y-1.5 text-gray-500 font-light list-disc list-inside">
+                    <li><strong>+8 puntos:</strong> Vinculación directa con fases declaradas como críticas.</li>
+                    <li><strong>+6 puntos:</strong> Coincidencia directa con las competencias del Rol AEC.</li>
+                    <li><strong>+6 puntos:</strong> Por cada hito u operación operacional marcado en el tablero Gantt.</li>
+                  </ul>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= STEP 5: FICHA INTEGRAL TÉCNICO-ECONÓMICA ================= */}
+        {step === 5 && activeBimUse && (
+          <div className="max-w-6xl mx-auto w-full py-2">
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#f2f1eb] pb-4">
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setStep(4)}
+                  className="p-1 px-2 border border-gray-200 text-gray-500 hover:text-gray-900 flex items-center gap-1 text-xs cursor-pointer bg-white rounded-[4px] hover:-translate-y-0.5 transition-all"
+                >
+                  <ChevronLeft size={14} /> Volver a la lista
+                </button>
+                <span className="text-xs text-gray-300">/</span>
+                <span className="text-xs uppercase bg-[#E61E32]/5 text-[#E61E32] font-mono px-2 py-0.5">Planificador de Viabilidad</span>
+              </div>
+              <div className="flex flex-wrap items-center gap-4">
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400 font-medium">Estado en Reporte:</span>
+                  <button
+                    onClick={() => toggleBimUseSelection(activeBimUse.id)}
+                    className={`flex items-center gap-1.5 px-3 py-1 text-[10px] uppercase font-bold tracking-wider border cursor-pointer transition-all rounded-[4px] shadow-xs select-none ${
+                      selectedBimUseIds[activeBimUse.id]
+                        ? "bg-neutral-900 border-neutral-900 text-white hover:bg-neutral-850" 
+                        : "bg-gray-55 border-gray-200 text-gray-400 hover:border-gray-400 hover:text-gray-600"
+                    }`}
+                    title={selectedBimUseIds[activeBimUse.id] ? "Haga clic para excluir este Uso del Informe" : "Haga clic para incluir este Uso en el Informe"}
+                  >
+                    <Check size={11} className={selectedBimUseIds[activeBimUse.id] ? "opacity-100" : "opacity-30"} />
+                    <span>{selectedBimUseIds[activeBimUse.id] ? "Seleccionado" : "Omitido"}</span>
+                  </button>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs text-gray-400">Madurez Requerida:</span>
+                  <span className="text-xs font-bold font-mono bg-gray-900 text-white px-2 py-0.5">{activeBimUse.maturity}</span>
+                </div>
+              </div>
+            </div>
+
+            <div className="mb-6">
+              <h2 className="text-2xl md:text-3xl font-light font-serif text-gray-900 italic">{activeBimUse.name}</h2>
+              <p className="text-sm text-gray-500 mt-1 max-w-4xl leading-relaxed">{activeBimUse.description}</p>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+              {/* Columna Izquierda: Taxonomía y Datos Base */}
+              <div className="lg:col-span-12 xl:col-span-5 space-y-6">
+                <div className="bg-white border border-[#e0dfd5] p-5">
+                  <h3 className="text-xs uppercase tracking-widest font-extrabold text-gray-900 mb-3 flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                    <Layers size={12} className="text-[#E61E32]" /> Requerimientos de Datos (Penn State)
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-gray-400 block mb-1.5">Información de Entrada (Inputs)</span>
+                      <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside font-light">
+                        {activeBimUse.inputsOutputs.inputs.map((inp, idx) => <li key={idx}>{inp}</li>)}
+                      </ul>
+                    </div>
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-gray-400 block mb-1.5">Entregables Requeridos (Outputs)</span>
+                      <ul className="text-xs text-gray-700 space-y-1 list-disc list-inside font-light">
+                        {activeBimUse.inputsOutputs.outputs.map((out, idx) => <li key={idx}>{out}</li>)}
+                      </ul>
+                    </div>
+                  </div>
+                </div>
+
+                <div className="bg-white border border-[#e0dfd5] p-5">
+                  <h3 className="text-xs uppercase tracking-widest font-extrabold text-gray-900 mb-3 flex items-center gap-1.5 border-b border-gray-100 pb-2">
+                    <BookOpen size={12} className="text-[#E61E32]" /> Ecosistema Tecnológico Sugerido
+                  </h3>
+                  <div className="space-y-4">
+                    <div>
+                      <span className="text-[10px] font-mono uppercase text-gray-400 block mb-1.5">Plataformas de Mercado Compatibles</span>
+                      <div className="flex flex-wrap gap-1.5">
+                        {activeBimUse.typicalSoftware.map((soft, idx) => {
+                          const url = SOFTWARE_LINKS[soft] || `https://www.google.com/search?q=${encodeURIComponent(soft)}`;
+                          return (
+                            <a 
+                              key={idx} 
+                              href={url}
+                              target="_blank"
+                              rel="noopener noreferrer"
+                              className="bg-[#E61E32]/5 border border-[#E61E32]/20 hover:bg-[#E61E32] hover:text-white text-[#E61E32] text-[10px] font-mono px-2.5 py-1 rounded-sm inline-flex items-center gap-1 transition-all"
+                            >
+                              <span>{soft}</span>
+                              <ExternalLink size={9} className="opacity-70" />
+                            </a>
+                          );
+                        })}
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Columna Derecha: Formulario Editor Técnico - Económico */}
+              <div className="lg:col-span-12 xl:col-span-7 bg-white border-2 border-neutral-900 p-6 flex flex-col relative">
+                <div className="flex items-center justify-between bg-neutral-900 text-white p-4 -mx-6 -mt-6 mb-6">
+                  <div className="flex items-center gap-2">
+                    <Cpu size={16} className="text-[#E61E32]" />
+                    <div>
+                      <h4 className="text-xs font-mono font-bold tracking-widest uppercase">Estructura Técnico-Económica Customizada</h4>
+                      <p className="text-[10px] text-gray-400">Parámetros de inversión adaptados a la realidad local</p>
+                    </div>
+                  </div>
+                  <button
+                    onClick={() => generateFichaWithAI(activeBimUse)}
+                    disabled={isGenerating}
+                    className="inline-flex items-center gap-1 bg-[#E61E32] hover:bg-[#b8332b] disabled:bg-gray-700 text-white px-3 py-1.5 text-[10px] uppercase tracking-widest font-bold transform transition-all cursor-pointer rounded-[4px]"
+                  >
+                    {isGenerating && <RefreshCw size={12} className="animate-spin" />}
+                    {isGenerating ? "Calculando..." : "generar según base de conocimiento"}
+                  </button>
+                </div>
+
+                {isGenerating && (
+                  <div className="absolute inset-x-0 top-[60px] bottom-0 bg-white/95 z-20 flex flex-col items-center justify-center p-8 text-center bg-white">
+                    <div className="w-10 h-10 border-4 border-[#E61E32] border-t-transparent rounded-full animate-spin mb-4" />
+                    <h5 className="font-serif italic text-lg text-gray-900 mb-1">Optimizando matriz técnico-financiera...</h5>
+                    <p className="text-xs text-gray-500 max-w-sm font-mono">{generationFeedback}</p>
+                  </div>
+                )}
+
+                <div className="space-y-4 flex-grow text-xs">
+                  {/* SECCIÓN TÉCNICA (SDI/PEB) */}
+                  <div className="border-b border-gray-200 pb-4 space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-neutral-900 flex items-center gap-1">
+                      <Layers size={14} className="text-gray-400" /> 1. Especificaciones Técnicas y Contractuales
+                    </h4>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-gray-400 mb-1 font-bold">Objetivo del uso bim</label>
+                      <textarea
+                        value={selection.customFichas[activeBimUse.id]?.objetivo || ""}
+                        onChange={(e) => handleUpdateFichaField(activeBimUse.id, "objetivo", e.target.value)}
+                        rows={2}
+                        className="w-full border border-[#e0dfd5] p-2 text-xs"
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      <div>
+                        <label className="block text-[10px] font-mono uppercase text-gray-400 mb-1 font-bold">Líderes y Responsables</label>
+                        <input
+                          type="text"
+                          value={selection.customFichas[activeBimUse.id]?.responsables || ""}
+                          onChange={(e) => handleUpdateFichaField(activeBimUse.id, "responsables", e.target.value)}
+                          className="w-full border border-[#e0dfd5] p-2 text-xs"
+                        />
+                      </div>
+                      <div>
+                        <label className="block text-[10px] font-mono uppercase text-gray-400 mb-1 font-bold">Nivel LOD / LOIN Exigido</label>
+                        <input
+                          type="text"
+                          value={selection.customFichas[activeBimUse.id]?.lodLoin || ""}
+                          onChange={(e) => handleUpdateFichaField(activeBimUse.id, "lodLoin", e.target.value)}
+                          className="w-full border border-[#e0dfd5] p-2 text-xs"
+                        />
+                      </div>
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-gray-400 mb-1 font-bold">Formatos y Archivos de Entrega (CDE / IFC)</label>
+                      <textarea
+                        value={selection.customFichas[activeBimUse.id]?.entregables || ""}
+                        onChange={(e) => handleUpdateFichaField(activeBimUse.id, "entregables", e.target.value)}
+                        rows={1.5}
+                        className="w-full border border-[#e0dfd5] p-2 text-xs"
+                      />
+                    </div>
+                  </div>
+
+                  {/* SECCIÓN ECONÓMICA (CAPEX/OPEX/ROI) */}
+                  <div className="bg-neutral-50/80 p-4 border border-neutral-200 rounded-sm space-y-4">
+                    <h4 className="text-[11px] font-bold uppercase tracking-widest text-[#E61E32] flex items-center gap-1">
+                      <DollarSign size={14} /> 2. Evaluación Económica y de Viabilidad comercial
+                    </h4>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-gray-600 mb-1 font-bold">Costos de Implementación Estimados (CAPEX / OPEX)</label>
+                      <textarea
+                        value={selection.customFichas[activeBimUse.id]?.costoImplementacion || ""}
+                        onChange={(e) => handleUpdateFichaField(activeBimUse.id, "costoImplementacion", e.target.value)}
+                        rows={2}
+                        className="w-full border border-[#e0dfd5] p-2 text-xs bg-white"
+                        placeholder="Inversión requerida en software, actualización de hardware de modelado, habilitación de servidores de datos unificados o capacitación de personal..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-gray-600 mb-1 font-bold">Retorno de Inversión (ROI) Esperado y Mitigación de Riesgos</label>
+                      <textarea
+                        value={selection.customFichas[activeBimUse.id]?.roiEstimado || ""}
+                        onChange={(e) => handleUpdateFichaField(activeBimUse.id, "roiEstimado", e.target.value)}
+                        rows={2}
+                        className="w-full border border-[#e0dfd5] p-2 text-xs bg-white"
+                        placeholder="Proyección de ahorros financieros por detección temprana de interferencias, precisión de cubicaciones o transferencia de datos limpios a fases operacionales..."
+                      />
+                    </div>
+                    <div>
+                      <label className="block text-[10px] font-mono uppercase text-gray-600 mb-1 font-bold">Esfuerzo de Adopción y Complejidad Organizacional</label>
+                      <input
+                        type="text"
+                        value={selection.customFichas[activeBimUse.id]?.esfuerzoAdopcion || ""}
+                        onChange={(e) => handleUpdateFichaField(activeBimUse.id, "esfuerzoAdopcion", e.target.value)}
+                        className="w-full border border-[#e0dfd5] p-2 text-xs bg-white"
+                        placeholder="Curva de aprendizaje del equipo, necesidad de adaptar metodologías internas a ISO 19650, etc."
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                <div className="mt-6 pt-4 border-t border-gray-100 flex justify-end gap-2 text-xs">
+                  <button
+                    onClick={() => {
+                      // Ensure it's active & included in report when user saves
+                      setSelectedBimUseIds(prev => ({ ...prev, [activeBimUse.id]: true }));
+                      setStep(4);
+                    }}
+                    className="bg-[#E61E32] hover:bg-[#b8332b] text-white px-6 py-2.5 uppercase font-mono text-[10px] font-bold tracking-widest transform transition-all cursor-pointer rounded-[4px] shadow-sm transition-colors duration-200"
+                  >
+                    Guardar e Incluir en Informe Consolidado
+                  </button>
+                </div>
+              </div>
+            </div>
+          </div>
+        )}
+
+        {/* ================= STEP 6: DICTAMEN DE INVERSIÓN CONSOLIDADO ================= */}
+        {step === 6 && (
+          <div className="max-w-5xl mx-auto w-full py-2">
+            <div className="mb-6 flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-[#f2f1eb] pb-4 no-print">
+              <div>
+                <p className="text-xs font-mono uppercase tracking-widest text-[#E61E32] font-bold">DIETA DE INVERSIÓN CONSOLIDADA</p>
+                <h2 className="text-2xl md:text-3xl font-light font-serif italic text-gray-900 mt-1">
+                  Informe de Factibilidad Técnico-Económica BIM
+                </h2>
+              </div>
+              <div className="flex gap-2">
+                <button
+                  onClick={() => window.print()}
+                  className="inline-flex items-center gap-2 bg-neutral-900 text-white px-5 py-2.5 uppercase font-mono text-[10px] font-bold tracking-widest transform transition-all cursor-pointer rounded-[4px]"
+                >
+                  <Printer size={12} /> Exportar Dictamen de Inversión
+                </button>
+                <button onClick={handleReset} className="inline-flex items-center gap-2 bg-white border border-gray-200 text-gray-500 px-4 py-2.5 uppercase font-mono text-[10px] font-bold rounded-[4px] cursor-pointer">
+                  <RefreshCw size={12} /> Reiniciar
+                </button>
+              </div>
+            </div>
+
+            {/* ENCABEZADO DE IMPRESIÓN (OCULTO EN PANTALLA) */}
+            <div className="hidden print-only mb-10 border-b-2 border-neutral-900 pb-6 text-left">
+              <div className="flex items-center justify-between">
+                <div>
+                  <h1 className="text-3xl font-serif font-bold italic tracking-tight text-neutral-900">Dictamen de Factibilidad de Implementación BIM</h1>
+                  <p className="text-xs text-gray-500 mt-1 uppercase font-mono tracking-widest">Alineado con el Estándar Planbim CORFO & Taxonomía Penn State</p>
+                </div>
+              </div>
+              <div className="grid grid-cols-3 gap-4 mt-6 text-xs text-neutral-800">
+                <div><strong className="block uppercase font-mono text-[9px] text-gray-400">Naturaleza Actor</strong>{selection.actorType}</div>
+                <div><strong className="block uppercase font-mono text-[9px] text-gray-400">Rol AEC Principal</strong>{selection.role}</div>
+                <div><strong className="block uppercase font-mono text-[9px] text-gray-400">Fecha de Emisión</strong>{new Date().toLocaleDateString("es-ES")}</div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-[#e0dfd5] p-6 mb-8">
+              <h3 className="text-xs uppercase tracking-widest font-extrabold text-gray-400 mb-4 font-mono">1. SÍNTESIS DEL PERFIL OPERATIVO</h3>
+              <div className="grid grid-cols-2 md:grid-cols-4 gap-6 text-xs">
+                <div><span className="block text-[9px] font-mono text-gray-400 uppercase">ENFOQUE DE RETORNOS</span><span className="font-bold text-[#E61E32]">{selection.actorType}</span></div>
+                <div><span className="block text-[9px] font-mono text-gray-400 uppercase">ESCALA ORGANIZACIONAL</span><span className="font-bold text-gray-900">{selection.scale}</span></div>
+                <div><span className="block text-[9px] font-mono text-gray-400 uppercase">FASES DECLARADAS</span><span className="font-bold text-gray-900">{selectedPhases.length} registradas</span></div>
+                <div><span className="block text-[9px] font-mono text-gray-400 uppercase">PROCESOS MAPEADOS</span><span className="font-bold text-gray-900">{selection.processes.length} operaciones</span></div>
+              </div>
+            </div>
+
+            <div className="bg-white border border-[#e0dfd5] p-6 mb-8 break-inside-avoid">
+              <h3 className="text-xs uppercase tracking-widest font-extrabold text-[#E61E32] font-mono mb-4">2. MATRIZ CRUZADA: USOS BIM × FASES DEL CICLO útil</h3>
+              <BimMatrix selectedPhases={selectedPhases} selectedUses={finalSelectedUses} />
+            </div>
+
+            <div className="space-y-6">
+              <h3 className="text-xs uppercase tracking-widest font-extrabold text-neutral-900 font-mono no-print">3. ANALÍTICA DE INVERSIÓN DETALLADA POR USO BIM SELECCIONADO</h3>
+              
+              {finalSelectedUses.length === 0 ? (
+                <div className="p-8 border border-dashed text-center text-xs text-gray-400">No se consolidaron usos activos en el reporte. Retorne al paso 4 para habilitar alternativas.</div>
+              ) : (
+                finalSelectedUses.map((use) => {
+                  const ficha = selection.customFichas[use.id];
+                  return (
+                    <div key={use.id} className="bg-white border border-[#e0dfd5] p-6 text-xs shadow-xs mb-6 break-inside-avoid border-l-4 border-l-neutral-900">
+                      <div className="flex items-center justify-between border-b border-gray-100 pb-3 mb-4">
+                        <div>
+                          <span className="text-[9px] uppercase font-mono text-[#E61E32] font-bold">ESTUDIO DE FACTIBILIDAD ECONÓMICA</span>
+                          <h4 className="text-base font-bold text-gray-900">{use.name}</h4>
+                        </div>
+                        <span className="font-mono text-gray-400 text-[10px]">MADUREZ: {use.maturity}</span>
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs border-b border-gray-150 pb-4 mb-4">
+                        <div className="space-y-3">
+                          <h5 className="font-bold text-[10px] uppercase font-mono border-b border-gray-100 pb-1 text-neutral-500">Requerimientos Contractuales (SDI)</h5>
+                          <div><strong className="block text-[9px] text-gray-400 uppercase">Objetivo Operacional</strong><p className="font-light text-gray-700">{ficha?.objetivo}</p></div>
+                          <div><strong className="block text-[9px] text-gray-400 uppercase">Nivel de Información (LOD / LOIN)</strong><p className="font-light text-gray-700">{ficha?.lodLoin}</p></div>
+                          <div><strong className="block text-[9px] text-gray-400 uppercase">Entregables y Formatos</strong><p className="font-light text-gray-700">{ficha?.entregables}</p></div>
+                        </div>
+
+                        <div className="space-y-3 bg-neutral-50/60 p-4 border border-neutral-100 rounded-sm">
+                          <h5 className="font-bold text-[10px] uppercase font-mono border-b border-red-100 pb-1 text-[#E61E32]">Proyección Financiera e Impacto</h5>
+                          <div><strong className="block text-[9px] text-gray-500 uppercase">Inversión Estimada (CAPEX / OPEX)</strong><p className="font-medium text-gray-900">{ficha?.costoImplementacion}</p></div>
+                          <div><strong className="block text-[9px] text-gray-500 uppercase">Indicadores de Retorno (ROI)</strong><p className="font-medium text-green-700">{ficha?.roiEstimado}</p></div>
+                          <div><strong className="block text-[9px] text-gray-500 uppercase">Complejidad y Esfuerzo de Cambio</strong><p className="font-light text-gray-700">{ficha?.esfuerzoAdopcion}</p></div>
+                        </div>
+                      </div>
+
+                      {/* INFORMACIÓN ADICIONAL REQUIREDA: REQUERIMIENTOS DE DATOS (PENN STATE) Y ECOSISTEMA TECNOLÓGICO */}
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-xs bg-gray-50/50 p-4 border border-gray-200 rounded-sm">
+                        {/* Requerimientos de Datos Penn State */}
+                        <div className="space-y-2">
+                          <h5 className="font-bold text-[10px] uppercase font-mono border-b border-gray-200 pb-1 text-neutral-750 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-[#E61E32] rounded-full"></span>
+                            Requerimientos de Datos (Penn State)
+                          </h5>
+                          
+                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 mt-1.5">
+                            <div>
+                              <strong className="block text-[8px] text-gray-450 uppercase font-mono tracking-wider mb-1">Información de Entrada (Inputs)</strong>
+                              {use.inputsOutputs?.inputs && use.inputsOutputs.inputs.length > 0 ? (
+                                <ul className="list-disc list-inside space-y-1 text-gray-650 font-normal">
+                                  {use.inputsOutputs.inputs.map((input, idx) => (
+                                    <li key={idx} className="leading-tight text-[10px] sm:text-[10.5px]">{input}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-gray-400 italic text-[10px]">No especificado</p>
+                              )}
+                            </div>
+                            
+                            <div>
+                              <strong className="block text-[8px] text-gray-450 uppercase font-mono tracking-wider mb-1">Información de Salida (Outputs)</strong>
+                              {use.inputsOutputs?.outputs && use.inputsOutputs.outputs.length > 0 ? (
+                                <ul className="list-disc list-inside space-y-1 text-gray-650 font-normal">
+                                  {use.inputsOutputs.outputs.map((output, idx) => (
+                                    <li key={idx} className="leading-tight text-[10px] sm:text-[10.5px]">{output}</li>
+                                  ))}
+                                </ul>
+                              ) : (
+                                <p className="text-gray-400 italic text-[10px]">No especificado</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+
+                        {/* Ecosistema Tecnológico de Herramientas */}
+                        <div className="space-y-2">
+                          <h5 className="font-bold text-[10px] uppercase font-mono border-b border-gray-200 pb-1 text-neutral-750 flex items-center gap-1.5">
+                            <span className="w-1.5 h-1.5 bg-neutral-900 rounded-full"></span>
+                            Ecosistema Tecnológico
+                          </h5>
+                          <div>
+                            <strong className="block text-[8px] text-gray-450 uppercase font-mono tracking-wider mb-2">Plataformas Bim Recomendadas</strong>
+                            <div className="flex flex-wrap gap-1.5 mt-1">
+                              {use.typicalSoftware && use.typicalSoftware.length > 0 ? (
+                                use.typicalSoftware.map((soft) => {
+                                  const url = SOFTWARE_LINKS[soft] || `https://www.google.com/search?q=${encodeURIComponent(soft)}`;
+                                  return (
+                                    <a
+                                      key={soft}
+                                      href={url}
+                                      target="_blank"
+                                      rel="noopener noreferrer"
+                                      className="inline-flex items-center gap-1.5 bg-white hover:bg-neutral-100 text-neutral-800 hover:text-neutral-950 px-2 py-1 rounded border border-gray-300 transition-all font-mono text-[9px] hover:border-neutral-400"
+                                    >
+                                      <span>{soft}</span>
+                                      <span className="text-[7.5px] text-gray-400">↗</span>
+                                    </a>
+                                  );
+                                })
+                              ) : (
+                                <p className="text-gray-400 italic text-[10.5px]">No especificado</p>
+                              )}
+                            </div>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  );
+                })
+              )}
+            </div>
+
+            <div className="hidden print-only mt-16 grid grid-cols-2 gap-12 text-center text-xs">
+              <div className="flex flex-col items-center"><div className="w-48 border-b border-neutral-900 mb-2"></div><span>Firma de Responsable Inmobiliario / Mandante</span></div>
+              <div className="flex flex-col items-center"><div className="w-48 border-b border-neutral-900 mb-2"></div><span>Sello o Validación de Auditor BIM Externo</span></div>
+            </div>
+          </div>
+        )}
+      </main>
+
+      {/* Barra de Navegación de Pie de Página */}
+      {step > 0 && (
+        <footer className="no-print bg-white/75 backdrop-blur-md border-t border-[#f2f1eb] py-4 px-[1cm] flex items-center justify-between z-20">
+          <button onClick={handleBack} className="flex items-center gap-1.5 text-xs font-bold uppercase text-gray-500 hover:text-black cursor-pointer">
+            <ChevronLeft size={16} />{step === 1 ? "Ir al Inicio" : "Volver"}
+          </button>
+
+          <div className="flex items-center gap-4">
+            {step < 6 && (
+              <button
+                onClick={handleNext}
+                disabled={!canGoNext()}
+                className={`flex items-center gap-1.5 px-6 py-3 font-bold uppercase text-[11px] tracking-widest rounded-[4px] shadow-md cursor-pointer ${canGoNext() ? "bg-[#E61E32] text-white hover:bg-[#b8332b]" : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"}`}
+              >
+                {step === 3 ? "Generar Usos" : step === 4 ? "Generar Hoja de Ruta" : "Continuar"}<ChevronRight size={14} />
+              </button>
+            )}
+            {step === 6 && (
+              <button onClick={() => setStep(4)} className="flex items-center gap-1.5 px-5 py-3 border border-neutral-900 text-neutral-900 hover:bg-neutral-950 hover:text-white rounded-[4px] text-[11px] font-bold uppercase cursor-pointer">
+                Ajustar Parámetros
+              </button>
+            )}
+          </div>
+        </footer>
+      )}
+
+      {step === 0 && (
+        <footer className="w-full no-print py-4 px-[1cm] border-t border-[#f2f1eb]/60 bg-gray-50/40 text-center mt-auto z-10">
+          <div className="max-w-4xl mx-auto flex flex-col md:flex-row items-center justify-between gap-4">
+            <p className="text-[10px] font-mono tracking-wide text-gray-400 uppercase">Planbim CORFO & Penn State Ecosistema Chileno</p>
+            <p className="text-[11px] text-gray-500 font-light text-right leading-relaxed max-w-2xl">
+              Este asistente parametriza la Solicitud de Información (SDI) y el Plan de Ejecución BIM (PEB) cruzando la complejidad del activo con el esfuerzo de cambio organizacional y financiero exigido.
+            </p>
+          </div>
+        </footer>
+      )}
+
+      <button onClick={() => setIsGlossaryOpen(true)} className="fixed bottom-6 right-6 z-40 bg-[#E61E32] text-white p-3.5 shadow-xl hover:bg-[#b8332b] rounded-full border border-white/15 flex items-center justify-center cursor-pointer group no-print">
+        <BookOpen size={20} />
+        <span className="max-w-0 overflow-hidden group-hover:max-w-24 group-hover:ml-2 transition-all duration-300 text-[10px] font-mono uppercase tracking-widest whitespace-nowrap">Glosario</span>
+      </button>
+
+      <Glossary isOpen={isGlossaryOpen} onClose={() => setIsGlossaryOpen(false)} />
+    </div>
+  );
+}
