@@ -1,0 +1,352 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Informe de Subsuelo — Archibots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-background:#f8fafc;--bg-card:#ffffff;--bg-muted:#f1f5f9;--bg-muted-2:#e9eef5;
+  --border-theme:#e2e8f0;--border-strong:#cbd5e1;
+  --text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;
+  --primary:#2563eb;--primary-soft:rgba(37,99,235,.12);
+  --amber:#d97706;--green:#16a34a;--green-soft:rgba(22,163,74,.12);--red:#dc2626;--red-soft:rgba(220,38,38,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.4;color:var(--text-primary);background:var(--bg-background);-webkit-font-smoothing:antialiased}
+button,select,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+
+.tool{max-width:1180px;margin:0 auto;padding:0 0 90px}
+.tool-head{position:sticky;top:0;z-index:20;background:var(--bg-card);border-bottom:1px solid var(--border-theme);padding:14px 22px;display:flex;align-items:center;gap:10px}
+.tool-head .chk{width:18px;height:18px;accent-color:var(--primary);flex:0 0 auto}
+.tool-head h1{font-size:15px;font-weight:600;flex:1}
+.tool-head .collapse{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;width:30px;height:30px;color:var(--text-secondary);font-size:13px}
+.tool-head .collapse:hover{border-color:var(--border-strong)}
+
+.section{padding:22px 22px 4px}
+.section > .s-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.section > .s-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:14px}
+.section > .s-sub.hint{color:var(--primary)}
+
+.field{margin-bottom:16px}
+.field > label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:500}
+.field input,.field select,.field textarea{width:100%;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:8px;padding:10px 12px;color:var(--text-primary);font-weight:500}
+.field input:focus,.field select:focus,.field textarea:focus{outline:none;border-color:var(--primary)}
+.field.short{max-width:240px}
+.field select{max-width:240px}
+
+.area{width:100%;min-height:74px;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:8px;padding:11px 12px;font-family:'Courier New',ui-monospace,monospace;font-size:12px;color:var(--text-primary);resize:vertical;line-height:1.55}
+.area:focus{outline:none;border-color:var(--primary)}
+
+/* ---- Horizon cards ---- */
+.horizons{display:flex;flex-direction:column;gap:14px}
+.horizon{border:1px solid var(--border-theme);border-radius:12px;padding:16px 18px;background:var(--bg-card)}
+.horizon .h-title{font-weight:600;font-size:13px;margin-bottom:13px}
+.horizon .h-grid{display:grid;grid-template-columns:1fr 160px;gap:18px;align-items:end}
+.horizon .h-grid .col-tipo label,.horizon .h-grid .col-esp label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:6px;font-weight:500}
+.horizon select,.horizon input{width:100%;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:8px;padding:10px 12px;font-weight:500}
+.horizon select{max-width:280px}
+.horizon select:focus,.horizon input:focus{outline:none;border-color:var(--primary)}
+.horizon .col-tipo{min-width:0}
+.horizon .empty-flag{font-size:11px;color:var(--text-muted);margin-top:8px;font-style:italic}
+
+/* ---- Stratigraphy preview ---- */
+.strat{margin-top:16px;border:1px solid var(--border-theme);border-radius:10px;overflow:hidden}
+.strat-head{background:var(--bg-muted);padding:8px 14px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);font-weight:600;display:grid;grid-template-columns:60px 1fr 110px 120px}
+.strat-row{display:grid;grid-template-columns:60px 1fr 110px 120px;padding:9px 14px;border-top:1px solid var(--border-theme);font-size:12.5px;align-items:center}
+.strat-row .hz{font-weight:600;color:var(--text-primary)}
+.strat-row .tp{color:var(--text-secondary)}
+.strat-row .es,.strat-row .pf{font-variant-numeric:tabular-nums;color:var(--text-secondary)}
+.strat-empty{padding:12px 14px;border-top:1px solid var(--border-theme);font-size:12px;color:var(--text-muted);font-style:italic}
+.strat-foot{padding:9px 14px;border-top:1px solid var(--border-strong);background:var(--bg-muted);font-size:12px;font-weight:600;display:flex;justify-content:space-between}
+
+/* ---- Images ---- */
+.dropzone{border:1px solid var(--border-theme);border-radius:10px;padding:14px 16px;background:var(--bg-card);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dropzone .btn-file{border:1px solid var(--border-strong);background:var(--bg-muted);border-radius:7px;padding:7px 13px;font-weight:500;color:var(--text-secondary)}
+.dropzone .btn-file:hover{background:var(--bg-muted-2)}
+.dropzone .file-status{font-size:12px;color:var(--text-muted)}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.thumb{position:relative;width:96px;height:96px;border:1px solid var(--border-theme);border-radius:8px;overflow:hidden;background:var(--bg-muted)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .rm{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(15,23,42,.7);color:#fff;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
+.note{font-size:11px;color:var(--text-muted);margin-top:8px}
+
+.aptopill{display:inline-flex;align-items:center;gap:6px;font-size:12px;font-weight:600;padding:4px 12px;border-radius:9px;margin-left:10px}
+.aptopill.si{background:var(--green-soft);color:var(--green)}
+.aptopill.no{background:var(--red-soft);color:var(--red)}
+.aptopill.cond{background:rgba(217,119,6,.14);color:var(--amber)}
+
+.floating{position:fixed;right:22px;bottom:22px;z-index:30}
+.floating .gen{background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:9px;padding:12px 22px;font-weight:600;font-size:13.5px;box-shadow:0 6px 18px rgba(37,99,235,.28)}
+.floating .gen:hover{background:#1d4ed8}
+
+.collapsed-body{display:none}
+
+@media(max-width:760px){
+  .horizon .h-grid{grid-template-columns:1fr}
+  .strat-head,.strat-row{grid-template-columns:46px 1fr 70px 80px;font-size:11.5px}
+}
+</style>
+</head>
+<body>
+<div class="tool" id="tool">
+
+  <div class="tool-head">
+    <input type="checkbox" class="chk" id="moduleOn" checked>
+    <h1>Informe simple de subsuelo</h1>
+    <button class="collapse" id="collapseBtn" title="Colapsar / expandir">⌃</button>
+  </div>
+
+  <div id="moduleBody">
+
+  <!-- DATOS DEL INFORME -->
+  <div class="section">
+    <div class="s-title">Datos del informe (completar solo si generas Informe de Subsuelo)</div>
+    <div class="field short">
+      <label>Profundidad calicata (m)</label>
+      <input id="f_calicata" type="number" step="0.01" value="1.50">
+    </div>
+  </div>
+
+  <!-- ESTRATIGRAFÍA -->
+  <div class="section">
+    <div class="s-title">Estratigrafía referencial (Horizontes)</div>
+    <div class="s-sub">Completa hasta 3 horizontes. Si dejas alguno vacío, no se incluirá en la tabla.</div>
+    <div class="horizons" id="horizons"></div>
+
+    <!-- live stratigraphy preview -->
+    <div class="strat" id="strat">
+      <div class="strat-head">
+        <div>Horiz.</div><div>Tipo de suelo</div><div>Espesor (m)</div><div>Prof. acum. (m)</div>
+      </div>
+      <div id="stratRows"></div>
+      <div class="strat-foot">
+        <span>Profundidad de calicata</span><span id="stratCalicata">1,50 m</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- PRESENCIA DE AGUA -->
+  <div class="section">
+    <div class="field short">
+      <label>Presencia de agua / napas freáticas</label>
+      <select id="f_agua"><option>No</option><option>Sí</option></select>
+    </div>
+  </div>
+
+  <!-- OBSERVACIONES -->
+  <div class="section">
+    <div class="s-title">Observaciones adicionales</div>
+    <div class="s-sub hint">Texto sugerido editable: puedes mantenerlo, modificarlo o borrarlo.</div>
+    <textarea class="area" id="f_obs">La capa superficial se compone de pasto y raíces. El terreno no presenta variaciones de pendiente</textarea>
+  </div>
+
+  <!-- APTO -->
+  <div class="section">
+    <div class="field short">
+      <label>¿Apto para edificación?<span class="aptopill si" id="aptoPill">Sí</span></label>
+      <select id="f_apto"><option>Sí</option><option>No</option><option>Condicionado</option></select>
+    </div>
+  </div>
+
+  <!-- MITIGACIÓN -->
+  <div class="section">
+    <div class="s-title">Medidas de mitigación (si aplica)</div>
+    <div class="s-sub hint">Texto sugerido editable: puedes mantenerlo, modificarlo o borrarlo.</div>
+    <textarea class="area" id="f_mit">-Se debe considerar drenaje perimetral o zanjas de infiltración si existe humedad/napa cercana.
+- Retiro de capa orgánica y compactación de subrasante antes de fundar.</textarea>
+  </div>
+
+  <!-- FOTOGRAFÍAS -->
+  <div class="section">
+    <div class="s-title">Fotografías (opcional)</div>
+    <div class="dropzone">
+      <label class="btn-file" for="imgInput">Elegir archivos</label>
+      <span class="file-status" id="fileStatus">Ningún archivo seleccionado</span>
+      <input id="imgInput" type="file" accept="image/jpeg,image/png" multiple hidden>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="note">Formatos soportados: JPG/JPEG y PNG. (HEIC no). Para seleccionar varias: mantén presionado Cmd (o Shift) al elegir, o arrastra varias a la vez.</div>
+    <div class="note" id="serialNote">Estructura serializada actualizada.</div>
+  </div>
+
+  </div>
+</div>
+
+<div class="floating">
+  <button class="gen" id="genBtn">Generar informe de subsuelo</button>
+</div>
+
+<script>
+/* ====================== TIPOS DE SUELO (7 fijos) ====================== */
+const TIPOS_SUELO = [
+  "Suelo vegetal",
+  "Limo",
+  "Arcilla",
+  "Arena",
+  "Grava",
+  "Mixto (limo y arena)",
+  "Roca",
+];
+
+/* Defaults espejo de las imágenes */
+const HORIZON_DEFAULTS = [
+  { tipo:"Suelo vegetal",        espesor:"0.20" },
+  { tipo:"Mixto (limo y arena)", espesor:"0.40" },
+  { tipo:"Limo",                 espesor:"0.90" },
+];
+
+/* ====================== STATE ====================== */
+const state = {
+  calicata: 1.50,
+  horizons: HORIZON_DEFAULTS.map(h=>({...h})),
+  agua:"No",
+  obs:"",
+  apto:"Sí",
+  mitigacion:""
+};
+
+/* ====================== RENDER HORIZONS ====================== */
+const horizonsEl=document.getElementById("horizons");
+state.horizons.forEach((h,i)=>{
+  const n=i+1;
+  const opts = `<option value="">Seleccione</option>` +
+    TIPOS_SUELO.map(t=>`<option value="${t}"${t===h.tipo?' selected':''}>${t}</option>`).join("");
+  const card=document.createElement("div");
+  card.className="horizon"; card.dataset.idx=i;
+  card.innerHTML=`
+    <div class="h-title">Horizonte H-${n}</div>
+    <div class="h-grid">
+      <div class="col-tipo">
+        <label>Tipo de suelo H-${n}</label>
+        <select data-h="${i}" data-f="tipo">${opts}</select>
+      </div>
+      <div class="col-esp">
+        <label>Espesor (m)</label>
+        <input type="number" step="0.01" min="0" value="${h.espesor}" data-h="${i}" data-f="espesor">
+      </div>
+    </div>
+    <div class="empty-flag" data-empty="${i}"></div>`;
+  horizonsEl.appendChild(card);
+});
+
+/* ====================== EVENTS ====================== */
+document.getElementById("f_calicata").addEventListener("input",e=>{
+  state.calicata = parseFloat(e.target.value)||0;
+  renderStrat();
+});
+horizonsEl.addEventListener("input",e=>{
+  const i=e.target.dataset.h; if(i===undefined) return;
+  const f=e.target.dataset.f;
+  state.horizons[i][f]= f==="espesor" ? e.target.value : e.target.value;
+  renderStrat();
+});
+document.getElementById("f_agua").addEventListener("change",e=>state.agua=e.target.value);
+document.getElementById("f_obs").addEventListener("input",e=>state.obs=e.target.value);
+document.getElementById("f_mit").addEventListener("input",e=>state.mitigacion=e.target.value);
+document.getElementById("f_apto").addEventListener("change",e=>{
+  state.apto=e.target.value;
+  const pill=document.getElementById("aptoPill");
+  const map={"Sí":"si","No":"no","Condicionado":"cond"};
+  pill.className="aptopill "+map[e.target.value];
+  pill.textContent=e.target.value;
+});
+
+/* ====================== STRATIGRAPHY PREVIEW ====================== */
+function fmt(n){ return (Math.round(n*100)/100).toFixed(2).replace(".",","); }
+function renderStrat(){
+  const rows=document.getElementById("stratRows");
+  rows.innerHTML="";
+  let acum=0, any=false;
+  state.horizons.forEach((h,i)=>{
+    const flag=document.querySelector(`[data-empty="${i}"]`);
+    const tipo=(h.tipo||"").trim();
+    const esp=parseFloat(h.espesor)||0;
+    // a horizon is included only if it has a tipo AND a positive espesor
+    if(tipo && esp>0){
+      any=true; acum+=esp;
+      const row=document.createElement("div"); row.className="strat-row";
+      row.innerHTML=`<span class="hz">H-${i+1}</span><span class="tp">${tipo}</span>
+        <span class="es">${fmt(esp)}</span><span class="pf">${fmt(acum)}</span>`;
+      rows.appendChild(row);
+      if(flag) flag.textContent="";
+    }else{
+      if(flag) flag.textContent = (tipo||h.espesor) ? "Horizonte incompleto: no se incluirá en la tabla." : "Horizonte vacío: no se incluirá en la tabla.";
+    }
+  });
+  if(!any){
+    const e=document.createElement("div"); e.className="strat-empty";
+    e.textContent="Sin horizontes completos todavía. Completa tipo y espesor para verlos aquí.";
+    rows.appendChild(e);
+  }
+  document.getElementById("stratCalicata").textContent = fmt(state.calicata)+" m";
+}
+
+/* ====================== IMAGES ====================== */
+const imgInput=document.getElementById("imgInput"),
+      thumbs=document.getElementById("thumbs"),
+      fileStatus=document.getElementById("fileStatus");
+let files=[];
+imgInput.addEventListener("change",()=>{
+  for(const f of imgInput.files){
+    if(!/image\/(jpeg|png)/.test(f.type)) continue;
+    files.push(f);
+  }
+  imgInput.value=""; renderThumbs();
+});
+function renderThumbs(){
+  thumbs.innerHTML="";
+  files.forEach((f,i)=>{
+    const url=URL.createObjectURL(f);
+    const el=document.createElement("div"); el.className="thumb";
+    el.innerHTML=`<img src="${url}"><button class="rm" data-i="${i}">×</button>`;
+    thumbs.appendChild(el);
+  });
+  fileStatus.textContent = files.length ? `${files.length} archivo(s) seleccionado(s)` : "Ningún archivo seleccionado";
+}
+thumbs.addEventListener("click",e=>{
+  if(e.target.matches(".rm")){ files.splice(+e.target.dataset.i,1); renderThumbs(); }
+});
+
+/* ====================== COLLAPSE ====================== */
+document.getElementById("collapseBtn").addEventListener("click",()=>{
+  document.getElementById("moduleBody").classList.toggle("collapsed-body");
+});
+
+/* ====================== SERIALIZE ====================== */
+function serialize(){
+  let acum=0;
+  const estrato = state.horizons
+    .map((h,i)=>({ idx:i+1, tipo:(h.tipo||"").trim(), espesor:parseFloat(h.espesor)||0 }))
+    .filter(h=>h.tipo && h.espesor>0)
+    .map(h=>{ acum+=h.espesor; return {...h, profAcum:+acum.toFixed(2)}; });
+  return {
+    moduloActivo:document.getElementById("moduleOn").checked,
+    profundidadCalicata:state.calicata,
+    estratigrafia:estrato,
+    espesorTotal:+acum.toFixed(2),
+    presenciaAgua:state.agua,
+    observaciones:document.getElementById("f_obs").value,
+    aptoEdificacion:state.apto,
+    medidasMitigacion:document.getElementById("f_mit").value,
+    fotografias:files.map(f=>f.name)
+  };
+}
+document.getElementById("genBtn").addEventListener("click",()=>{
+  const data=serialize();
+  document.getElementById("serialNote").textContent="Estructura serializada actualizada · "+new Date().toLocaleTimeString();
+  console.log("INFORME_SUBSUELO", data);
+  /* window.parent.postMessage({type:'informe-subsuelo:generar', payload:data}, '*'); */
+  alert("Informe de subsuelo serializado. Revisa la consola para ver la estructura (hook listo para generar PDF en Archibots).");
+});
+
+/* ====================== INIT ====================== */
+renderStrat();
+</script>
+</body>
+</html>

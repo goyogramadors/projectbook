@@ -1,0 +1,847 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador de Informes Térmicos — Prototipo UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-background:#f8fafc;--bg-card:#ffffff;--bg-muted:#f1f5f9;--bg-muted-2:#e9eef5;
+  --border-theme:#e2e8f0;--border-strong:#cbd5e1;
+  --text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;
+  --primary:#2563eb;--primary-soft:rgba(37,99,235,.12);
+  --amber:#d97706;--amber-soft:rgba(217,119,6,.14);
+  --green:#16a34a;--green-soft:rgba(22,163,74,.12);
+  --red:#dc2626;--red-soft:rgba(220,38,38,.10);
+  --it-header-h:56px;--it-rail-w:clamp(220px,18%,280px);--it-row-h:34px;
+  /* zonas térmicas A–I (cartografía Minvu, referencial) */
+  --z-a:#f4d03f;--z-b:#e67e22;--z-c:#c0392b;--z-d:#c2407a;--z-e:#7dcea0;
+  --z-f:#27ae60;--z-g:#85c1e9;--z-h:#3498db;--z-i:#1f4e96;
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.4;color:var(--text-primary);background:var(--bg-background);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,select,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+.app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+
+/* HEADER */
+.header{height:var(--it-header-h);min-height:var(--it-header-h);display:flex;align-items:center;justify-content:space-between;padding:0 16px;background:var(--bg-card);border-bottom:1px solid var(--border-theme)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap;min-width:0}
+.brand .glyph{color:var(--primary);font-size:16px}
+.brand .sep{color:var(--border-strong)}
+.brand .sub{font-weight:500;color:var(--text-secondary)}
+.brand .meta{font-weight:400;color:var(--text-muted);font-size:12px}
+.head-right{display:flex;align-items:center;gap:10px}
+.zonepill{display:flex;align-items:center;gap:7px;border:1px solid var(--border-theme);border-radius:20px;padding:4px 12px 4px 6px;background:var(--bg-muted);font-size:12px;color:var(--text-secondary);font-weight:500}
+.zonepill .zdot{width:16px;height:16px;border-radius:50%;border:1px solid rgba(0,0,0,.12);flex:0 0 auto}
+.zonepill b{color:var(--text-primary)}
+.gen-btn{background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:7px;padding:8px 16px;font-weight:600}
+.gen-btn:hover{filter:brightness(1.05)}
+.gen-btn:disabled{opacity:.5;cursor:not-allowed}
+
+/* BODY: rail + content */
+.body{flex:1;display:flex;min-height:0;overflow:hidden}
+.rail{width:var(--it-rail-w);min-width:var(--it-rail-w);border-right:1px solid var(--border-theme);background:var(--bg-card);overflow-y:auto;padding:8px 0}
+.rail .rail-h{font-size:11px;text-transform:uppercase;letter-spacing:.05em;color:var(--text-muted);font-weight:600;padding:8px 16px 6px}
+.step{display:flex;align-items:center;gap:10px;padding:8px 16px;cursor:pointer;border-left:2px solid transparent;color:var(--text-secondary)}
+.step:hover{background:var(--bg-muted)}
+.step.active{background:var(--primary-soft);border-left-color:var(--primary);color:var(--primary);font-weight:600}
+.step .num{width:20px;height:20px;border-radius:50%;border:1px solid var(--border-strong);display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;color:var(--text-muted);flex:0 0 auto}
+.step.active .num{border-color:var(--primary);color:var(--primary);background:var(--bg-card)}
+.step .stxt{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.step .stat{font-size:13px;flex:0 0 auto}
+.step .stat.ok{color:var(--green)}.step .stat.no{color:var(--red)}.step .stat.pend{color:var(--text-muted)}.step .stat.na{color:var(--text-muted);opacity:.6}
+.step.sub{padding-left:46px;font-size:12.5px}
+
+.content{flex:1;min-width:0;overflow-y:auto;background:var(--bg-background)}
+.pane{display:none;padding:20px 26px 90px;max-width:1180px}
+.pane.show{display:block}
+.pane h1{font-size:17px;font-weight:700;margin-bottom:4px;display:flex;align-items:center;gap:9px}
+.pane h1 .bar{width:4px;height:18px;background:var(--primary);border-radius:2px}
+.pane .lead{color:var(--text-secondary);font-size:13px;margin-bottom:6px}
+.pane .note{color:var(--text-muted);font-size:12.5px;margin-bottom:14px}
+.info{display:flex;align-items:center;gap:7px;color:var(--text-muted);font-size:12.5px;margin-bottom:14px}
+.info .i{width:16px;height:16px;border-radius:50%;border:1px solid var(--border-strong);display:inline-flex;align-items:center;justify-content:center;font-size:10px;font-style:italic}
+
+/* TODO / por completar banner */
+.todo{display:flex;align-items:flex-start;gap:9px;background:var(--amber-soft);border:1px solid rgba(217,119,6,.3);border-radius:8px;padding:10px 13px;color:#92580a;font-size:12.5px;margin-bottom:16px}
+.todo b{color:#7a4908}
+
+/* card / accordion blocks */
+.block{border:1px solid var(--border-theme);border-radius:10px;background:var(--bg-card);margin-bottom:16px;overflow:hidden}
+.block > .bhead{display:flex;align-items:center;gap:10px;padding:12px 16px;cursor:pointer;background:var(--bg-card);border-bottom:1px solid transparent}
+.block.open > .bhead{border-bottom-color:var(--border-theme)}
+.block > .bhead .chev{color:var(--text-muted);font-size:11px;transition:transform .15s}
+.block.open > .bhead .chev{transform:rotate(90deg)}
+.block > .bhead .btitle{font-weight:700;font-size:14px}
+.block > .bhead .bsub{color:var(--text-secondary);font-weight:400;font-size:12.5px}
+.block > .bhead .spacer{flex:1}
+.block > .bbody{padding:16px;display:none}
+.block.open > .bbody{display:block}
+
+/* two-column campo / puente */
+.cols2{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:980px){.cols2{grid-template-columns:1fr}}
+.colhd{font-weight:600;font-size:13px;margin-bottom:3px}
+.colsub{color:var(--text-secondary);font-size:12px;margin-bottom:10px}
+
+/* layer table */
+.ltable{width:100%;border:1px solid var(--border-theme);border-radius:8px;overflow:hidden}
+.ltable .lhead,.ltable .lrow{display:grid;grid-template-columns:26px 1fr 78px 86px;align-items:center}
+.ltable .lhead{background:var(--bg-muted);font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:600}
+.ltable .lhead > div{padding:7px 8px}
+.ltable .lrow{border-top:1px solid var(--border-theme);min-height:var(--it-row-h)}
+.ltable .lrow:nth-child(even){background:var(--bg-muted)}
+.ltable .lrow .idx{padding:8px;color:var(--text-muted);font-variant-numeric:tabular-nums}
+.ltable .lrow .mat{padding:5px 8px}
+.ltable .lrow .mat select{width:100%;border:1px solid var(--border-theme);border-radius:6px;padding:5px 7px;background:var(--bg-card);font-size:12px;color:var(--text-primary)}
+.ltable .lrow .esp{padding:5px 6px}
+.ltable .lrow .esp input{width:100%;border:1px solid var(--border-theme);border-radius:6px;padding:5px 7px;background:var(--bg-card);text-align:left;font-variant-numeric:tabular-nums}
+.ltable .lrow .acts{display:flex;gap:2px;padding:0 6px;justify-content:flex-end}
+.ltable .lrow .acts button{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:5px;width:24px;height:24px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);font-size:12px}
+.ltable .lrow .acts button:hover{border-color:var(--border-strong);color:var(--text-primary)}
+
+/* puente (read-only mirror) */
+.ptable .lrow{background:var(--bg-muted)}
+.ptable .lrow:nth-child(even){background:var(--bg-muted-2)}
+.ptable .lrow .mat{color:var(--text-secondary);font-size:12px;padding:8px}
+.ptable .lrow .esp{padding:8px;text-align:right;color:var(--text-secondary);font-variant-numeric:tabular-nums}
+.ltable .lrow.repl{background:var(--primary-soft) !important}
+.ptable .lrow.repl .mat{color:var(--text-primary);font-weight:500}
+
+.addlayer{margin-top:10px;border:1px solid var(--border-theme);background:var(--bg-card);border-radius:7px;padding:8px 14px;font-weight:500;color:var(--text-secondary)}
+.addlayer:hover{border-color:var(--border-strong)}
+
+.field{margin-bottom:12px}
+.field label{display:block;font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:600;margin-bottom:5px}
+.field select,.field input{width:100%;border:1px solid var(--border-theme);border-radius:7px;padding:7px 9px;background:var(--bg-card);color:var(--text-primary)}
+.field .hint{font-size:11.5px;color:var(--text-muted);margin-top:4px}
+.field2{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.field3{display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px}
+.field4{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+@media(max-width:760px){.field2,.field3,.field4{grid-template-columns:1fr}}
+
+.legend{font-size:12px;color:var(--text-secondary);margin-top:14px;line-height:1.7}
+.legend b{color:var(--text-primary)}
+.miss{color:var(--text-muted);font-size:12px;margin-top:10px}
+
+/* result chips */
+.results{margin-top:16px}
+.results .rh{font-size:13px;font-weight:700;margin-bottom:8px}
+.chips{display:flex;gap:8px;flex-wrap:wrap}
+.chip{display:inline-flex;align-items:center;gap:6px;border:1px solid var(--border-theme);border-radius:20px;padding:5px 13px;font-size:12.5px;color:var(--text-secondary);background:var(--bg-card)}
+.chip b{color:var(--text-primary)}
+.chip.ok{background:var(--green-soft);border-color:rgba(22,163,74,.3);color:#157a3a}
+.chip.no{background:var(--red-soft);border-color:rgba(220,38,38,.3);color:#b3261e}
+.chip.pend{color:var(--text-muted)}
+
+/* small badges */
+.vbadge{display:inline-flex;align-items:center;gap:5px;border-radius:16px;padding:3px 11px;font-size:11.5px;font-weight:500}
+.vbadge.ok{background:var(--green-soft);color:#157a3a;border:1px solid rgba(22,163,74,.3)}
+.vbadge.no{background:var(--red-soft);color:#b3261e;border:1px solid rgba(220,38,38,.3)}
+.vbadge.pend{background:var(--bg-muted);color:var(--text-muted);border:1px solid var(--border-theme)}
+
+.kv{display:grid;grid-template-columns:auto 1fr;gap:6px 24px;font-size:12.5px;margin:8px 0}
+.kv .k{color:var(--text-muted)}.kv .v{color:var(--text-primary)}
+.subcard{border:1px solid var(--border-theme);border-radius:9px;padding:14px 16px;margin-bottom:14px;background:var(--bg-card)}
+.subcard h3{font-size:13.5px;font-weight:700;margin-bottom:6px}
+.subcard .twocol{display:grid;grid-template-columns:1fr 1fr;gap:22px}
+@media(max-width:760px){.subcard .twocol{grid-template-columns:1fr}}
+.chk{display:flex;align-items:center;gap:8px;font-size:12.5px;color:var(--text-secondary);margin-bottom:8px}
+.chk input{width:16px;height:16px}
+
+/* orientation table */
+.otable{width:100%;border-collapse:collapse;font-size:12.5px;margin-top:8px}
+.otable th{background:var(--bg-muted);text-align:left;font-size:10.5px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:600;padding:8px 10px;border-bottom:1px solid var(--border-theme)}
+.otable td{padding:7px 10px;border-bottom:1px solid var(--border-theme);color:var(--text-secondary)}
+.otable td.dir{font-weight:600;color:var(--text-primary)}
+.otable input{width:84px;border:1px solid var(--border-theme);border-radius:6px;padding:5px 7px;background:var(--bg-card)}
+.otable .mini{display:inline-flex;align-items:center;border:1px solid var(--border-theme);border-radius:14px;padding:2px 9px;font-size:11px;color:var(--text-muted)}
+
+.muted{color:var(--text-muted)}
+.dash{color:var(--text-muted)}
+hr.sep{border:0;border-top:1px solid var(--border-theme);margin:18px 0}
+
+/* zona picker (paso 0) */
+.zonegrid{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:10px;margin-top:6px}
+.zcard{border:1px solid var(--border-theme);border-radius:9px;padding:12px;display:flex;align-items:center;gap:10px;cursor:pointer;background:var(--bg-card)}
+.zcard:hover{border-color:var(--border-strong)}
+.zcard.sel{border-color:var(--primary);box-shadow:0 0 0 2px var(--primary-soft)}
+.zcard .swatch{width:34px;height:34px;border-radius:7px;border:1px solid rgba(0,0,0,.12);flex:0 0 auto;display:flex;align-items:center;justify-content:center;font-weight:700;color:#fff;text-shadow:0 1px 1px rgba(0,0,0,.25)}
+.zcard .zmeta{min-width:0}
+.zcard .zmeta .zn{font-weight:700}
+.zcard .zmeta .zd{font-size:11.5px;color:var(--text-muted);overflow:hidden;text-overflow:ellipsis}
+
+.statusbar{height:28px;min-height:28px;display:flex;align-items:center;gap:10px;padding:0 16px;background:var(--bg-muted);border-top:1px solid var(--border-theme);font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden}
+.statusbar .dot{width:4px;height:4px;border-radius:50%;background:var(--border-strong)}
+</style>
+</head>
+<body>
+<div class="app">
+
+  <!-- HEADER -->
+  <header class="header">
+    <div class="brand">
+      <span class="glyph">◳</span>
+      <span>Informes Térmicos</span>
+      <span class="sep">·</span>
+      <span class="sub">RT 2025 (vigente 28-nov-2025)</span>
+      <span class="meta" id="clienteMeta">Cliente: — · Comuna: —</span>
+    </div>
+    <div class="head-right">
+      <div class="zonepill" id="zonePill" title="Zona térmica del emplazamiento">
+        <span class="zdot" id="zoneDot" style="background:var(--bg-muted-2)"></span>
+        Zona <b id="zoneLetter">—</b>
+      </div>
+      <button class="gen-btn" id="genBtn" disabled>Generar informe activo</button>
+    </div>
+  </header>
+
+  <div class="body">
+
+    <!-- STEP RAIL -->
+    <nav class="rail">
+      <div class="rail-h">Pasos del informe</div>
+      <div class="step active" data-step="0"><span class="num">0</span><span class="stxt">Zona (emplazamiento)</span><span class="stat pend">○</span></div>
+      <div class="step" data-step="1"><span class="num">1</span><span class="stxt">Envolvente · Techo</span><span class="stat pend">○</span></div>
+      <div class="step" data-step="2"><span class="num">2</span><span class="stxt">Muro</span><span class="stat pend">○</span></div>
+      <div class="step" data-step="3"><span class="num">3</span><span class="stxt">Piso</span><span class="stat pend">○</span></div>
+      <div class="step sub" data-step="3b"><span class="num">3.2</span><span class="stxt">Sobrecimientos</span><span class="stat na">—</span></div>
+      <div class="step" data-step="4"><span class="num">4</span><span class="stxt">Puerta opaca</span><span class="stat pend">○</span></div>
+      <div class="step" data-step="5"><span class="num">5</span><span class="stxt">Ventilación</span><span class="stat pend">○</span></div>
+      <div class="step" data-step="6"><span class="num">6</span><span class="stxt">Ventanas por orientación</span><span class="stat pend">○</span></div>
+      <div class="step" data-step="7"><span class="num">7</span><span class="stxt">Infiltraciones de aire</span><span class="stat pend">○</span></div>
+    </nav>
+
+    <!-- CONTENT -->
+    <main class="content">
+
+      <!-- ===== PASO 0 · ZONA ===== -->
+      <section class="pane show" data-pane="0">
+        <h1><span class="bar"></span>Zona térmica del emplazamiento</h1>
+        <p class="lead">La RT actualizada reconoce <b>9 zonas térmicas (A → I)</b>. La zona se obtiene de la <b>comuna del cliente</b> y, cuando corresponde, de la <b>altitud</b> y/o el <b>meridiano</b> del emplazamiento.</p>
+        <div class="info"><span class="i">i</span> Selecciona un cliente para obtener comuna/zona automáticamente. También puedes fijar la zona manualmente.</div>
+
+        <div class="field2">
+          <div class="field">
+            <label>Cliente</label>
+            <select id="clienteSel">
+              <option value="">— Selecciona un cliente —</option>
+              <option value="rm">Constructora Andes · Maipú (RM)</option>
+              <option value="vc">Inmobiliaria Litoral · Valparaíso</option>
+              <option value="pa">Vialidad Austral · Punta Arenas</option>
+            </select>
+            <div class="hint" id="comunaHint">Falta comuna (cliente).</div>
+          </div>
+          <div class="field" id="desempateWrap" style="display:none">
+            <label>Desempate del emplazamiento</label>
+            <div class="field2">
+              <div>
+                <select id="altitudSel"><option value="">Altitud (m.s.n.m.)</option><option>&lt; 1.000</option><option>1.000–2.000</option><option>2.000–3.000</option><option>≥ 3.000</option></select>
+              </div>
+              <div>
+                <select id="meridianoSel"><option value="">Meridiano</option><option>&gt; umbral</option><option>≤ umbral</option></select>
+              </div>
+            </div>
+            <div class="hint">Algunas comunas se reparten en 2–3 zonas según altitud/meridiano.</div>
+          </div>
+        </div>
+
+        <hr class="sep">
+        <div class="rh" style="font-size:13px;font-weight:700;margin-bottom:6px">O selecciona la zona manualmente</div>
+        <div class="zonegrid" id="zoneGrid"></div>
+      </section>
+
+      <!-- ===== PASO 1 · TECHO ===== -->
+      <section class="pane" data-pane="1">
+        <h1><span class="bar"></span>Envolvente térmica · Techo <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(Campo + Puente térmico)</span></h1>
+        <p class="lead">Para cada elemento (techo/muro/piso) se evalúan dos caminos: <b>Campo</b> (con aislación) y <b>Puente térmico</b> (estructura). El resultado se pondera por fracción de área.</p>
+        <p class="note">Los ítems preseleccionados corresponden a una vivienda de estructura de madera. Puedes editar, crear y reordenar soluciones seleccionando materiales del listado.</p>
+        <div class="info"><span class="i">i</span> ¿Cómo se valida este resultado?</div>
+
+        <div class="block open" id="bk-techo">
+          <div class="bhead"><span class="chev">▶</span><span class="btitle">Techo</span><span class="bsub">(Campo + Puente térmico)</span><span class="spacer"></span></div>
+          <div class="bbody">
+            <div class="cols2">
+              <div>
+                <div class="colhd">Campo (con aislación)</div>
+                <div class="colsub">Completa el complejo completo. INTERIOR → EXTERIOR.</div>
+                <div class="ltable">
+                  <div class="lhead"><div>#</div><div>Material</div><div>Espesor (mm)</div><div></div></div>
+                  <div data-rows="techo"></div>
+                </div>
+                <button class="addlayer" data-add="techo">+ Agregar capa</button>
+                <div class="miss">Falta comuna (cliente).</div>
+                <div class="legend">
+                  • <b>λ bajo</b>, mejor aislación térmica.<br>
+                  • <b>μ bajo</b>, mayor permeabilidad al vapor.<br>
+                  • <b>U baja</b>, mejor aislación térmica del complejo.<br>
+                  <span class="muted" style="font-size:11.5px">Pintura interior / retardador de vapor: puede reducir el paso de vapor hacia el muro y disminuir el riesgo de condensación intersticial. Su efecto depende del tipo de pintura, espesor aplicado y valor μ considerado.</span>
+                </div>
+              </div>
+              <div>
+                <div class="colhd">Puente térmico (estructura)</div>
+                <div class="colsub">Se copia desde Campo y se reemplaza <b>solo</b> la capa "relleno/aislación" por la estructura.</div>
+                <div class="ltable ptable">
+                  <div class="lhead"><div>#</div><div>Material</div><div style="text-align:right">Espesor (mm)</div></div>
+                  <div data-prows="techo"></div>
+                </div>
+                <div class="field2" style="margin-top:14px">
+                  <div class="field"><label>Reemplazar capa #</label><select data-repl="techo"></select></div>
+                  <div class="field"><label>Fracción puente (%)</label><input type="number" value="10" data-frac="techo"></div>
+                </div>
+                <div class="field"><label>Estructura (material)</label>
+                  <select data-struct="techo"><option>madera · Pino · λ 0.13 W/m·K · ρ 500 kg/m³ · μ 20–50 · ISO 10456</option><option>metales · Acero · λ 50 W/m·K · ρ 7800 kg/m³ · ISO 10456</option><option>hormigón · H20 · λ 1.63 W/m·K · ρ 2100 kg/m³ · μ 44 · DITEC</option></select>
+                  <div class="hint">Ej: madera / acero / hormigón.</div>
+                </div>
+              </div>
+            </div>
+            <div class="results">
+              <div class="rh">Resultado techo (ponderado)</div>
+              <div class="chips">
+                <span class="chip">U: <b class="dash">—</b></span>
+                <span class="chip pend">Cond. superficial: <span class="dash">—</span></span>
+                <span class="chip pend">Cond. intersticial: <span class="dash">—</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PASO 2 · MURO ===== -->
+      <section class="pane" data-pane="2">
+        <h1><span class="bar"></span>Muro <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(Campo + Puente térmico)</span></h1>
+        <p class="lead">Mismo método que el techo: Campo completo y Puente térmico (estructura), ponderados por fracción de área.</p>
+        <div class="block open" id="bk-muro">
+          <div class="bhead"><span class="chev">▶</span><span class="btitle">Muro</span><span class="bsub">(Campo + Puente térmico)</span><span class="spacer"></span></div>
+          <div class="bbody">
+            <div class="cols2">
+              <div>
+                <div class="colhd">Campo (con aislación)</div>
+                <div class="colsub">Completa el complejo completo. INTERIOR → EXTERIOR.</div>
+                <div class="ltable">
+                  <div class="lhead"><div>#</div><div>Material</div><div>Espesor (mm)</div><div></div></div>
+                  <div data-rows="muro"></div>
+                </div>
+                <button class="addlayer" data-add="muro">+ Agregar capa</button>
+                <div class="miss">Falta comuna (cliente).</div>
+                <div class="legend">
+                  • <b>λ bajo</b>, mejor aislación térmica.<br>
+                  • <b>μ bajo</b>, mayor permeabilidad al vapor.<br>
+                  • <b>U baja</b>, mejor aislación térmica del complejo.
+                </div>
+              </div>
+              <div>
+                <div class="colhd">Puente térmico (estructura)</div>
+                <div class="colsub">Se copia desde Campo y se reemplaza <b>solo</b> la capa "relleno/aislación" por la estructura.</div>
+                <div class="ltable ptable">
+                  <div class="lhead"><div>#</div><div>Material</div><div style="text-align:right">Espesor (mm)</div></div>
+                  <div data-prows="muro"></div>
+                </div>
+                <div class="field2" style="margin-top:14px">
+                  <div class="field"><label>Reemplazar capa #</label><select data-repl="muro"></select></div>
+                  <div class="field"><label>Fracción puente (%)</label><input type="number" value="10" data-frac="muro"></div>
+                </div>
+                <div class="field"><label>Estructura (material)</label>
+                  <select data-struct="muro"><option>madera · Pino · λ 0.13 W/m·K · ρ 500 kg/m³ · μ 20–50 · ISO 10456</option><option>metales · Acero · λ 50 W/m·K · ρ 7800 kg/m³ · ISO 10456</option><option>hormigón · H20 · λ 1.63 W/m·K · ρ 2100 kg/m³ · μ 44 · DITEC</option></select>
+                  <div class="hint">Ej: madera / acero / hormigón.</div>
+                </div>
+              </div>
+            </div>
+            <div class="results">
+              <div class="rh">Resultado muro (ponderado)</div>
+              <div class="chips">
+                <span class="chip">U: <b class="dash">—</b></span>
+                <span class="chip pend">Cond. superficial: <span class="dash">—</span></span>
+                <span class="chip pend">Cond. intersticial: <span class="dash">—</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PASO 3 · PISO + SOBRECIMIENTOS ===== -->
+      <section class="pane" data-pane="3">
+        <h1><span class="bar"></span>Piso <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(Campo + Puente térmico)</span></h1>
+        <div class="chk"><input type="checkbox" id="pisoRadier"><label for="pisoRadier">Desactivar bloque Piso cuando es radier</label></div>
+        <div class="block open" id="bk-piso">
+          <div class="bhead"><span class="chev">▶</span><span class="btitle">Piso</span><span class="bsub">(Campo + Puente térmico)</span><span class="spacer"></span></div>
+          <div class="bbody">
+            <div class="cols2">
+              <div>
+                <div class="colhd">Campo (con aislación)</div>
+                <div class="colsub">Completa el complejo completo. INTERIOR → EXTERIOR.</div>
+                <div class="ltable">
+                  <div class="lhead"><div>#</div><div>Material</div><div>Espesor (mm)</div><div></div></div>
+                  <div data-rows="piso"></div>
+                </div>
+                <button class="addlayer" data-add="piso">+ Agregar capa</button>
+                <div class="miss">Falta comuna (cliente).</div>
+                <div class="legend">
+                  • <b>λ bajo</b>, mejor aislación térmica.<br>
+                  • <b>μ bajo</b>, mayor permeabilidad al vapor.<br>
+                  • <b>U baja</b>, mejor aislación térmica del complejo.
+                </div>
+              </div>
+              <div>
+                <div class="colhd">Puente térmico (estructura)</div>
+                <div class="colsub">Se copia desde Campo y se reemplaza <b>solo</b> la capa "relleno/aislación" por la estructura.</div>
+                <div class="ltable ptable">
+                  <div class="lhead"><div>#</div><div>Material</div><div style="text-align:right">Espesor (mm)</div></div>
+                  <div data-prows="piso"></div>
+                </div>
+                <div class="field2" style="margin-top:14px">
+                  <div class="field"><label>Reemplazar capa #</label><select data-repl="piso"></select></div>
+                  <div class="field"><label>Fracción puente (%)</label><input type="number" value="10" data-frac="piso"></div>
+                </div>
+                <div class="field"><label>Estructura (material)</label>
+                  <select data-struct="piso"><option>madera · Pino · λ 0.13 W/m·K · ρ 500 kg/m³ · μ 20–50 · ISO 10456</option><option>metales · Acero · λ 50 W/m·K · ρ 7800 kg/m³ · ISO 10456</option><option>hormigón · H20 · λ 1.63 W/m·K · ρ 2100 kg/m³ · μ 44 · DITEC</option></select>
+                  <div class="hint">Ej: madera / acero / hormigón.</div>
+                </div>
+              </div>
+            </div>
+            <div class="results">
+              <div class="rh">Resultado piso (ponderado)</div>
+              <div class="chips">
+                <span class="chip">U: <b class="dash">—</b></span>
+                <span class="chip pend">Cond. superficial: <span class="dash">—</span></span>
+                <span class="chip pend">Cond. intersticial: <span class="dash">—</span></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <!-- 3.2 Sobrecimientos -->
+        <h1 style="margin-top:24px"><span class="bar"></span>Sobrecimientos — Acreditación térmica <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(Tabla 6)</span></h1>
+        <div class="subcard">
+          <div class="chk"><input type="checkbox" id="scAplica" checked><label for="scAplica"><b>Aplica para este proyecto.</b> Si no existen sobrecimientos, desmarca. El informe indicará "No aplica".</label></div>
+          <p class="note">Se acredita por R100 mínimo del material aislante usado en los sobrecimientos de pisos sobre terreno. Se verifica según la zona térmica (Tabla 6). No requiere cálculos del usuario: se declara por especificación constructiva y/o ficha técnica.</p>
+          <div class="twocol">
+            <div>
+              <h3>Solución de referencia</h3>
+              <div class="kv">
+                <span class="k">Material:</span><span class="v">EPS (poliestireno expandido)</span>
+                <span class="k">Conductividad:</span><span class="v">0.0384 W/m·K (referencia)</span>
+                <span class="k">Fórmula:</span><span class="v">R100 = (e/λ) × 100, con e en metros</span>
+              </div>
+            </div>
+            <div>
+              <h3>Validación normativa</h3>
+              <p class="note">Exigencia según Tabla 6 (Aislación térmica de sobrecimiento) para la zona térmica del proyecto.</p>
+              <p style="font-size:12.5px;margin-bottom:8px">Requisito (Tabla 6): R100 ≥ <b>91</b> (zonas F–I) · ≥ <b>45</b> (zonas B–E)</p>
+              <span class="vbadge no">NO OK · EPS 30 mm · R100≈78</span>
+              <p class="note" style="margin-top:8px">Validación automática: R100=(e/λ)×100 con λ=0.0384 y e=30 mm. <span class="muted">Umbral exacto por zona: <b>POR COMPLETAR</b>.</span></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PASO 4 · PUERTA OPACA ===== -->
+      <section class="pane" data-pane="4">
+        <h1><span class="bar"></span>Puerta opaca — Acreditación térmica <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(Tabla 10)</span></h1>
+        <p class="lead">Este ítem no requiere inputs: se valida por ficha técnica acreditada y por la exigencia U/Rt de la Tabla 10 según zona térmica. El valor se utilizará luego en el PDF final.</p>
+        <div class="subcard">
+          <div class="twocol">
+            <div>
+              <h3>Ficha de referencia</h3>
+              <div class="kv">
+                <span class="k">Código ficha:</span><span class="v">3.1.P.M.0.01 (DITEC)</span>
+                <span class="k">Descripción:</span><span class="v">Puerta 1 hoja 0,8×2,0 m</span>
+                <span class="k">Transmitancia (U):</span><span class="v">1.70 W/m²·K</span>
+                <span class="k">Resistencia (Rt):</span><span class="v">0.59 m²·K/W</span>
+              </div>
+            </div>
+            <div>
+              <h3>Validación normativa</h3>
+              <p class="note">Exigencia según Tabla 10 (Complejo de puertas opacas) para la zona térmica del proyecto.</p>
+              <p style="font-size:12.5px;margin-bottom:8px">Requisito (Tabla 10): U ≤ 1.70 · Rt ≥ 0.59</p>
+              <span class="vbadge ok">OK · U=1.70 · Rt=0.59</span>
+              <p class="note" style="margin-top:8px">Validación automática: se compara la ficha DITEC con la exigencia de Tabla 10 para la zona. <span class="muted">Umbral por zona: <b>POR COMPLETAR</b>.</span></p>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ===== PASO 5 · VENTILACIÓN ===== -->
+      <section class="pane" data-pane="5">
+        <h1><span class="bar"></span>Ventilación — Evaluación <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(NCh 3309)</span></h1>
+        <p class="lead">Cálculo automático según NCh 3309: caudal total mínimo (Q<sub>tot</sub>) en función de superficie y dormitorios, más extracción local bajo demanda para cocina y baños.</p>
+        <div class="subcard">
+          <div class="field4">
+            <div class="field"><label>Superficie interior a ventilar (m²)</label><input id="vSup" placeholder="Ej: 150" value="150"><div class="hint">Si no viene del cliente, ingrésala aquí.</div></div>
+            <div class="field"><label>Dormitorios</label><input id="vDorm" placeholder="Ej: 3" value="5"><div class="hint">Se sincroniza con "Dormitorios" del bloque de ventanas.</div></div>
+            <div class="field"><label>Baños</label><input id="vBan" placeholder="Ej: 2" value="5"></div>
+            <div class="field"><label>Cocinas</label><input id="vCoc" value="1"></div>
+          </div>
+          <div id="ventResults"></div>
+        </div>
+      </section>
+
+      <!-- ===== PASO 6 · VENTANAS ===== -->
+      <section class="pane" data-pane="6">
+        <h1><span class="bar"></span>Ventanas por orientación <span style="font-weight:400;color:var(--text-secondary);font-size:14px">(Tablas 3, 5 y 12)</span></h1>
+        <p class="lead">Define una ventana tipo y completa superficies de muros y ventanas por orientación. El sistema evalúa el % máximo permitido según zona y el desempeño térmico de la ventana.</p>
+        <p class="note"><b>Upvm</b>: transmitancia ponderada ventana-muro. <b>Uw</b>: transmitancia térmica de la ventana. <b>Permeabilidad al aire</b>: clase mínima exigida a 100 Pa según zona térmica.</p>
+        <div class="subcard">
+          <div class="field3" style="align-items:end">
+            <div class="field"><label>Tipo de ventana (proyecto)</label>
+              <select id="ventanaTipo"></select>
+            </div>
+            <div class="field"><label>% Vidrio</label><input value="70"></div>
+            <div class="field"><label>% Marco</label><input value="30"><div class="hint">Marco = 100 − vidrio.</div></div>
+          </div>
+          <p class="note">Proporción asumida: 70% vidrio y 30% marco (según fichas). En el método detallado se usa el alto visible del marco.</p>
+          <span class="vbadge no" id="permBadge">Permeabilidad NO OK · Clase 4 (mín POR COMPLETAR)</span>
+          <p class="note" id="ventanaNota" style="margin-top:6px">Se exige clase mínima a 100 Pa.</p>
+
+          <table class="otable">
+            <thead><tr><th>Orientación</th><th>Sup. muros (m²)</th><th>Sup. ventanas (m²)</th><th>% vent/muro</th><th>Estado</th><th>Upvm</th><th>Uw</th></tr></thead>
+            <tbody>
+              <tr><td class="dir">Norte</td><td><input placeholder="m²"></td><td><input placeholder="m²"></td><td class="dash">—</td><td><span class="mini">Pendiente</span></td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td class="dir">Oriente</td><td><input placeholder="m²"></td><td><input placeholder="m²"></td><td class="dash">—</td><td><span class="mini">Pendiente</span></td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td class="dir">Poniente</td><td><input placeholder="m²"></td><td><input placeholder="m²"></td><td class="dash">—</td><td><span class="mini">Pendiente</span></td><td class="dash">—</td><td class="dash">—</td></tr>
+              <tr><td class="dir">Sur</td><td><input placeholder="m²"></td><td><input placeholder="m²"></td><td class="dash">—</td><td><span class="mini">Pendiente</span></td><td class="dash">—</td><td class="dash">—</td></tr>
+            </tbody>
+          </table>
+          <div class="chk" style="margin-top:12px"><input type="checkbox" id="metDet"><label for="metDet">Método detallado por orientación</label></div>
+          <p class="note">Selecciona un cliente para obtener comuna/zona. <span class="muted">% máximos por zona/orientación (Tablas 3, 5, 12): <b>POR COMPLETAR</b>.</span></p>
+        </div>
+      </section>
+
+      <!-- ===== PASO 7 · INFILTRACIONES ===== -->
+      <section class="pane" data-pane="7">
+        <h1><span class="bar"></span>Infiltraciones de aire — Resumen normativo</h1>
+        <p class="lead">Estos ítems se evalúan automáticamente mediante especificaciones constructivas y fichas técnicas acreditadas. El usuario no debe ingresar datos ni realizar cálculos.</p>
+
+        <div class="subcard">
+          <h3>De envolvente térmica del proyecto</h3>
+          <span class="vbadge ok" id="envBadge">Cumple por especificación constructiva</span>
+          <p class="note" style="margin-top:8px">La normativa permite, cuando no se dispone de ensayo en terreno (NCh 3295), cumplir esta exigencia mediante la definición de sellos constructivos en las Especificaciones Técnicas. <b>Se cumple cuando los cinco sellos están especificados.</b></p>
+          <div id="sellos" style="margin:8px 0 0 2px">
+            <div class="chk"><input type="checkbox" class="sello" checked><label>Encuentros entre muros, losas y elementos estructurales</label></div>
+            <div class="chk"><input type="checkbox" class="sello" checked><label>Uniones de elementos de distinta materialidad</label></div>
+            <div class="chk"><input type="checkbox" class="sello" checked><label>Perforaciones de instalaciones</label></div>
+            <div class="chk"><input type="checkbox" class="sello" checked><label>Encuentros de solera inferior y superior</label></div>
+            <div class="chk"><input type="checkbox" class="sello" checked><label>Dispositivos de ventilación y ductos</label></div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <h3>De puertas exteriores — Permeabilidad al aire</h3>
+          <span class="vbadge ok" id="puertaBadge">Cumple exigencia normativa</span>
+          <p class="note" style="margin-top:8px">El proyecto considera una puerta exterior acreditada mediante ficha técnica DITEC <b>3.1.P.A.2</b>, con clasificación conforme a NCh 3296 / NCh 3297. <b>Cumple cuando la clase certificada ≥ clase mínima de la zona.</b></p>
+          <div class="field2" style="margin-top:8px;max-width:520px">
+            <div class="field"><label>Clase certificada (puerta)</label>
+              <select id="puertaClase"><option value="1">Clase 1 (100 Pa)</option><option value="2">Clase 2 (100 Pa)</option><option value="3" selected>Clase 3 (100 Pa)</option><option value="4">Clase 4 (100 Pa)</option></select>
+            </div>
+            <div class="field"><label>Clase mínima exigida (zona)</label>
+              <select id="puertaMin"><option value="">POR COMPLETAR</option><option value="1">Clase 1</option><option value="2">Clase 2</option><option value="3">Clase 3</option><option value="4">Clase 4</option></select>
+              <div class="hint">Cargar desde tabla RT por zona.</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="subcard">
+          <h3>De ventanas — Permeabilidad al aire</h3>
+          <span class="vbadge no" id="ventBadge">No cumple exigencia normativa</span>
+          <p class="note" style="margin-top:8px">Evaluación por complejo de ventana homologado, ficha acreditada 3.1.V.A.37 (DITEC), homologada por equivalencia térmica; no existe ficha oficial específica con Low-E. <b>Cumple cuando la clase certificada ≥ clase mínima de la zona.</b></p>
+          <div class="field2" style="margin-top:8px;max-width:520px">
+            <div class="field"><label>Clase certificada (ventana)</label>
+              <select id="ventClase"><option value="1">Clase 1 (100 Pa)</option><option value="2">Clase 2 (100 Pa)</option><option value="3">Clase 3 (100 Pa)</option><option value="4" selected>Clase 4 (100 Pa)</option></select>
+            </div>
+            <div class="field"><label>Clase mínima exigida (zona)</label>
+              <select id="ventMin"><option value="">POR COMPLETAR</option><option value="1">Clase 1</option><option value="2">Clase 2</option><option value="3">Clase 3</option><option value="4">Clase 4</option></select>
+              <div class="hint">Cargar desde tabla RT por zona.</div>
+            </div>
+          </div>
+          <p class="note" style="margin-top:6px muted"><span class="muted">Mientras la clase mínima por zona esté <b>POR COMPLETAR</b>, una homologación sin ficha oficial específica se marca "No cumple" por precaución (criterio del ejemplo de la web).</span></p>
+        </div>
+      </section>
+
+    </main>
+  </div>
+
+  <div class="statusbar">
+    <span id="sbZona">Zona: — · Comuna: —</span><span class="dot"></span>
+    <span>RT vigente desde 28-nov-2025</span><span class="dot"></span>
+    <span>Tablas de exigencia: POR COMPLETAR</span><span class="dot"></span>
+    <span>Materiales: 204 · 25 categorías</span>
+  </div>
+</div>
+
+<script>
+const CATALOGO = {"Agua / nieve / hielo": ["agua · agua a 10 °C · λ 0.6 W/m·K · ρ 1000 kg/m³ · ISO 10456", "agua · agua a 40 °C · λ 0.63 W/m·K · ρ 990 kg/m³ · ISO 10456", "agua · agua a 80 °C · λ 0.67 W/m·K · ρ 970 kg/m³ · ISO 10456", "agua · hielo a -10 °C · λ 2.3 W/m·K · ρ 920 kg/m³ · ISO 10456", "agua · hielo a 0 °C · λ 2.2 W/m·K · ρ 900 kg/m³ · ISO 10456", "agua · nieve, compactada (< 200 mm) · λ 0.6 W/m·K · ρ 500 kg/m³ · ISO 10456", "agua · nieve, levemente compactada (70 a 100 mm) · λ 0.23 W/m·K · ρ 300 kg/m³ · ISO 10456", "agua · nieve, recién caída (< 30 mm) · λ 0.05 W/m·K · ρ 100 kg/m³ · ISO 10456", "agua · nieve, suave (30 a 70 mm) · λ 0.12 W/m·K · ρ 200 kg/m³ · ISO 10456"], "Asfaltos y bitúmenes": ["Asfalto · Asfalto · λ 0.7 W/m·K · ρ 2100 kg/m³ · μ 50000 · ISO 10456", "Bitumen · Fieltro/lámina · λ 0.23 W/m·K · ρ 1100 kg/m³ · μ 50000 · ISO 10456", "Bitumen · Puro · λ 0.17 W/m·K · ρ 1050 kg/m³ · μ 50000 · ISO 10456"], "Baldosas y cerámicos": ["Baldosas · cerámica/porcelana · λ 1.3 W/m·K · ρ 2300 kg/m³ · ISO 10456", "Baldosas · Plástica · λ 0.2 W/m·K · ρ 1000 kg/m³ · μ 10000 · ISO 10456"], "Cámaras de aire y gases": ["Capa de aire · Cámara de aire no ventilada · Sd 0.01 m · NCh 853 / NCh 1973", "Gases · aire · λ 0.025 W/m·K · ρ 1 kg/m³ · μ 1 · ISO 10456", "Gases · argón · λ 0.017 W/m·K · ρ 2 kg/m³ · μ 1 · ISO 10456", "Gases · dióxido de carbono · λ 0.014 W/m·K · ρ 2 kg/m³ · μ 1 · ISO 10456", "Gases · Hexafloruro de azufre · λ 0.013 W/m·K · ρ 6 kg/m³ · μ 1 · ISO 10456", "Gases · kriptón · λ 0.009 W/m·K · ρ 4 kg/m³ · μ 1 · ISO 10456", "Gases · xenón · λ 0.005 W/m·K · ρ 6 kg/m³ · μ 1 · ISO 10456"], "Cauchos": ["Caucho · Butadieno · λ 0.25 W/m·K · ρ 980 kg/m³ · μ 100000 · ISO 10456", "Caucho · Butilo, (isobutano), sólido/caliente derretido · λ 0.24 W/m·K · ρ 1200 kg/m³ · μ 200000 · ISO 10456", "Caucho · Caucho duro (ebonita), sólido · λ 0.17 W/m·K · ρ 1200 kg/m³ · ISO 10456", "Caucho · EPDM · λ 0.25 W/m·K · ρ 1150 kg/m³ · μ 6000 · ISO 10456", "Caucho · Espuma de caucho · λ 0.06 W/m·K · μ 7000 · ISO 10456", "Caucho · Natural · λ 0.13 W/m·K · ρ 910 kg/m³ · μ 10000 · ISO 10456", "Caucho · Neopreno (policloropreno) · λ 0.23 W/m·K · ρ 1240 kg/m³ · μ 10000 · ISO 10456", "Caucho · Poliisobutileno · λ 0.2 W/m·K · ρ 930 kg/m³ · μ 10000 · ISO 10456", "Caucho · Polisulfuro · λ 0.4 W/m·K · ρ 1700 kg/m³ · μ 10000 · ISO 10456"], "Adhesivos, revoques y estucos": ["DITEC · Adhesivo EIFS · μ 60 · DITEC", "DITEC · Espuma niveladora · μ 3029 · DITEC", "DITEC · Estuco cemento (18% agua) · λ 1.4 W/m·K · μ 32 · DITEC", "DITEC · Estuco EIFS · μ 13 · DITEC", "DITEC · Revoque fino de tierra (2½ arena gruesa, 1½ arena fina, 1 arcilla y agua) · λ 0.55 W/m·K · μ 13 · DITEC", "DITEC · Revoque grueso de tierra (2½ arena gruesa, 1½ arena fina, 1 arcilla, ½ paja, 1 agua) · λ 0.74 W/m·K · μ 17 · DITEC"], "Aislantes térmicos": ["DITEC · Celulosa proyectada ρ = 75 kg/m³ · λ 0.04 W/m·K · ρ 75 kg/m³ · μ 3 · DITEC", "DITEC · Corcho aglomerado ρ = 105-125 kg/m³ · λ 0.046 W/m·K · μ 16 · DITEC", "DITEC · EPS ρ = 10 kg/m³ - archipex · λ 0.043 W/m·K · ρ 10 kg/m³ · μ 31 · DITEC", "DITEC · EPS ρ = 15 kg/m³ - archipex · λ 0.041 W/m·K · ρ 15 kg/m³ · μ 35 · DITEC", "DITEC · EPS ρ = 20 kg/m³ - archipex · λ 0.038 W/m·K · ρ 20 kg/m³ · μ 38 · DITEC", "DITEC · EPS ρ = 25 kg/m³ - archipex · λ 0.038 W/m·K · ρ 25 kg/m³ · μ 46 · DITEC", "DITEC · EPS ρ = 30 kg/m³ - archipex · λ 0.036 W/m·K · ρ 30 kg/m³ · μ 55 · DITEC", "DITEC · Fibra de poliéster ρ = 8 kg/m³ · λ 0.06 W/m·K · ρ 8 kg/m³ · μ 2 · DITEC", "DITEC · Lana de oveja ρ = 12 kg/m³ · λ 0.043 W/m·K · ρ 12 kg/m³ · μ 2 · DITEC", "DITEC · Lana de vidrio en colchoneta con papel a 1 cara ρ = 35 kg/m³ · λ 0.042 W/m·K · ρ 35 kg/m³ · μ 4 · DITEC", "DITEC · Lana de vidrio ρ = 11 kg/m³ · λ 0.042 W/m·K · ρ 11 kg/m³ · μ 5 · DITEC", "DITEC · Lana mineral en colchoneta ρ = 36 kg/m³ · λ 0.042 W/m·K · ρ 36 kg/m³ · μ 11 · DITEC", "DITEC · Lana vidrio en rollo ρ = 12 kg/m³ · λ 0.042 W/m·K · ρ 12 kg/m³ · μ 2 · DITEC", "DITEC · Poliuretano proyectado, ρ = 9,5 kg/m³ · λ 0.1 W/m·K · μ 14 · DITEC"], "Revestimientos y enchapes": ["DITEC · Enchape cerámico · λ 1.75 W/m·K · μ 308 · DITEC", "DITEC · Enchape de madera contrachapada con resina fenólica ρ = 595 kg/m³ · λ 0.23 W/m·K · ρ 595 kg/m³ · μ 134 · DITEC", "DITEC · Enchape de madera contrachapada con resina ureica ρ = 635 kg/m³ · λ 0.23 W/m·K · ρ 635 kg/m³ · μ 207 · DITEC", "DITEC · Revestimiento exterior de fibrocemento tinglado · λ 0.23 W/m·K · μ 139 · DITEC"], "Placas y tableros cementicios": ["DITEC · Fibrocemento ρ = 1250 kg/m³ · λ 0.23 W/m·K · ρ 1250 kg/m³ · μ 194 · DITEC", "DITEC · Fibrocemento ρ = 1350 kg/m³ · λ 0.23 W/m·K · ρ 1350 kg/m³ · μ 200 · DITEC", "DITEC · OSB ρ = 648 kg/m³ · λ 0.14 W/m·K · ρ 648 kg/m³ · μ 371 · DITEC", "DITEC · PaintPanel · λ 0.14 W/m·K · μ 286 · DITEC", "DITEC · Placa de fibra de madera MDF ρ = 620 kg/m³ · λ 0.23 W/m·K · ρ 620 kg/m³ · μ 20 · DITEC", "DITEC · placa de fibrosilicato ρ = 910 kg/m³ · λ 0.23 W/m·K · ρ 910 kg/m³ · μ 31 · DITEC", "DITEC · Placa de madera contrachapada ρ = 550 kg/m³ · λ 0.23 W/m·K · ρ 550 kg/m³ · μ 51 · DITEC", "DITEC · SmartPanel · λ 0.14 W/m·K · μ 316 · DITEC"], "Barreras y membranas": ["DITEC · Fieltro M-1: 10-40 · μ 536 · DITEC", "DITEC · Fieltro M-2: 15-40 (N°15) · μ 365 · DITEC", "DITEC · Fieltro M-3: 15 Libras · μ 294 · DITEC", "DITEC · Impermeabilizante · μ 4545 · DITEC", "DITEC · Klober · μ 549 · DITEC", "DITEC · Papel decomural vinílico 240 g/m² · μ 1538 · DITEC", "DITEC · Papel Kraft librería 110 g/m² · μ 690 · DITEC", "DITEC · Polietileno · μ 151800 · DITEC", "DITEC · Typar · μ 1690 · DITEC", "DITEC · Typro · μ 253 · DITEC", "DITEC · Tyvek homewrap · μ 1761 · DITEC", "DITEC · Volcán Wrap · μ 125839 · DITEC", "Producto/material · Lámina de aluminio 0,05 mm · Sd 1500 m · ISO 10456", "Producto/material · Lámina de PE 0,15 mm · Sd 8 m · ISO 10456", "Producto/material · Lámina de poliester 0,2 mm · Sd 50 m · ISO 10456", "Producto/material · Lámina de PVC · Sd 30 m · ISO 10456", "Producto/material · membrana respirable · Sd 0.2 m · ISO 10456", "Producto/material · Papel bituminoso 0,1 mm · Sd 2 m · ISO 10456", "Producto/material · Papel de aluminio 0,4 mm · Sd 10 m · ISO 10456", "Producto/material · Papel mural vinílico · Sd 2 m · ISO 10456", "Producto/material · Pintura - emulsión · Sd 0.1 m · ISO 10456", "Producto/material · Pintura - gloss · Sd 3 m · ISO 10456", "Producto/material · Polietileno 0,15 mm · Sd 50 m · ISO 10456", "Producto/material · Polietileno 0,25 mm · Sd 100 m · ISO 10456"], "Hormigones y morteros": ["DITEC · Hormigón premezclado H20 (3L agua por saco) ρ = 2100 kg/m³ · λ 1.63 W/m·K · ρ 2100 kg/m³ · μ 44 · DITEC", "DITEC · Mortero de pega albañilería (21,6% agua) · λ 1.4 W/m·K · μ 21 · DITEC", "DITEC · Mortero de pega para pisos (5L agua por saco) ρ = 1800 kg/m³ · λ 1.4 W/m·K · ρ 1800 kg/m³ · μ 17 · DITEC", "Hormigón · Armado (1% de acero) · λ 2.3 W/m·K · ρ 2300 kg/m³ · μ 80–130 · ISO 10456", "Hormigón · Armado (2% de acero) · λ 2.5 W/m·K · ρ 2400 kg/m³ · μ 80–130 · ISO 10456", "Hormigón · Densidad alta · λ 2 W/m·K · ρ 2400 kg/m³ · μ 80–130 · ISO 10456", "Hormigón · Densidad media · λ 1.15 W/m·K · ρ 1800 kg/m³ · μ 60–100 · ISO 10456", "Hormigón · Densidad media · λ 1.35 W/m·K · ρ 2000 kg/m³ · μ 60–100 · ISO 10456", "Hormigón · Densidad media · λ 1.65 W/m·K · ρ 2200 kg/m³ · μ 70–120 · ISO 10456"], "Albañilería y ladrillos": ["DITEC · Ladrillo fiscal ρ = 1500 kg/m³ · λ 0.5 W/m·K · ρ 1500 kg/m³ · μ 9 · DITEC", "LOSCAT · Ladrillo cerámico hueco Santiago 9 · λ 0.264 W/m·K · ρ 980 kg/m³ · μ 10 · LOSCAT"], "Maderas": ["DITEC · Pino insigne ρ = 410 kg/m³ · λ 0.104 W/m·K · ρ 410 kg/m³ · μ 64 · DITEC", "DITEC · Terciado ranurado ρ = 570 kg/m³ · λ 0.23 W/m·K · ρ 570 kg/m³ · μ 293 · DITEC", "madera · Pino · λ 0.12 W/m·K · ρ 450 kg/m³ · μ 20–50 · ISO 10456", "madera · Pino · λ 0.13 W/m·K · ρ 500 kg/m³ · μ 20–50 · ISO 10456", "madera · Pino · λ 0.18 W/m·K · ρ 700 kg/m³ · μ 50–200 · ISO 10456"], "Pinturas y barnices": ["DITEC · Pintura barniz marino, 2 manos · μ 127600 · DITEC", "DITEC · Pintura esmalte al agua (10 micras) · μ 127160 · DITEC", "DITEC · Pintura esmalte al agua, 2 manos · μ 90900 · DITEC", "DITEC · Pintura látex acrílico (10 micras) · μ 33440 · DITEC", "DITEC · Pintura óleo brillante, 2 manos · μ 162400 · DITEC", "DITEC · Pintura piscina, 2 manos · μ 313600 · DITEC"], "Recubrimientos de piso": ["DITEC · Piso flotante, e = 6 mm · λ 0.103 W/m·K · μ 1197 · DITEC", "Recubrimientos de piso · alfombra / recubrimiento textil · λ 0.06 W/m·K · ρ 200 kg/m³ · μ 5 · ISO 10456", "Recubrimientos de piso · Caucho · λ 0.17 W/m·K · ρ 1200 kg/m³ · μ 10000 · ISO 10456", "Recubrimientos de piso · caucho celular o plástico sobre radier · λ 0.1 W/m·K · ρ 270 kg/m³ · μ 10000 · ISO 10456", "Recubrimientos de piso · corcho sobre radier · λ 0.05 W/m·K · μ 10–20 · ISO 10456", "Recubrimientos de piso · corcho, palmetas · λ 0.065 W/m·K · μ 20–40 · ISO 10456", "Recubrimientos de piso · fieltro sobre radier · λ 0.05 W/m·K · ρ 120 kg/m³ · μ 15–20 · ISO 10456", "Recubrimientos de piso · lana sobre radier · λ 0.06 W/m·K · ρ 200 kg/m³ · μ 15–20 · ISO 10456", "Recubrimientos de piso · linóleo · λ 0.17 W/m·K · ρ 1200 kg/m³ · μ 800–1000 · ISO 10456", "Recubrimientos de piso · Plástico · λ 0.25 W/m·K · ρ 1700 kg/m³ · μ 10000 · ISO 10456"], "Yeso-cartón y placas de yeso": ["DITEC · Yeso cartón RF ρ = 840 kg/m³ · λ 0.31 W/m·K · ρ 840 kg/m³ · μ 12 · DITEC", "DITEC · Yeso cartón RH ρ = 760 kg/m³ · λ 0.26 W/m·K · ρ 760 kg/m³ · μ 11 · DITEC", "DITEC · Yeso Cartón ST ρ = 750 kg/m³ · λ 0.24 W/m·K · ρ 750 kg/m³ · μ 20 · DITEC", "Yeso · Yeso · λ 0.18 W/m·K · ρ 600 kg/m³ · μ 4–10 · ISO 10456", "Yeso · Yeso · λ 0.57 W/m·K · ρ 1200 kg/m³ · μ 4–10 · ISO 10456", "Yeso · Yeso · λ 0.8 W/m·K · ρ 1500 kg/m³ · μ 4–10 · ISO 10456", "Yeso · Yeso · λ 1 W/m·K · ρ 900 kg/m³ · μ 4–10 · ISO 10456", "Yeso · Yeso cartón · λ 0.8 W/m·K · ρ 700 kg/m³ · μ 4–10 · ISO 10456"], "Enlucidos y revoques": ["Enlucidos · Cal, arena · λ 0.8 W/m·K · ρ 1600 kg/m³ · μ 6–10 · ISO 10456", "Enlucidos · Cemento, arena · λ 1 W/m·K · ρ 1800 kg/m³ · μ 6–10 · ISO 10456", "Enlucidos · Enlucido de yeso · λ 0.4 W/m·K · ρ 1000 kg/m³ · μ 6–10 · ISO 10456", "Enlucidos · Enlucido de yeso · λ 0.57 W/m·K · ρ 1300 kg/m³ · μ 6–10 · ISO 10456", "Enlucidos · Enlucido de yeso aislante · λ 0.18 W/m·K · ρ 600 kg/m³ · μ 6–10 · ISO 10456", "Enlucidos · Yeso, arena · λ 0.8 W/m·K · ρ 1600 kg/m³ · μ 6–10 · ISO 10456"], "Metales": ["metales · Acero · λ 50 W/m·K · ρ 7800 kg/m³ · ISO 10456", "metales · Acero inoxidable · λ 30 W/m·K · ρ 7900 kg/m³ · ISO 10456", "metales · Aleaciones de aluminio · λ 160 W/m·K · ρ 2800 kg/m³ · ISO 10456", "metales · Bronce · λ 65 W/m·K · ρ 8700 kg/m³ · ISO 10456", "metales · Cobre · λ 380 W/m·K · ρ 8900 kg/m³ · ISO 10456", "metales · Hierro, hierro fundido · λ 50 W/m·K · ρ 7500 kg/m³ · ISO 10456", "metales · Latón · λ 120 W/m·K · ρ 8400 kg/m³ · ISO 10456", "metales · Plomo · λ 35 W/m·K · ρ 11300 kg/m³ · ISO 10456", "metales · Zinc · λ 110 W/m·K · ρ 7200 kg/m³ · ISO 10456"], "Plásticos": ["Plásticos · Acrílico · λ 0.2 W/m·K · ρ 1050 kg/m³ · μ 10000 · ISO 10456", "Plásticos · Poliacetato · λ 0.3 W/m·K · ρ 1410 kg/m³ · μ 100000 · ISO 10456", "Plásticos · Poliamida (nylon) · λ 0.25 W/m·K · ρ 1150 kg/m³ · μ 50000 · ISO 10456", "Plásticos · Poliamida 6,6 con 25% fibra de vidrio · λ 0.3 W/m·K · ρ 1450 kg/m³ · μ 50000 · ISO 10456", "Plásticos · Policarbonato · λ 0.2 W/m·K · ρ 1200 kg/m³ · μ 5000 · ISO 10456", "Plásticos · Policloruro de vinilo (PVC) · λ 0.17 W/m·K · ρ 1390 kg/m³ · μ 50000 · ISO 10456", "Plásticos · Poliestireno · λ 0.16 W/m·K · ρ 1050 kg/m³ · μ 100000 · ISO 10456", "Plásticos · Polietileno/polietano, alta densidad · λ 0.5 W/m·K · ρ 980 kg/m³ · μ 100000 · ISO 10456", "Plásticos · Polietileno/polietano, baja densidad · λ 0.33 W/m·K · ρ 920 kg/m³ · μ 100000 · ISO 10456", "Plásticos · Polimetilmetacrilato (PMMA) · λ 0.18 W/m·K · ρ 1180 kg/m³ · μ 50000 · ISO 10456", "Plásticos · Polipropileno · λ 0.22 W/m·K · ρ 910 kg/m³ · μ 10000 · ISO 10456", "Plásticos · Polipropileno con 25% fibra de vidrio · λ 0.25 W/m·K · ρ 1200 kg/m³ · μ 10000 · ISO 10456", "Plásticos · Politetrafluoretileno (PTFE) · λ 0.25 W/m·K · ρ 2200 kg/m³ · μ 10000 · ISO 10456", "Plásticos · Poliuretano (PU) · λ 0.25 W/m·K · ρ 1200 kg/m³ · μ 6000 · ISO 10456", "Plásticos · Resina epóxica · λ 0.2 W/m·K · ρ 1200 kg/m³ · μ 10000 · ISO 10456", "Plásticos · Resina fenólica · λ 0.3 W/m·K · ρ 1300 kg/m³ · μ 100000 · ISO 10456", "Plásticos · Resina poliéster · λ 0.19 W/m·K · ρ 1400 kg/m³ · μ 10000 · ISO 10456"], "Rocas y piedras": ["rocas · Basalto · λ 3.5 W/m·K · μ 10000 · ISO 10456", "rocas · Gneis · λ 3.5 W/m·K · μ 10000 · ISO 10456", "rocas · Granito · λ 2.8 W/m·K · μ 10000 · ISO 10456", "rocas · Mármol · λ 3.5 W/m·K · ρ 2800 kg/m³ · μ 10000 · ISO 10456", "rocas · Natural, porosa, por ej. lava · λ 0.55 W/m·K · ρ 1600 kg/m³ · μ 15–20 · ISO 10456", "rocas · Natural, roca cristalina · λ 3.5 W/m·K · ρ 2800 kg/m³ · μ 10000 · ISO 10456", "rocas · Natural, roca sedimentaria · λ 2.3 W/m·K · ρ 2600 kg/m³ · μ 200–250 · ISO 10456", "rocas · Natural, roca sedimentaria, liviana · λ 0.85 W/m·K · ρ 1500 kg/m³ · μ 20–30 · ISO 10456", "rocas · Piedra artificial · λ 1.3 W/m·K · ρ 1750 kg/m³ · μ 40–50 · ISO 10456", "rocas · Piedra caliza, dura · λ 1.7 W/m·K · ρ 2200 kg/m³ · μ 150–200 · ISO 10456", "rocas · Piedra caliza, extra dura · λ 2.3 W/m·K · ρ 2600 kg/m³ · μ 200–250 · ISO 10456", "rocas · Piedra caliza, extra suave · λ 0.85 W/m·K · ρ 1600 kg/m³ · μ 20–30 · ISO 10456", "rocas · Piedra caliza, semi dura · λ 1.4 W/m·K · ρ 2000 kg/m³ · μ 40–50 · ISO 10456", "rocas · Piedra caliza, suave · λ 1.1 W/m·K · ρ 1800 kg/m³ · μ 25–40 · ISO 10456", "rocas · Piedra pómez natural · λ 0.12 W/m·K · ρ 400 kg/m³ · μ 6–8 · ISO 10456", "rocas · Pizarra · λ 2.2 W/m·K · μ 800–1000 · ISO 10456", "rocas · Roca arenosa (sílice) · λ 2.3 W/m·K · ρ 2600 kg/m³ · μ 30–40 · ISO 10456"], "Sellantes y espumas": ["Sellantes y otros · Espuma de polietileno · λ 0.05 W/m·K · ρ 70 kg/m³ · μ 100 · ISO 10456", "Sellantes y otros · espuma de poliuretano (PU) · λ 0.05 W/m·K · ρ 70 kg/m³ · μ 60 · ISO 10456", "Sellantes y otros · Espuma de silicona · λ 0.12 W/m·K · ρ 750 kg/m³ · μ 10000 · ISO 10456", "Sellantes y otros · espuma elastomérica, flexible · λ 0.05 W/m·K · μ 10000 · ISO 10456", "Sellantes y otros · Gel de sílice (desecante) · λ 0.13 W/m·K · ρ 720 kg/m³ · ISO 10456", "Sellantes y otros · PVC, flexible, con 40% de suavisante · λ 0.14 W/m·K · ρ 1200 kg/m³ · μ 100000 · ISO 10456", "Sellantes y otros · Silicona, pura · λ 0.35 W/m·K · ρ 1200 kg/m³ · μ 5000 · ISO 10456", "Sellantes y otros · Silicona, rellena · λ 0.5 W/m·K · ρ 1450 kg/m³ · μ 5000 · ISO 10456", "Sellantes y otros · uretano/poliuretano (quiebre térmico) · λ 0.21 W/m·K · ρ 1300 kg/m³ · μ 60 · ISO 10456"], "Suelos": ["suelos · Arcilla o sedimentos · λ 1.5 W/m·K · μ 50 · ISO 10456", "suelos · Arena y grava · λ 2 W/m·K · μ 50 · ISO 10456"], "Tableros de madera": ["Tableros de madera · aglomerada · λ 0.1 W/m·K · ρ 300 kg/m³ · μ 10–50 · ISO 10456", "Tableros de madera · aglomerada · λ 0.14 W/m·K · ρ 600 kg/m³ · μ 15–50 · ISO 10456", "Tableros de madera · aglomerada · λ 0.18 W/m·K · ρ 900 kg/m³ · μ 20–50 · ISO 10456", "Tableros de madera · Contrachapada · λ 0.09 W/m·K · ρ 300 kg/m³ · μ 50–150 · ISO 10456", "Tableros de madera · Contrachapada · λ 0.13 W/m·K · ρ 500 kg/m³ · μ 70–200 · ISO 10456", "Tableros de madera · Contrachapada · λ 0.17 W/m·K · ρ 700 kg/m³ · μ 90–220 · ISO 10456", "Tableros de madera · Contrachapada · λ 0.24 W/m·K · ρ 1000 kg/m³ · μ 110–250 · ISO 10456", "Tableros de madera · fibras, incluyendo MDF · λ 0.07 W/m·K · ρ 250 kg/m³ · μ 3–5 · ISO 10456", "Tableros de madera · fibras, incluyendo MDF · λ 0.1 W/m·K · ρ 400 kg/m³ · μ 5–10 · ISO 10456", "Tableros de madera · fibras, incluyendo MDF · λ 0.14 W/m·K · ρ 600 kg/m³ · μ 12–20 · ISO 10456", "Tableros de madera · fibras, incluyendo MDF · λ 0.18 W/m·K · ρ 800 kg/m³ · μ 20–30 · ISO 10456", "Tableros de madera · OSB · λ 0.13 W/m·K · ρ 650 kg/m³ · μ 30–50 · ISO 10456", "Tableros de madera · partículas aglomeradas con cemento · λ 0.23 W/m·K · ρ 1200 kg/m³ · μ 30–50 · ISO 10456"], "Tejas y cubiertas": ["Tejas · Arcilla · λ 1 W/m·K · ρ 2000 kg/m³ · μ 30–40 · ISO 10456", "Tejas · concreto · λ 1.5 W/m·K · ρ 2100 kg/m³ · μ 60–100 · ISO 10456"], "Vidrios": ["Vidrio · de cal sodada (incluyendo vidrio flotado) · λ 1 W/m·K · ρ 2500 kg/m³ · ISO 10456", "Vidrio · de cuarzo · λ 1.4 W/m·K · ρ 2200 kg/m³ · ISO 10456", "Vidrio · mosaico · λ 1.2 W/m·K · ρ 2000 kg/m³ · ISO 10456"]};
+/* Lista plana de "Seleccione material" + categorías (para selects con optgroup) */
+const CATS = Object.keys(CATALOGO);
+
+/* Complejos preseleccionados (vivienda de estructura de madera) */
+const PRESETS = {
+  techo:[
+    ["DITEC · Pintura esmalte al agua, 2 manos · μ 90900 · DITEC","0.11"],
+    ["DITEC · Yeso Cartón ST ρ = 750 kg/m³ · λ 0.24 W/m·K · ρ 750 kg/m³ · μ 20 · DITEC","10"],
+    ["DITEC · Lana vidrio en rollo ρ = 12 kg/m³ · λ 0.042 W/m·K · ρ 12 kg/m³ · μ 2 · DITEC","150"],
+    ["Capa de aire · Cámara de aire no ventilada · Sd 0.01 m · NCh 853 / NCh 1973","50"],
+    ["madera · Pino · λ 0.13 W/m·K · ρ 500 kg/m³ · μ 20–50 · ISO 10456","50"],
+    ["Tableros de madera · OSB · λ 0.13 W/m·K · ρ 650 kg/m³ · μ 30–50 · ISO 10456","15"],
+    ["DITEC · Tyvek homewrap · μ 1761 · DITEC","0.1"],
+    ["metales · Acero · λ 50 W/m·K · ρ 7800 kg/m³ · ISO 10456","0.5"]
+  ],
+  muro:[
+    ["DITEC · Pintura esmalte al agua, 2 manos · μ 90900 · DITEC","0.11"],
+    ["DITEC · Yeso Cartón ST ρ = 750 kg/m³ · λ 0.24 W/m·K · ρ 750 kg/m³ · μ 20 · DITEC","15"],
+    ["DITEC · EPS ρ = 20 kg/m³ - archipex · λ 0.038 W/m·K · ρ 20 kg/m³ · μ 38 · DITEC","100"],
+    ["Tableros de madera · OSB · λ 0.13 W/m·K · ρ 650 kg/m³ · μ 30–50 · ISO 10456","15"],
+    ["DITEC · Tyvek homewrap · μ 1761 · DITEC","0.1"],
+    ["Gases · aire · λ 0.025 W/m·K · ρ 1 kg/m³ · μ 1 · ISO 10456","30"],
+    ["metales · Acero · λ 50 W/m·K · ρ 7800 kg/m³ · ISO 10456","0.5"]
+  ],
+  piso:[
+    ["DITEC · Piso flotante, e = 6 mm · λ 0.103 W/m·K · μ 1197 · DITEC","6"],
+    ["Tableros de madera · OSB · λ 0.13 W/m·K · ρ 650 kg/m³ · μ 30–50 · ISO 10456","18"],
+    ["Capa de aire · Cámara de aire no ventilada · Sd 0.01 m · NCh 853 / NCh 1973","80"],
+    ["DITEC · Lana vidrio en rollo ρ = 12 kg/m³ · λ 0.042 W/m·K · ρ 12 kg/m³ · μ 2 · DITEC","120"],
+    ["Tableros de madera · OSB · λ 0.13 W/m·K · ρ 650 kg/m³ · μ 30–50 · ISO 10456","9"]
+  ]
+};
+const REPL = {techo:3, muro:3, piso:4};
+
+/* zonas A-I */
+const ZONAS = [
+  ["A","Norte / costa norte","--z-a"],["B","Norte interior / valles","--z-b"],
+  ["C","Litoral central","--z-c"],["D","Valle central (RM)","--z-d"],
+  ["E","Secano costero","--z-e"],["F","Precordillera sur","--z-f"],
+  ["G","Sur lluvioso","--z-g"],["H","Altiplano / montaña","--z-h"],
+  ["I","Austral / extremo sur","--z-i"]
+];
+const CLIENTES = {
+  rm:{comuna:"Maipú (RM)",zona:"D",desempate:false},
+  vc:{comuna:"Valparaíso",zona:"C",desempate:false},
+  pa:{comuna:"Punta Arenas",zona:"I",desempate:false}
+};
+
+/* ===== Material select con optgroups por categoría ===== */
+function matSelectHTML(sel){
+  let h='<option value="">Seleccione material</option>';
+  for(const c of CATS){
+    h+=`<optgroup label="${c}">`;
+    for(const m of CATALOGO[c]){
+      h+=`<option ${m===sel?"selected":""}>${m}</option>`;
+    }
+    h+='</optgroup>';
+  }
+  return h;
+}
+
+function buildComplejo(tipo){
+  const rows=document.querySelector(`[data-rows="${tipo}"]`);
+  const prows=document.querySelector(`[data-prows="${tipo}"]`);
+  const repl=document.querySelector(`[data-repl="${tipo}"]`);
+  const struct=document.querySelector(`[data-struct="${tipo}"]`);
+  const data=PRESETS[tipo];
+  rows.innerHTML=data.map((r,i)=>`
+    <div class="lrow${(i+1)===REPL[tipo]?' repl':''}">
+      <div class="idx">${i+1}</div>
+      <div class="mat"><select>${matSelectHTML(r[0])}</select></div>
+      <div class="esp"><input value="${r[1]}"></div>
+      <div class="acts"><button title="Subir">↑</button><button title="Bajar">↓</button><button title="Quitar">✕</button></div>
+    </div>`).join("");
+  function renderPuente(){
+    const structVal=struct.value;
+    prows.innerHTML=data.map((r,i)=>{
+      const isRepl=(i+1)===REPL[tipo];
+      const mat=isRepl?structVal:r[0];
+      return `<div class="lrow${isRepl?' repl':''}"><div class="idx">${i+1}</div><div class="mat">${mat}</div><div class="esp">${r[1]}</div></div>`;
+    }).join("");
+  }
+  repl.innerHTML=data.map((r,i)=>`<option ${(i+1)===REPL[tipo]?"selected":""}>#${i+1} — ${r[0].slice(0,46)}…</option>`).join("");
+  repl.onchange=()=>{REPL[tipo]=repl.selectedIndex+1;buildComplejo(tipo);};
+  struct.onchange=renderPuente;
+  renderPuente();
+}
+["techo","muro","piso"].forEach(buildComplejo);
+
+/* zona grid */
+const zg=document.getElementById("zoneGrid");
+zg.innerHTML=ZONAS.map(z=>`<div class="zcard" data-z="${z[0]}"><div class="swatch" style="background:var(${z[2]})">${z[0]}</div><div class="zmeta"><div class="zn">Zona ${z[0]}</div><div class="zd">${z[1]}</div></div></div>`).join("");
+function setZona(letter){
+  const z=ZONAS.find(x=>x[0]===letter);
+  document.getElementById("zoneLetter").textContent=letter;
+  document.getElementById("zoneDot").style.background=`var(${z[2]})`;
+  zg.querySelectorAll(".zcard").forEach(c=>c.classList.toggle("sel",c.dataset.z===letter));
+  document.getElementById("genBtn").disabled=false;
+}
+zg.querySelectorAll(".zcard").forEach(c=>c.onclick=()=>setZona(c.dataset.z));
+
+/* cliente -> comuna -> zona */
+const clienteSel=document.getElementById("clienteSel");
+clienteSel.onchange=()=>{
+  const c=CLIENTES[clienteSel.value];
+  const hint=document.getElementById("comunaHint");
+  if(!c){hint.textContent="Falta comuna (cliente).";document.getElementById("clienteMeta").textContent="Cliente: — · Comuna: —";document.getElementById("sbZona").textContent="Zona: — · Comuna: —";return;}
+  hint.textContent="Comuna: "+c.comuna+" → Zona "+c.zona;
+  document.getElementById("clienteMeta").textContent=`Cliente: ${clienteSel.options[clienteSel.selectedIndex].text.split(" · ")[0]} · Comuna: ${c.comuna}`;
+  document.getElementById("sbZona").textContent=`Zona: ${c.zona} · Comuna: ${c.comuna}`;
+  document.getElementById("desempateWrap").style.display=c.desempate?"block":"none";
+  setZona(c.zona);
+};
+
+/* ===== VENTILACIÓN NCh 3309:2014 ===== */
+// Tabla 1 (L/s): filas = [maxArea], columnas = dorm 1..5
+const TABLA_VENT=[
+  [47,[14,18,21,25,28]],[93,[21,24,28,31,35]],[139,[28,31,35,38,42]],
+  [186,[35,38,42,45,49]],[232,[42,45,49,52,56]],[279,[49,52,56,59,63]],
+  [325,[56,59,63,66,70]],[372,[63,66,70,73,77]],[418,[70,73,77,80,84]],
+  [465,[77,80,84,87,91]]
+];
+function rangoArea(a){
+  const lims=[[0,47],[47,93],[93,139],[140,186],[186,232],[232,279],[279,325],[325,372],[372,418],[418,465]];
+  for(let i=0;i<TABLA_VENT.length;i++){ if(a<=TABLA_VENT[i][0]) return lims[i][0]+"-"+lims[i][1]; }
+  return ">465";
+}
+function qtotTabla(a,dorm){
+  const d=Math.min(Math.max(dorm,1),5);
+  for(const [mx,row] of TABLA_VENT){ if(a<=mx) return row[d-1]; }
+  return TABLA_VENT[TABLA_VENT.length-1][1][d-1];
+}
+function calcVent(){
+  const sup=parseFloat(document.getElementById("vSup").value)||0;
+  const dorm=parseInt(document.getElementById("vDorm").value)||0;
+  const ban=parseInt(document.getElementById("vBan").value)||0;
+  const coc=parseInt(document.getElementById("vCoc").value)||0;
+  const out=document.getElementById("ventResults");
+  if(!sup||!dorm){out.innerHTML='<p class="note">Ingresa superficie (m²) y dormitorios para calcular.</p>';return;}
+  const qtot=qtotTabla(sup,dorm);
+  const rango=rangoArea(sup);
+  // Exigencias extracción local
+  const exCoc=50, exBan=25;
+  // Propuesta (valores tipo del ejemplo): celosías 7.7 L/s c/u, baños 30, cocina 83
+  const nCel=Math.ceil(qtot/7.7);
+  const qCel=+(nCel*7.7).toFixed(1);
+  const propBan=30, propCoc=83;
+  const cumple = qCel>=qtot && (ban===0||propBan>=exBan) && (coc===0||propCoc>=exCoc);
+  out.innerHTML=`
+   <div class="chips">
+     <span class="chip ok">Qtot: <b>${qtot} L/s</b> (rango ${rango} · dorm ${dorm})</span>
+     <span class="chip ok">Extracción local: cocina ${exCoc} L/s (1×${exCoc}) · baños ${exBan} L/s (${ban}×${exBan})</span>
+   </div>
+   <div class="chips" style="margin-top:8px">
+     <span class="chip ok">Celosías pasivas: <b>${nCel}</b> (${qCel} L/s)</span>
+     <span class="chip ok">Extractores baño: <b>${ban}</b> (${ban*propBan} L/s)</span>
+     <span class="chip ok">Campanas cocina: <b>${coc}</b> (${coc*propCoc} L/s)</span>
+   </div>
+   <p class="note" style="margin-top:10px"><b>Norma:</b> NCh 3309 · Qtot por superficie y dormitorios + extracción local (cocina/baños).</p>
+   <div class="legend" style="margin-top:4px">
+     Ventilación conforme a NCh 3309:<br>
+     • Qtot exigido: ${qtot} L/s (según superficie y dormitorios).<br>
+     • Qtot propuesto (celosías): ${qCel} L/s (${nCel}×7.7).<br>
+     • Extracción local exigida: cocina ${exCoc} L/s · baños ${exBan} L/s por recinto.<br>
+     • Extracción local propuesta: cocina ${propCoc} L/s (1×${propCoc}) · baños ${ban*propBan} L/s (${ban}×${propBan}).<br>
+     • <b style="color:${cumple?'var(--green)':'var(--red)'}">${cumple?'✓ Cumple.':'✗ No cumple.'}</b>
+   </div>`;
+  setStepStat(5, cumple?'ok':'no');
+}
+
+/* step status helper */
+function setStepStat(step,kind){
+  const s=document.querySelector(`.step[data-step="${step}"] .stat`);
+  if(!s)return;
+  s.className="stat "+kind;
+  s.textContent={ok:'✓',no:'✗',pend:'○',na:'—'}[kind];
+}
+
+/* ===== VENTANAS: tipos con datos técnicos ===== */
+const VENTANAS=[
+  ["PVC + termopanel Low-E (Uw 2.2 · 100Pa clase 4)",2.2,4,"Homologada equiv. térmica (ficha 3.1.V.A.37)"],
+  ["PVC + termopanel 4+12+4 (Uw 2.7 · 100Pa clase 4)",2.7,4,"DVH estándar"],
+  ["PVC + termopanel 3+8+3 (Uw 3.0 · 100Pa clase 4)",3.0,4,"DVH delgado"],
+  ["PVC + termopanel 3+6+3 (Uw 3.2 · 100Pa clase 3)",3.2,3,"DVH cámara reducida"],
+  ["PVC + vidrio simple (Uw 4.6 · 100Pa s/i)",4.6,null,"Sin clase informada"],
+  ["Madera + vidrio simple (Uw 5.0 · 100Pa s/i)",5.0,null,"Sin clase informada"],
+  ["Aluminio + vidrio simple 3 mm (Uw 6.0 · 100Pa s/i)",6.0,null,"Sin rotura puente térmico"]
+];
+const ventSel=document.getElementById("ventanaTipo");
+if(ventSel){
+  ventSel.innerHTML='<option value="">Seleccione tipo de ventana</option>'+VENTANAS.map((v,i)=>`<option value="${i}" ${i===0?'selected':''}>${v[0]}</option>`).join("");
+  function updVentana(){
+    const v=VENTANAS[parseInt(ventSel.value)||0];
+    const badge=document.getElementById("permBadge");
+    if(v[2]===null){badge.className="vbadge pend";badge.textContent="Permeabilidad Pendiente · clase s/i";}
+    else{badge.className="vbadge no";badge.textContent=`Permeabilidad NO OK · Clase ${v[2]} (mín POR COMPLETAR)`;}
+    document.getElementById("ventanaNota").innerHTML=`Uw = ${v[1]} W/m²·K · ${v[3]}. Se exige clase mínima a 100 Pa según zona. <span class="muted">Clase mínima por zona: <b>POR COMPLETAR</b>.</span>`;
+  }
+  ventSel.onchange=updVentana; updVentana();
+}
+
+/* step navigation */
+const steps=[...document.querySelectorAll(".step")];
+const panes=[...document.querySelectorAll(".pane")];
+steps.forEach(s=>s.onclick=()=>{
+  const target=s.dataset.step.replace("b","");
+  steps.forEach(x=>x.classList.remove("active"));
+  s.classList.add("active");
+  panes.forEach(p=>p.classList.toggle("show",p.dataset.pane===target));
+});
+
+/* accordion blocks */
+document.querySelectorAll(".block .bhead").forEach(h=>{
+  h.onclick=()=>h.parentElement.classList.toggle("open");
+});
+
+/* piso radier disable */
+const pr=document.getElementById("pisoRadier");
+if(pr) pr.onchange=function(){
+  document.getElementById("bk-piso").style.opacity=this.checked?"0.4":"1";
+  document.getElementById("bk-piso").style.pointerEvents=this.checked?"none":"auto";
+  setStepStat("3b", this.checked?"na":"pend");
+};
+
+/* ventilación: enganchar inputs */
+["vSup","vDorm","vBan","vCoc"].forEach(id=>{
+  const el=document.getElementById(id);
+  if(el) el.oninput=calcVent;
+});
+calcVent();
+
+/* ===== INFILTRACIONES — evaluación ===== */
+function evalInfiltraciones(){
+  // Envolvente: cumple si los 5 sellos están marcados
+  const sellos=[...document.querySelectorAll(".sello")];
+  const todos=sellos.every(s=>s.checked);
+  const env=document.getElementById("envBadge");
+  if(todos){env.className="vbadge ok";env.textContent="Cumple por especificación constructiva";}
+  else{env.className="vbadge no";env.textContent="No cumple · faltan sellos especificados";}
+
+  // Puertas: cumple si clase certificada >= clase mínima zona (si hay mínima)
+  evalClase("puertaClase","puertaMin","puertaBadge");
+  // Ventanas
+  evalClase("ventClase","ventMin","ventBadge");
+
+  // estado del paso 7 (cumple si los 3 cumplen)
+  const ok = todos
+    && document.getElementById("puertaBadge").classList.contains("ok")
+    && document.getElementById("ventBadge").classList.contains("ok");
+  setStepStat(7, ok?"ok":"no");
+}
+function evalClase(certId,minId,badgeId){
+  const cert=parseInt(document.getElementById(certId).value)||0;
+  const minV=document.getElementById(minId).value;
+  const b=document.getElementById(badgeId);
+  if(minV===""){
+    // sin umbral cargado: criterio de precaución del ejemplo de la web
+    // puerta certificada alta (3-4) -> asumir cumple; ventana homologada -> no cumple
+    if(badgeId==="puertaBadge" && cert>=3){b.className="vbadge ok";b.textContent="Cumple exigencia normativa";}
+    else{b.className="vbadge no";b.textContent="No cumple exigencia normativa";}
+    return;
+  }
+  if(cert>=parseInt(minV)){b.className="vbadge ok";b.textContent=`Cumple · Clase ${cert} ≥ mín ${minV}`;}
+  else{b.className="vbadge no";b.textContent=`No cumple · Clase ${cert} < mín ${minV}`;}
+}
+document.querySelectorAll(".sello,#puertaClase,#puertaMin,#ventClase,#ventMin").forEach(el=>el.onchange=evalInfiltraciones);
+evalInfiltraciones();
+</script>
+</body>
+</html>

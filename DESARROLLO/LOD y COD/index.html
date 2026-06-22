@@ -1,0 +1,998 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Obra Digital MOP — Prototipo UI</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-background:#f8fafc;--bg-card:#ffffff;--bg-muted:#f1f5f9;--bg-muted-2:#e9eef5;
+  --border-theme:#e2e8f0;--border-strong:#cbd5e1;
+  --text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;
+  --primary:#2563eb;--primary-soft:rgba(37,99,235,.12);
+  --amber:#d97706;--amber-soft:rgba(217,119,6,.14);--green:#16a34a;--red:#dc2626;
+  --od-header-h:56px;--od-subbar-h:40px;--od-statusbar-h:28px;--od-row-h:32px;
+  --od-tree-w:clamp(450px,50%,690px);--od-context-w:clamp(288px,26%,380px);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.35;color:var(--text-primary);background:var(--bg-background);-webkit-font-smoothing:antialiased;overflow:hidden}
+button,select,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+.app{height:100vh;display:flex;flex-direction:column;overflow:hidden}
+.header{height:var(--od-header-h);min-height:var(--od-header-h);display:flex;align-items:center;justify-content:space-between;padding:0 14px;background:var(--bg-card);border-bottom:1px solid var(--border-theme)}
+.brand{display:flex;align-items:center;gap:10px;font-weight:600;white-space:nowrap;min-width:0}
+.brand .glyph{color:var(--primary);font-size:15px}.brand .sep{color:var(--border-strong)}
+.brand .contract{font-weight:500;color:var(--text-secondary)}.brand .safi{font-weight:400;color:var(--text-muted);font-size:12px}
+.switcher{display:flex;align-items:center;gap:2px}
+.switcher button{padding:6px 12px;border:1px solid transparent;border-radius:6px;color:var(--text-secondary);font-weight:500;background:transparent}
+.switcher button:hover{background:var(--bg-muted)}
+.switcher button.active{background:var(--primary-soft);color:var(--primary);border-color:rgba(37,99,235,.25);font-weight:600}
+.switcher .gear{padding:6px 8px;color:var(--text-muted)}
+.subbar{height:var(--od-subbar-h);min-height:var(--od-subbar-h);display:flex;align-items:center;gap:10px;padding:0 12px;background:var(--bg-muted);border-bottom:1px solid var(--border-theme)}
+.subbar .crumb{display:flex;align-items:center;gap:6px;color:var(--text-secondary);font-size:12px;min-width:0;overflow:hidden;white-space:nowrap}
+.subbar .crumb b{color:var(--text-primary);font-weight:600}.subbar .crumb .chev{color:var(--text-muted)}
+.subbar .hamb{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:5px;padding:3px 7px;color:var(--text-secondary)}
+.subbar .spacer{flex:1}
+.subbar label{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);font-weight:600}
+.subbar select{background:var(--bg-card);border:1px solid var(--border-theme);border-radius:6px;padding:5px 8px;color:var(--text-primary);font-weight:500}
+.subbar .search{display:flex;align-items:center;gap:6px;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:6px;padding:4px 9px;color:var(--text-muted);width:170px}
+.subbar .search input{border:0;outline:0;background:transparent;font:inherit;color:var(--text-primary);width:100%}
+.subbar .btn{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;padding:5px 11px;font-weight:500;color:var(--text-secondary)}
+.subbar .btn:hover{border-color:var(--border-strong)}
+.subbar .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.body{flex:1;display:flex;min-height:0;overflow:hidden}
+.colA{width:var(--od-tree-w);min-width:var(--od-tree-w);border-right:1px solid var(--border-theme);background:var(--bg-card);overflow:hidden;display:flex;flex-direction:column}
+.colB{flex:1;min-width:0;display:flex;flex-direction:column;overflow:hidden;background:var(--bg-background)}
+.colC{width:var(--od-context-w);min-width:var(--od-context-w);border-left:1px solid var(--border-theme);background:var(--bg-card);overflow-y:auto}
+.col-head{height:var(--od-subbar-h);display:flex;align-items:center;gap:8px;padding:0 12px;background:var(--bg-muted);border-bottom:1px solid var(--border-theme);font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);font-weight:600;flex:0 0 auto}
+.statusbar{height:var(--od-statusbar-h);min-height:var(--od-statusbar-h);display:flex;align-items:center;gap:10px;padding:0 14px;background:var(--bg-muted);border-top:1px solid var(--border-theme);font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden}
+.statusbar .dot{width:4px;height:4px;border-radius:50%;background:var(--border-strong);flex:0 0 auto}
+.tree{padding:6px 0;flex:1;overflow:auto}
+.colA .foot{flex:0 0 auto;border-top:1px solid var(--border-theme);padding:8px 10px;background:var(--bg-card)}
+.colA .foot .btn{width:100%;border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;padding:7px 11px;color:var(--text-secondary);font-weight:500}
+.colA .foot .btn:hover{border-color:var(--border-strong)}
+.node-row{display:flex;align-items:center;gap:5px;min-height:var(--od-row-h);padding:4px 8px;cursor:pointer;border-left:2px solid transparent}
+.node-row:hover{background:var(--bg-muted)}
+.node-row:hover .rowact{opacity:1}
+.node-row.sel{background:var(--primary-soft);border-left-color:var(--primary)}
+.node-row.sel .label{color:var(--primary)}
+.node-row .chev{width:12px;color:var(--text-muted);font-size:10px;flex:0 0 12px;text-align:center;transition:transform .15s}
+.node-row .chev.open{transform:rotate(90deg)}.node-row .chev.leaf{visibility:hidden}
+.node-row .ic{flex:0 0 auto;font-size:12px;opacity:.85}
+.node-row .label{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.node-row.folder .label{font-weight:700;color:var(--text-primary)}
+.node-row.file .label{font-weight:400;color:var(--text-secondary)}
+.node-row .count{font-size:10.5px;color:var(--text-muted);background:var(--bg-muted-2);border-radius:9px;padding:1px 7px;font-variant-numeric:tabular-nums;flex:0 0 auto}
+.node-row .count.zero{background:transparent;border:1px solid var(--border-theme);color:var(--text-muted)}
+.node-row .rowact{opacity:0;display:flex;gap:2px;flex:0 0 auto;transition:opacity .12s}
+.node-row .rowact button{border:0;background:transparent;color:var(--text-muted);padding:2px 4px;border-radius:4px;font-size:12px}
+.node-row .rowact button:hover{background:var(--bg-muted-2);color:var(--text-primary)}
+.node-row.custom .label::after{content:" ·";color:var(--primary)}
+.node-row.virtual .ic{opacity:.65}
+.node-row.virtual .label{font-style:italic;font-weight:600;color:var(--text-secondary)}
+.children.collapsed{display:none}
+.toolbar-row{display:flex;align-items:center;gap:8px;padding:7px 12px;border-bottom:1px solid var(--border-theme);background:var(--bg-card);flex:0 0 auto}
+.toolbar-row .btn{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;padding:5px 11px;font-weight:500;color:var(--text-secondary)}
+.toolbar-row .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.toolbar-row .spacer{flex:1}
+.toolbar-row .ctxname{font-size:11.5px;color:var(--text-muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.scroll{flex:1;overflow-y:auto}
+table{width:100%;border-collapse:collapse;font-size:12.5px}
+thead th{position:sticky;top:0;background:var(--bg-muted);z-index:1;text-align:left;font-weight:600;color:var(--text-muted);font-size:11px;text-transform:uppercase;letter-spacing:.03em;padding:7px 12px;border-bottom:1px solid var(--border-theme)}
+tbody td{padding:0 12px;height:34px;border-bottom:1px solid var(--border-theme);color:var(--text-secondary);white-space:nowrap}
+tbody td.strong{color:var(--text-primary);font-weight:500;white-space:normal}
+tbody tr:hover{background:var(--bg-muted)}tbody tr.clk{cursor:pointer}
+tbody tr.auto{background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(148,163,184,.06) 6px,rgba(148,163,184,.06) 12px)}
+tbody tr.auto td{color:var(--text-muted)}
+.auto-detail td{height:auto;padding:2px 12px 8px 12px;font-size:11.5px;color:var(--text-muted);white-space:normal;font-style:italic}
+.tabnum{font-variant-numeric:tabular-nums}
+.chip{display:inline-flex;align-items:center;gap:4px;border-radius:10px;padding:1px 8px;font-size:11px;font-weight:500}
+.chip.ver{background:var(--primary-soft);color:var(--primary)}
+.chip.auto{background:var(--bg-muted-2);color:var(--text-secondary)}
+.chip.incid{background:var(--amber-soft);color:var(--amber)}
+.chip.book{background:var(--bg-muted);color:var(--text-secondary);border:1px solid var(--border-theme)}
+.dotv{color:var(--green);font-size:9px}
+.det{padding:16px 18px}
+.det h2{font-size:15px;font-weight:700;display:flex;align-items:flex-start;gap:8px;margin-bottom:3px}
+.det h2 .bar{width:3px;height:16px;background:var(--primary);border-radius:2px;flex:0 0 auto;margin-top:2px}
+.det .path{font-size:11.5px;color:var(--text-muted);margin-bottom:12px}
+.det .desc{color:var(--text-secondary);font-size:12.5px;margin-bottom:14px;background:var(--bg-muted);border:1px solid var(--border-theme);border-radius:7px;padding:9px 11px}
+.det .acts{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:16px}
+.det .acts .btn{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;padding:7px 12px;font-weight:500;color:var(--text-secondary)}
+.det .acts .btn.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.det .acts .btn.danger{color:var(--red);border-color:rgba(220,38,38,.3)}
+.det .divider{font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);font-weight:600;margin:14px 0 7px}
+.det ul{list-style:none}
+.det ul li{padding:5px 8px;border-bottom:1px dashed var(--border-theme);color:var(--text-secondary);font-size:12.5px;display:flex;gap:7px;justify-content:space-between;align-items:center}
+.det ul li .nm{display:flex;gap:7px}.det ul li .nm::before{content:"📄";opacity:.7}
+.det ul li .nm.fold::before{content:"📁"}
+.badge-norm{display:inline-flex;align-items:center;gap:6px;margin-top:14px;font-size:11.5px;color:var(--text-muted);background:var(--bg-muted);border:1px solid var(--border-theme);border-radius:6px;padding:5px 9px}
+.fv-row{display:flex;justify-content:space-between;padding:5px 0;border-bottom:1px dashed var(--border-theme);font-size:12.5px;gap:10px}
+.fv-row span:first-child{color:var(--text-muted);flex:0 0 auto}.fv-row span:last-child{text-align:right}
+.empty{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;text-align:center;color:var(--text-muted);padding:30px}
+.empty .ico{font-size:30px;opacity:.55;margin-bottom:10px}
+.empty p{margin-bottom:14px;font-size:13px;max-width:300px}
+.empty .btn.primary{background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:6px;padding:7px 14px;font-weight:600}
+.folio{border-bottom:1px solid var(--border-theme)}
+.folio-head{display:flex;align-items:center;gap:10px;padding:9px 14px;cursor:pointer}
+.folio-head:hover{background:var(--bg-muted)}
+.folio.open .folio-head{background:var(--primary-soft)}
+.folio-id{font-weight:600;font-variant-numeric:tabular-nums;color:var(--text-primary);min-width:44px;flex:0 0 auto}
+.folio-date{color:var(--text-muted);font-variant-numeric:tabular-nums;min-width:80px;flex:0 0 auto}
+.folio-sub{flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.folio-vinc{display:flex;gap:5px;flex-wrap:wrap;justify-content:flex-end;flex:0 0 auto}
+.vermas{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;padding:4px 9px;color:var(--text-secondary);font-size:11.5px;flex:0 0 auto}
+.folio.open .vermas{background:var(--primary);color:#fff;border-color:var(--primary)}
+.folio-body{padding:6px 16px 16px 16px;background:var(--bg-card);animation:pop .2s ease}
+.folio.auto .folio-head{background:repeating-linear-gradient(45deg,transparent,transparent 6px,rgba(148,163,184,.06) 6px,rgba(148,163,184,.06) 12px);cursor:default}
+.folio.auto .folio-id,.folio.auto .folio-sub{color:var(--text-muted)}
+.btn-ver,.btn-dl{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text-secondary);cursor:pointer}.btn-arch{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--text-secondary);cursor:pointer}.btn-arch:hover{border-color:var(--amber);color:var(--amber)}.folio-acts{margin-top:12px;display:flex;gap:8px}.btn-ver:hover,.btn-dl:hover{border-color:var(--primary);color:var(--primary)}
+.toast{position:fixed;right:18px;bottom:38px;z-index:70;background:var(--bg-card);border:1px solid var(--border-theme);border-left:3px solid var(--green);border-radius:8px;box-shadow:0 8px 24px rgba(15,23,42,.12);padding:11px 14px;max-width:340px;font-size:12.5px;display:none}
+.toast.show{display:block;animation:slidein .25s ease}
+@keyframes slidein{from{transform:translateY(10px);opacity:0}to{transform:translateY(0);opacity:1}}
+.toast .t-title{font-weight:600;display:flex;align-items:center;gap:6px;margin-bottom:2px}.toast .t-title .ok{color:var(--green)}
+.toast .t-sub{color:var(--text-secondary)}.toast .t-sub a{color:var(--primary);text-decoration:none;font-weight:600;margin-left:4px}
+.perm-scroll{flex:1;overflow:auto;padding:16px}
+.perm-card{background:var(--bg-card);border:1px solid var(--border-theme);border-radius:8px;margin-bottom:16px;overflow:hidden}
+.perm-card h4{font-size:12px;font-weight:600;padding:10px 14px;background:var(--bg-muted);border-bottom:1px solid var(--border-theme);display:flex;align-items:center;gap:8px}
+.perm-card h4 .hint{font-weight:400;color:var(--text-muted);font-size:11.5px}
+.perm-card table{font-size:12.5px}
+.perm-card td,.perm-card th{padding:8px 12px;border-bottom:1px solid var(--border-theme);text-align:left}
+.perm-card th{font-size:11px;text-transform:uppercase;letter-spacing:.03em;color:var(--text-muted);background:var(--bg-card);position:sticky;top:0}
+.pill{display:inline-block;border:1px solid var(--border-theme);border-radius:6px;padding:3px 9px;font-size:11.5px;color:var(--text-secondary);background:var(--bg-muted);cursor:pointer;user-select:none;white-space:nowrap}
+.pill:hover{border-color:var(--border-strong)}
+.pill.lv-lectura{background:var(--primary-soft);color:var(--primary);border-color:rgba(37,99,235,.3)}
+.pill.lv-escritura{background:var(--amber-soft);color:var(--amber);border-color:rgba(217,119,6,.3)}
+.pill.lv-edicion{background:rgba(22,163,74,.14);color:var(--green);border-color:rgba(22,163,74,.3)}
+.pill.lv-sin{background:var(--bg-muted);color:var(--text-muted)}
+.module{display:none;flex:1;min-height:0;overflow:hidden;flex-direction:column}
+.module.active{display:flex}
+.overlay{position:fixed;inset:0;background:rgba(15,23,42,.38);z-index:60;display:none;align-items:center;justify-content:center}
+.overlay.show{display:flex}
+.modal{background:var(--bg-card);border:1px solid var(--border-theme);border-radius:10px;box-shadow:0 20px 50px rgba(15,23,42,.25);width:min(460px,94vw);max-height:90vh;display:flex;flex-direction:column;animation:pop .18s ease}
+@keyframes pop{from{transform:translateY(8px) scale(.99);opacity:0}to{transform:none;opacity:1}}
+.modal.drawer{margin-left:auto;height:100vh;max-height:100vh;border-radius:0;width:min(1020px,98vw);animation:slidr .2s ease}
+@keyframes slidr{from{transform:translateX(20px);opacity:.6}to{transform:none;opacity:1}}
+.modal.drawer .m-body{display:grid;grid-template-columns:1fr 1fr;gap:0 18px}
+.modal.drawer .m-body .full{grid-column:1 / -1}
+.m-head{display:flex;align-items:flex-start;justify-content:space-between;padding:13px 16px;border-bottom:1px solid var(--border-theme)}
+.m-head h3{font-size:14px;font-weight:600}.m-head .sub{font-size:11.5px;color:var(--text-muted);font-weight:400;margin-top:2px}
+.m-head .x{border:0;background:transparent;color:var(--text-muted);font-size:18px;line-height:1;padding:2px 6px;border-radius:5px}
+.m-head .x:hover{background:var(--bg-muted);color:var(--text-primary)}
+.m-body{padding:14px 16px;overflow-y:auto}
+.m-foot{display:flex;justify-content:flex-end;gap:8px;padding:12px 16px;border-top:1px solid var(--border-theme)}
+.field{margin-bottom:13px}
+.field>label{display:block;font-size:11.5px;font-weight:600;color:var(--text-secondary);margin-bottom:5px;text-transform:uppercase;letter-spacing:.03em}
+.field select,.field input[type=text],.field textarea,.field input[type=date]{width:100%;border:1px solid var(--border-theme);border-radius:6px;padding:8px 10px;font:inherit;color:var(--text-primary);background:var(--bg-card);outline:none}
+.field select:focus,.field input:focus,.field textarea:focus{border-color:var(--primary)}
+.field textarea{resize:vertical;min-height:64px}
+.hintline{font-size:11.5px;color:var(--text-muted);margin-top:5px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.hintline.ver{color:var(--primary)}
+.radio-row,.seg{display:flex;gap:6px;flex-wrap:wrap}.seg{margin-bottom:13px}
+.radio-chip{border:1px solid var(--border-theme);border-radius:7px;padding:7px 11px;font-size:12.5px;color:var(--text-secondary);background:var(--bg-card);cursor:pointer;flex:1;text-align:center;min-width:90px}
+.radio-chip.on{border-color:var(--primary);background:var(--primary-soft);color:var(--primary);font-weight:600}
+.dropzone{border:1.5px dashed var(--border-strong);border-radius:8px;padding:16px;text-align:center;color:var(--text-muted);background:var(--bg-muted);cursor:pointer;font-size:12.5px}
+.dropzone.has{border-style:solid;border-color:var(--primary);color:var(--text-primary);background:var(--primary-soft)}
+.btn-m{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;padding:7px 14px;font-weight:500;color:var(--text-secondary)}
+.btn-m.primary{background:var(--primary);color:#fff;border-color:var(--primary)}
+.chips-input{display:flex;flex-wrap:wrap;gap:6px;border:1px solid var(--border-theme);border-radius:6px;padding:6px;min-height:38px}
+.chip-p{display:inline-flex;align-items:center;gap:5px;background:var(--bg-muted);border:1px solid var(--border-theme);border-radius:14px;padding:3px 9px;font-size:11.5px;color:var(--text-secondary)}
+.chip-p.ext{background:var(--amber-soft);color:var(--amber);border-color:rgba(217,119,6,.3)}
+.chip-p .rm{cursor:pointer;font-weight:700;opacity:.7}.chip-p .rm:hover{opacity:1}
+.chips-input input{border:0;outline:0;flex:1;min-width:120px;font:inherit;background:transparent;color:var(--text-primary)}
+.multi{display:flex;flex-wrap:wrap;gap:6px}
+.multi .opt{border:1px solid var(--border-theme);border-radius:6px;padding:5px 10px;font-size:12px;color:var(--text-secondary);cursor:pointer;user-select:none}
+.multi .opt.on{background:var(--primary-soft);color:var(--primary);border-color:rgba(37,99,235,.3);font-weight:600}
+.readonly-box{background:var(--bg-muted);border:1px solid var(--border-theme);border-radius:6px;padding:7px 10px;font-size:12.5px;color:var(--text-secondary);display:flex;align-items:center;gap:7px}
+@media(max-width:640px){.modal.drawer .m-body{grid-template-columns:1fr}}
+</style>
+</head>
+<body>
+<div class="app">
+  <header class="header">
+    <div class="brand">
+      <span class="glyph">▣</span><span>Obra Digital MOP</span><span class="sep">·</span>
+      <span class="contract">Contrato: "Reposición Ruta K-60"</span>
+      <span class="safi">SAFI 123456 · MP 4567-89-LR22</span>
+    </div>
+    <nav class="switcher" id="switcher">
+      <button data-mod="carpeta" class="active">Carpeta Digital</button>
+      <button data-mod="libro">Libro de Obras</button>
+      <button data-mod="permisos">Permisos</button>
+      <button class="gear" title="Configuración">⚙</button>
+    </nav>
+  </header>
+
+  <div class="module active" id="mod-carpeta">
+    <div class="subbar">
+      <button class="hamb" title="Árbol">☰</button>
+      <label>Tipo de contrato</label>
+      <select id="contractSel">
+        <option value="obras">Obras y Conservación</option>
+        <option value="asesorias">Asesorías</option>
+        <option value="consultorias">Consultorías</option>
+        <option value="aif">AIF (Asesoría a la IF)</option>
+        <option value="estudios">Estudios, Diseños</option>
+        <option value="apr">APR (Agua Potable Rural)</option>
+      </select>
+      <div class="crumb" id="crumb"></div>
+      <div class="spacer"></div>
+      <div class="search">🔍 <input placeholder="Buscar…"></div>
+    </div>
+    <div class="body">
+      <aside class="colA">
+        <div class="tree" id="tree"></div>
+        <div class="foot"><button class="btn" id="addRootFolder">+ Nueva carpeta</button></div>
+      </aside>
+      <section class="colB">
+        <div class="scroll det" id="cdDetail"></div>
+      </section>
+    </div>
+    <div class="statusbar" id="statusCarpeta"></div>
+  </div>
+
+  <div class="module" id="mod-libro">
+    <div class="subbar">
+      <div class="crumb">Libro activo: <b id="libroActivo">&nbsp;Maestro</b></div>
+      <button class="btn primary js-newentry" style="margin-left:8px">+ Nueva entrada</button>
+      <div class="spacer"></div>
+      <div class="search">🔍 <input placeholder="Buscar…"></div>
+    </div>
+    <div class="body">
+      <aside class="colA">
+        <div class="col-head">Sub-libros</div>
+        <div class="tree" id="books"></div>
+        <div class="foot"><button class="btn" id="abrirLibro">+ Agregar libro</button></div>
+      </aside>
+      <section class="colB">
+        <div class="toolbar-row"><span class="ctxname" id="lTitle">FOLIOS · Libro Maestro</span></div>
+        <div class="scroll" id="bFolios"></div>
+      </section>
+    </div>
+    <div class="statusbar" id="statusLibro"></div>
+  </div>
+
+  <div class="module" id="mod-permisos">
+    <div class="subbar"><div class="crumb"><b>Gestión de permisos</b> · clic en cada nivel para cambiarlo</div></div>
+    <div class="perm-scroll" id="permWrap"></div>
+    <div class="statusbar"><span>Niveles: sin acceso · lectura · escritura · edición</span></div>
+  </div>
+</div>
+
+<div class="overlay" id="overlay"><div id="modalMount"></div></div>
+<div class="toast" id="toast"><div class="t-title"><span class="ok">✓</span> Registro guardado.</div><div class="t-sub"></div></div>
+
+<script>
+/* ============ DATOS ============ */
+const CONTRACTS = {
+obras:{name:"Obras y Conservación", tree:[
+ {n:"1",l:"Licitación",f:["Bases administrativas, términos de referencia","Resolución aprueba anexo complementario","Antecedentes técnicos","Presupuesto oficial (planilla editable)","Publicación licitación","Actas y/o certificados visita a terreno","Serie de preguntas-respuestas y aclaraciones","Informe de inspeccionabilidad"],c:[{n:"1-1",l:"Otros antecedentes de la licitación",f:[]}]},
+ {n:"2",l:"Adjudicación",f:["Nombramiento comisión apertura y evaluación","Acta apertura ofertas técnicas y económicas","Boletas garantía seriedad oferta","Evaluación de ofertas técnicas y económicas","Informe o acta de adjudicación","Oferta técnica contratista adjudicado","Oferta económica contratista adjudicado","Resolución de adjudicación","Resolución nombramiento IF","Notificación al contratista","Planos"],c:[{n:"2-1",l:"Otros antecedentes de la adjudicación",f:[]}]},
+ {n:"3",l:"Oficialización del Contrato",f:["Documento entrega y resolución protocolizada","V°B° de la Fiscalía de protocolización","Constancia suscripción antecedentes","Comunicaciones para la entrega de terreno (Contratista, IF)","Comunicación al Registro de Contratistas"],c:[{n:"3-1",l:"Otros antecedentes",f:[]}]},
+ {n:"4",l:"Garantías",f:[],c:[
+   {n:"4-1",l:"Garantía fiel cumplimiento",f:["Trámite garantía","Ajuste garantía por modificaciones","Garantía adicional"]},
+   {n:"4-2",l:"Poliza responsabilidad civil",f:["Trámite póliza RC","Ajuste póliza RC por modificaciones"]},
+   {n:"4-3",l:"Póliza todo riesgo de construcción",f:["Trámite póliza TRC","Ajuste póliza TRC por modificaciones"]},
+   {n:"4-4",l:"Garantía canje retenciones",f:['Trámite garantía canje-1','Trámite garantía canje-"n"']},
+   {n:"4-5",l:"Garantía canje anticipo",f:["Trámite garantía canje anticipo","Otros antecedentes"]}]},
+ {n:"5",l:"Inicio del Contrato",f:["Acta de entrega de terreno","Letreros obra","Permisos para ejecución obra"],c:[
+   {n:"5-1",l:"Instalaciones de faenas",f:["Documentos instalaciones de faenas","Oficinas para IF"]},
+   {n:"5-2",l:"Programas",f:["Programa de Trabajo","Programa de Inversiones","Programa de Mano de Obra"]},
+   {n:"5-3",l:"Otros antecedentes de inicio del contrato",f:[]}]},
+ {n:"6",l:"Gestión del Personal",f:["Organigrama del contrato","Control mano de obra"],c:[
+   {n:"6-1",l:"Personal",f:['Profesional Residente','Personal solicitado "n"']},
+   {n:"6-2",l:"Carpeta laboral mensual",f:['Mes "inicial"','Mes "n"']},
+   {n:"6-3",l:"Otros antecedentes del personal",f:[]}]},
+ {n:"7",l:"Archivo comunicaciones",f:["Folios libro de obra","Folios libro de Comunicaciones"],c:[
+   {n:"7-1",l:"Otras comunicaciones",f:["Recibida","Despachada"]}]},
+ {n:"8",l:"Estados de Pago",f:["Resumen EP"],c:[
+   {n:"8-1",l:"Estados de pago cursados",f:['EP 1','EP "n"']},
+   {n:"8-2",l:"Otros documentos relacionados con EP",f:[]}]},
+ {n:"9",l:"Modificaciones",f:["Modificaciones nombramiento IF","Otras modificaciones de la Dirección","Resumen modificaciones"],c:[
+   {n:"9-1",l:"Modificación 1",f:["Antecedentes presentados","Trámitación","Nuevos programas"]},
+   {n:"9-n",l:'Modificación "n"',f:["Antecedentes presentados","Trámitación","Nuevos programas"]}]},
+ {n:"10",l:"Subcontratos",f:["Subcontrato 1","Subcontrato n"]},
+ {n:"11",l:"Valores Proforma",f:["Proforma 1","Proforma n"]},
+ {n:"12",l:"Informes Mensuales",f:["Informe 1, nombre mes",'Informe "n", nombre mes']},
+ {n:"13",l:"Gestión de la Calidad",f:["Seguimiento de la calidad","Folios libro comunicaciones calidad"],c:[
+   {n:"13-1",l:"Plan de Calidad",f:["Antecedentes presentados","Modificaciones del Plan","Plan vigente calidad","Cuadro de No Conformidades"]},
+   {n:"13-2",l:"Calidad de los materiales",f:["Presentación insumos","Resumen insumos"]},
+   {n:"13-3",l:"Exposición y reuniones",f:["Actas de exposición de Calidad","Actas de reuniones de Calidad"]},
+   {n:"13-4",l:"Auditorías internas",f:["Programa de auditorías internas","Auditoría interna 1",'Auditoría interna "n"']},
+   {n:"13-5",l:"Otras auditorías",f:["Auditoría nombre",'Auditoría nombre "n"']},
+   {n:"11-6",l:"Informes de calidad",f:["Informe Calidad 1",'Informe Calidad "n"']},
+   {n:"13-7",l:"Otros de gestión de la calidad",f:[]}]},
+ {n:"14",l:"Topografía",f:["Folios libro comunicaciones topografía AIF"],c:[
+   {n:"14-1",l:"Instrumentos y equipos",f:["Cuadro inventario topografía","Certificados de calibración instrumentos"]},
+   {n:"14-2",l:"Levantamientos topográfico",f:["Informe Previo Topografía","Línea de Tierra"]},
+   {n:"14-3",l:"Cubicaciones",f:["Cubicación dd/mm/aaaa"]}]},
+ {n:"15",l:"Laboratorio Autocontrol",f:["Presentación y Aprobación","Cuadro registro informes","Folios libro comunicaciones laboratorio"],c:[
+   {n:"15-1",l:"Instrumentos y equipos",f:["Cuadro Inventario Laboratorio","Certificados de calibración","Autorización organismos pertinentes"]},
+   {n:"15-2",l:"Certificados laboratorio",f:["Certificados emitidos","Certificados externos","Certificados del Servicio"]},
+   {n:"15-3",l:"Otros de laboratorio de autocontrol",f:[]}]},
+ {n:"16",l:"Prevención de Riesgos",f:["Capacitación","Cuadro registro informes PR","Folios libro comunicaciones PR"],c:[
+   {n:"16-1",l:"Plan y Programa PR",f:["Antecedentes presentados","Modificaciones del programa","Programa vigente PR","Seguimiento programa PR"]},
+   {n:"16-2",l:"Actividades Iniciales",f:["Datos del Experto","Entrega de documentos PR","Actas de reuniones PR"]},
+   {n:"16-3",l:"Accidentes",f:["Informe accidente 1",'Informe accidente "n"']},
+   {n:"16-4",l:"Comité Paritario",f:["Formación Comité","Actas de reuniones"]},
+   {n:"16-5",l:"Informes PR",f:["Informe PR 1",'Informe PR "n"']},
+   {n:"16-6",l:"Otros de PR",f:[]}]},
+ {n:"17",l:"Señalización y Seguridad",f:["Seguimiento señalización y seguridad"],c:[
+   {n:"17-1",l:"Plan de Señalización y Medidas de Seguridad",f:["Antecedentes presentados","Modificaciones del Plan","Programa vigente Señalización y Seguridad"]}]},
+ {n:"18",l:"Medio Ambiente",f:["Cuadro Planes de Manejo","Folios libro comunicaciones MA"],c:[
+   {n:"18-1",l:"Plan de Gestión Ambiental",f:["Antecedentes presentados","Modificaciones del PdM","Plan vigente gestión ambiental"]},
+   {n:"18-2",l:"Plan de Manejo Instalaciones de faenas",f:["Antecedentes Presentados","Modificaciones del PdM","PdM vigente instalaciones de faenas"]},
+   {n:"18-3",l:'Plan de Manejo Empréstito "n"',f:["Antecedentes Presentados","Modificaciones del PdM",'PdM vigente empréstito "n"']},
+   {n:"18-4",l:'Plan de Manejo Botadero "n"',f:["Antecedentes Presentados","Modificaciones del PdM",'PdM vigente botadero "n"']},
+   {n:"18-n",l:"Otros de Medio Ambiente",f:[]}]},
+ {n:"19",l:"Participación Ciudadana",f:[],c:[
+   {n:"19-1",l:"Plan de Participación Ciudadana",f:["Antecedentes presentados","Modificaciones del PdM","Plan vigente PC"]},
+   {n:"19-2",l:"Actividades Comunitarias",f:["Reuniones","Material Informativo","Sugerencias y Reclamos"]},
+   {n:"19-3",l:"Otros de Participación Ciudadana",f:[]}]},
+ {n:"20",l:"Conservaciones Globales",f:["Cuadro aviso de incumplimiento"],c:[
+   {n:"20-1",l:"Desafectaciones y Afectaciones",f:["Doumentos","Cuadro registro"]},
+   {n:"20-2",l:"Programas de trabajo",f:["Programas semanales","Programas mensuales PU","Programas mensuales NS"]},
+   {n:"20-3",l:"Recepciones Rutinarias",f:["Recepción rutinaria 1",'Recepción rutinaria "n"']},
+   {n:"20-4",l:"Recepciones Nivel de Servicio",f:["Recepción bimensual NS 1",'Recepción bimensual NS "n"']},
+   {n:"20-5",l:"Recepciones Periódicas",f:["Recepción Periódica 1","Recepción Periódica n"]},
+   {n:"20-6",l:"Inspección y vigilancia vial",f:["Doumentos","Cuadro registro"]},
+   {n:"20-7",l:"Otros de Conservación Global",f:[]}]},
+ {n:"21",l:"Término de Obra y Contrato",f:["Comunicación Término","Planos de la obra (as built)","Material Fotográfico o Audiovisual","Recepción Provisional o Única","Calificación","Recepción Definitiva"],c:[
+   {n:"21-1",l:"Estimaciones de Cierre",f:["Detalle Cálculo de reajuste","Detalle Cálculo de multas"]},
+   {n:"21-2",l:"Devolución de Retenciones",f:["IF informa cumplimiento Art. 169º RCOP","Resolución autoriza devolución retenciones y garantía adicional","Devolución Garantía adicional y especiales"]},
+   {n:"21-3",l:"Liquidación del Contrato",f:["Resolución aprueba liquidación","Documento entrega y resolución protocolizada","V°B° de la Fiscalía de protocolización","Devolución garantía fiel cumplimiento"]}]}
+]},
+asesorias:{name:"Asesorías", tree:[
+ {n:"1",l:"Licitación",f:["Bases administrativas, términos de referencia","Resolución aprueba anexo complementario","Presupuesto oficial (planilla editable)","Publicación licitación","Serie de preguntas-respuestas y aclaraciones"],c:[{n:"1-1",l:"Otros antecedentes de la licitación",f:[]}]},
+ {n:"2",l:"Adjudicación",f:["Nombramiento comisión apertura y evaluación","Acta apertura ofertas técnicas y económicas","Boletas garantía seriedad oferta","Evaluación ofertas técnicas y económicas","Informe o acta de adjudicación","Oferta técnica consultor adjudicado","Oferta económica consultor adjudicado","Resolución de adjudicación","Resolución nombramiento IF","Notificación al consultor"],c:[{n:"2-1",l:"Otros antecedentes de la adjudicación",f:[]}]},
+ {n:"3",l:"Oficialización del Contrato",f:["Documento entrega y resolución protocolizada","V°B° de la Fiscalía de protocolización"],c:[{n:"3-1",l:"Otros antecedentes",f:[]}]},
+ {n:"4",l:"Garantías",f:[],c:[
+   {n:"4-1",l:"Garantía fiel cumplimiento",f:["Trámite garantía","Ajuste garantía por modificaciones"]},
+   {n:"4-2",l:"Garantía canje retenciones",f:["Trámite garantía canje-1","Trámite garantía canje-n"]},
+   {n:"4-3",l:"Garantía adicional",f:["Trámite garantía adicional","Otras Garantías"]}]},
+ {n:"5",l:"Inicio de la AIF",f:["Consultor comunica inicio Asesoría"],c:[
+   {n:"5-1",l:"Recursos provistos por consultor",f:["Inventario","Documentos de vehículos","Licencias de software","Documentos de entrega y recepción IF"]},
+   {n:"5-2",l:"Otros antecedentes de inicio AIF",f:[]}]},
+ {n:"6",l:"Gestión del Personal",f:["Organigrama de la AIF","Control mano de obra"],c:[
+   {n:"6-1",l:"Personal",f:["Jefe AIF","Personal Auxiliar n"]},
+   {n:"6-2",l:"Carpeta laboral mensual",f:['Mes "inicial"','Mes "n"']},
+   {n:"6-3",l:"Otros antecedentes del personal",f:[]}]},
+ {n:"7",l:"Archivo comunicaciones",f:["Folios libro de Comunicaciones"],c:[{n:"7-1",l:"Otras comunicaciones",f:["Recibida","Despachada"]}]},
+ {n:"8",l:"Estados de Pago",f:["Resumen EP"],c:[{n:"8-1",l:"Estados de Pago cursados",f:['EP 1','EP "n"']},{n:"8-2",l:"Otros documentos relacionados con EP",f:[]}]},
+ {n:"9",l:"Modificaciones",f:["Modificaciones nombramiento IF","Otras modificaciones de la Dirección","Resumen modificaciones"],c:[{n:"9-1",l:"Modificación 1",f:["Antecedentes presentados","Trámitación"]},{n:"9-n",l:"Modificación n",f:["Antecedentes presentados","Trámitación"]}]},
+ {n:"10",l:"Informes",f:["Modelos informes","Informe inicial","Informes de comportamiento"],c:[{n:"10-1",l:"Informes mensuales",f:["Informe 1, nombre mes",'Informe "n", nombre mes']},{n:"10-2",l:"Informes especialistas",f:['Informe "nombre - 1"','Informe "nombre - n"']}]},
+ {n:"11",l:"Gestión de la Calidad",f:["Seguimiento de la calidad","Folios libro comunicaciones calidad AIF"],c:[
+   {n:"11-1",l:"Plan de la Calidad",f:["Antecedentes presentados","Modificaciones del Plan","Plan vigente calidad","Cuadro de No Conformidades"]},
+   {n:"11-2",l:"Exposición y reuniones",f:["Actas de exposición de Calidad","Actas de reuniones de Calidad"]},
+   {n:"11-3",l:"Auditorías internas",f:["Programa de auditorías internas","Auditoría interna 1",'Auditoría interna "n"']},
+   {n:"11-4",l:"Otras auditorías",f:["Auditoría nombre",'Auditoría nombre "n"']},
+   {n:"11-5",l:"Informes de calidad",f:["Informe Calidad 1",'Informe Calidad "n"']},
+   {n:"11-6",l:"Otros de gestión de la calidad",f:[]}]},
+ {n:"12",l:"Topografía",f:["Certificados de calibración instrumentos","Verificaciones iniciales","Seguimiento topográfico","Folios libro comunicaciones topografía AIF"],c:[{n:"12-1",l:"Cubicaciones",f:["Cubicación dd/mm/aaaa"]}]},
+ {n:"13",l:"Laboratorio",f:["Presentación y Aprobación Laboratorio AIF","Seguimiento del Laboratorio AIF","Folios libro comunicaciones laboratorio AIF"],c:[{n:"13-1",l:"Instrumentos y equipos",f:["Cuadro Inventario Laboratorio","Certificados de calibración","Autorización organismos pertinentes"]},{n:"13-2",l:"Informes de Laboratorio",f:["Informe Laboratorio 1",'Informe Laboratorio "n"']}]},
+ {n:"14",l:"Prevención de Riesgos",f:["Capacitación","Seguimiento de PR","Folios libro comunicaciones PR AIF"],c:[{n:"14-1",l:"Plan y Programa PR",f:["Antecedentes presentados","Modificaciones del programa","Programa vigente PR","Seguimiento programa PR"]},{n:"14-2",l:"Actividades Iniciales",f:["Datos del Experto del consultor","Entrega de documentos PR","Actas de reuniones PR-AIF"]},{n:"14-3",l:"Informes PR-AIF",f:["Informe PR-AIF 1",'Informe PR-AIF "n"']},{n:"14-4",l:"Comité Paritario",f:["Formación Comité","Actas de reuniones"]},{n:"14-5",l:"Informes PR",f:["Informe PR 1",'Informe PR "n"']}]},
+ {n:"15",l:"Señalización y Seguridad",f:["Seguimiento Señalización y Seguridad"],c:[{n:"15-1",l:"Informes Señalización y Seguridad",f:["Informe Señalización y Seguridad 1",'Informe Señalización y Seguridad "n"']}]},
+ {n:"16",l:"Medio Ambiente",f:["Seguimiento Gestión Ambiental"],c:[{n:"16-1",l:"Informes Gestión Ambiental",f:["Informe Medio Ambiente 1",'Informe Medio Ambiente "n"']}]},
+ {n:"17",l:"Participación Ciudadana",f:["Seguimiento Consultas, Sugerencias y Reclamos","Seguimiento Participación Ciudadana"],c:[{n:"17-1",l:"Informes de Participación Ciudadana",f:["Informe Participación Ciudadana 1",'Informe Participación Ciudadana "n"']}]},
+ {n:"18",l:"Término del Contrato",f:["Certificado de término del IF","Informe Final","Material Fotográfico o Audiovisual","Calificación","Devolución Garantía adicional y especiales","Devolución de Retenciones"],c:[{n:"18-1",l:"Liquidación del Contrato",f:["Resolución aprueba liquidación","Documento entrega y resolución protocolizada","V°B° de la Fiscalía de protocolización","Devolución garantía fiel cumplimiento"]}]}
+]},
+consultorias:{name:"Consultorías", tree:[
+ {n:"1",l:"Licitación",f:["Bases administrativas, términos de referencia","Resolución aprueba anexo complementario","Presupuesto oficial (planilla editable)","Publicación licitación","Serie de preguntas-respuestas y aclaraciones"],c:[{n:"1-1",l:"Otros antecedentes de la licitación",f:[]}]},
+ {n:"2",l:"Adjudicación",f:["Nombramiento comisión apertura y evaluación","Acta apertura ofertas técnicas y económicas","Boletas garantía seriedad oferta","Evaluación ofertas técnicas y económicas","Informe o acta de adjudicación","Oferta técnica consultor adjudicado","Oferta económica consultor adjudicado","Resolución de adjudicación","Resolución nombramiento IF","Notificación al consultor"],c:[{n:"2-1",l:"Otros antecedentes de la adjudicación",f:[]}]},
+ {n:"3",l:"Oficialización del Contrato",f:["Documento entrega y resolución protocolizada","V°B° de la Fiscalía de protocolización"],c:[{n:"3-1",l:"Otros antecedentes",f:[]}]},
+ {n:"4",l:"Garantías",f:[],c:[{n:"4-1",l:"Garantía fiel cumplimiento",f:["Trámite garantía","Ajuste garantía por modificaciones"]},{n:"4-2",l:"Garantía canje retenciones",f:["Trámite garantía canje-1","Trámite garantía canje-n"]},{n:"4-3",l:"Garantía adicional",f:["Trámite garantía adicional","Otras Garantías"]}]},
+ {n:"5",l:"Inicio de la consultoría",f:["Consultor comunica inicio estudio, proyecto o diseño"],c:[{n:"5-1",l:"Recursos provistos por consultor",f:["Inventario","Licencias de software"]},{n:"5-2",l:"Otros antecedentes de inicio",f:[]}]},
+ {n:"6",l:"Gestión del Personal",f:["Organigrama de la consultoría","Control mano de obra"],c:[{n:"6-1",l:"Personal",f:["Jefe del proyecto",'Cargo o función "n"']},{n:"6-2",l:"Carpeta laboral mensual",f:['Mes "inicial"','Mes "n"']},{n:"6-3",l:"Otros antecedentes del personal",f:[]}]},
+ {n:"7",l:"Archivo comunicaciones",f:["Folios libro de Comunicaciones"],c:[{n:"7-1",l:"Otras comunicaciones",f:["Recibida","Despachada"]}]},
+ {n:"8",l:"Estados de Pago",f:["Resumen EP"],c:[{n:"8-1",l:"Estados de Pago cursados",f:['EP 1','EP "n"']},{n:"8-2",l:"Otros documentos relacionados con EP",f:[]}]},
+ {n:"9",l:"Modificaciones",f:["Modificaciones nombramiento IF","Otras modificaciones de la Dirección","Resumen modificaciones"],c:[{n:"9-1",l:"Modificación 1",f:["Antecedentes presentados","Trámitación"]},{n:"9-n",l:"Modificación n",f:["Antecedentes presentados","Trámitación"]}]},
+ {n:"10",l:"Informes",f:["Informes de comportamiento"],c:[{n:"10-1",l:"Informes periódico de avance",f:["Informe 1, nombre mes",'Informe "n", nombre mes']},{n:"10-2",l:"Informes especialistas",f:['Informe "nombre - 1"','Informe "nombre - n"']},{n:"10-3",l:"Informes de Fases o Etapas",f:['Entrega de "FASE o ETAPA nnnn"']},{n:"10-4",l:"Informe Final o definitivo",f:[]}]},
+ {n:"11",l:"Gestión de la Calidad",f:["Seguimiento de la calidad"],c:[{n:"11-1",l:"Plan de la Calidad",f:["Antecedentes presentados","Modificaciones del Plan","Plan vigente calidad","Cuadro de No Conformidades"]},{n:"11-2",l:"Exposición y reuniones",f:["Actas de exposición de Calidad","Actas de reuniones de Calidad"]},{n:"11-3",l:"Auditorías internas",f:["Programa de auditorías internas","Auditoría interna 1",'Auditoría interna "n"']},{n:"11-4",l:"Otras auditorías",f:["Auditoría nombre",'Auditoría nombre "n"']},{n:"11-5",l:"Informes de calidad",f:["Informe Calidad 1",'Informe Calidad "n"']}]},
+ {n:"12",l:"Topografía",f:["Certificados de calibración instrumentos","Seguimiento topográfico"]},
+ {n:"13",l:"Laboratorio",f:["Presentación y Aprobación Laboratorio","Seguimiento del Laboratorio de autocontrol"],c:[{n:"13-1",l:"Instrumentos y equipos",f:["Cuadro Inventario Laboratorio","Certificados de calibración","Autorización organismos pertinentes"]},{n:"13-2",l:"Informes de Laboratorio",f:["Informe Laboratorio 1",'Informe Laboratorio "n"']}]},
+ {n:"14",l:"Prevención de Riesgos",f:["Capacitación","Cuadro registro informes PR","Folios libro comunicaciones PR"],c:[{n:"14-1",l:"Plan y Programa PR",f:["Antecedentes presentados","Modificaciones del programa","Programa vigente PR","Seguimiento programa PR"]},{n:"14-2",l:"Actividades Iniciales",f:["Datos del Experto","Entrega de documentos PR","Actas de reuniones PR"]},{n:"14-3",l:"Accidentes",f:["Informe accidente 1",'Informe accidente "n"']},{n:"14-4",l:"Comité Paritario",f:["Formación Comité","Actas de reuniones"]},{n:"14-5",l:"Informes PR",f:["Informe PR 1",'Informe PR "n"']},{n:"14-6",l:"Otros de PR",f:[]}]},
+ {n:"15",l:"Señalización y Seguridad",f:["Antecedentes Presentados","Modificaciones del plan","Plan vigente señalización y seguridad"]},
+ {n:"16",l:"Medio Ambiente",f:["Seguimiento gestión ambiental"]},
+ {n:"17",l:"Participación Ciudadana",f:["Seguimiento de participación ciudadana"]},
+ {n:"18",l:"Término Consultoría y Contrato",f:["Certificado término","Material Fotográfico o Audiovisual","Entrega definitiva","Calificación","Devolución Garantía adicional y especiales","Devolución de Retenciones"],c:[{n:"18-1",l:"Liquidación del Contrato",f:["Resolución aprueba liquidación","Documento entrega y resolución protocolizada","V°B° de la Fiscalía de protocolización","Devolución garantía fiel cumplimiento"]}]}
+]},
+aif:{name:"AIF (Asesoría a la IF)", tree:[
+ {n:"1",l:"Licitación",f:["Publicación Aviso","Bases Administrativas","Términos de Referencia","Resolución de aprobación del Anexo Complementario","Presupuesto Oficial","Aclaraciones y serie de preguntas y respuestas"]},
+ {n:"2",l:"Propuesta",f:[],c:[{n:"2.1",l:"Revisión de Ofertas",f:["Nombramiento de Comisión de Apertura y Evaluación de propuestas","Acta de apertura de ofertas técnicas y económicas","Evaluación de ofertas técnicas y económicas","Boleta de Garantía de seriedad de la oferta","Informe o Acta de adjudicación"]},{n:"2.2",l:"Oferta del Consultor",f:["Oferta técnica del Consultor adjudicado","Oferta económica del Consultor adjudicado"]}]},
+ {n:"3",l:"Documentos iniciales del Contrato",f:[],c:[{n:"3.1",l:"Resolución Adjudicación",f:["Resolución","Notificación al Consultor","Documento de entrega y copia de la Resolución protocolizada","V°B° de la Fiscalía de protocolización","Resoluciones de nombramiento de IF"]},{n:"3.2",l:"Garantías del Contrato",f:["Documento de entrega y copia de la Garantía de fiel cumplimiento del Contrato","Constancia de revisión de Boleta de Garantía o V°B° de la Fiscalía si es Póliza","FdG recibido por la DCyF"]}]},
+ {n:"4",l:"Desarrollo del Contrato",f:["Comunicación del Consultor al IF del inicio de la Asesoría"],c:[{n:"4.1",l:"Recursos provistos por Consultor",f:["Registro de fechas de uso de los recursos","Documentos de los vehículos exigidos en AC","Licencias de software utilizado en equipos","Inventario de los recursos indicados en las Bases y en la Metodología","Documento de entrega y recepción de IF de elementos estipulados en AC"]},{n:"4.2",l:"Libros",f:["Libro de Comunicaciones (IF-AIF)","Libros de Comunicaciones de Prevención de Riesgos de la AIF","Libros de Comunicaciones de Prevención de Riesgos","Libros de Comunicaciones de Topografía","Libros de Comunicaciones de Laboratorio de Autocontrol","Libros de Comunicaciones de Medio Ambiente y Participación Ciudadana","Otro (Agregar)"]}]},
+ {n:"5",l:"Modificación de Contrato",f:["Modificación"]},
+ {n:"6",l:"Personal de la Asesoría",f:[],c:[{n:"6.1",l:"Antecedentes",f:["Antecedentes del Personal","Documentos de cambio de personal y su aprobación"]},{n:"6.2",l:"Carpeta mensual",f:["Cumplimiento Laboral Mensual"]}]},
+ {n:"7",l:"Estados de Pago",f:[],c:[{n:"7.1",l:"Carpeta mensual",f:["Estado de Pago"]}]},
+ {n:"8",l:"Informes",f:[],c:[{n:"8.1",l:"Informes Mensuales",f:["Documento de entrega y aprobación del formato de Informe Mensual","Informe Inicial, con documento de entrega y aprobación del IF","Informe Mensual"]},{n:"8.2",l:"Otros informes",f:["Informe de Especialistas y/o Profesionales"]},{n:"8.3",l:"Informes de comportamiento del Consultor (Art. 90 RCTC)",f:["Informe del IF con documento de entrega al Jefe Departamento.","Documento de envío del Informe al Consultor y respuestas."]}]},
+ {n:"9",l:"Especialidades",f:[],c:[
+   {n:"9.1",l:"Gestión de la Calidad",f:["Presentación Plan de Calidad","Acta de exposición y reuniones del Calidad","Entrega, recepción y aprobación de complementos y modificaciones del PAC","Informe de Calidad","Auditorías Internas","No conformidades"]},
+   {n:"9.2",l:"Topografía",f:["Certificados de calibración de instrumentos topográficos","Registro Topográfico"]},
+   {n:"9.3",l:"Laboratorio de la AIF",f:["Acta de reunión de inicio del Laboratorio AIF","Aprobación del Laboratorio de AIF","Certificados de calibración de instrumentos y equipos del Laboratorio","Resoluciones del Servicio de Salud, en caso de uso de Equipos nucleares","Informes de Laboratorio AIF"]},
+   {n:"9.4",l:"Prevención de Riesgos",f:["Presentación Plan y Programa de Prevención de Riesgos","Documentos iniciales de PR","Entrega, recepción y aprobación de modificaciones del Programa","Registro de capacitación en PR al personal AIF","Control y Seguimiento del Programa de PR del Contratista","Informes de PR"]},
+   {n:"9.5",l:"Señalización y Seguridad",f:["Control y Seguimiento del Plan de Señalización"]},
+   {n:"9.6",l:"Medio Ambiente",f:["Control y seguimiento de los Planes de Gestión Ambiental y Planes específicos","Informes de Gestión Ambiental"]},
+   {n:"9.7",l:"Participación Ciudadana",f:["Seguimiento de Consultas, Sugerencias y Reclamos de los usuarios","Presentaciones efectuadas para Participación Ciudadana","Informes de Participación Ciudadana"]}]},
+ {n:"10",l:"Término de AIF y Contrato",f:[],c:[{n:"10.1",l:"Termino AIF",f:["Certificación de término por parte del IF","Entrega de informe final"]},{n:"10.2",l:"Calificación",f:["Nombramiento Comisión Calificadora","Acta de Calificación a la Dirección con copia al Registro de Contratistas","Notificación de Calificación a Consultor"]},{n:"10.3",l:"Liquidación",f:["Liquidación final del Contrato","Devolución de garantías"]}]}
+]},
+estudios:{name:"Estudios, Diseños", tree:[
+ {n:"1",l:"Licitación",f:["Publicación Aviso","Bases Administrativas","Términos de Referencia","Resolución de aprobación de Bases o Anexo Complementario","Anexos","Aclaraciones y serie de preguntas y respuestas"]},
+ {n:"2",l:"Propuesta",f:[],c:[{n:"2.1",l:"Revisión de Ofertas",f:["Nombramiento de Comisión de Apertura y Evaluación de propuestas","Acta de apertura de ofertas técnicas y económicas","Evaluación de ofertas técnicas y económicas","Boleta de Garantía de seriedad de la oferta","Informe o Acta de adjudicación"]},{n:"2.2",l:"Oferta del Consultor",f:["Oferta técnica del Consultor adjudicado","Oferta económica del Consultor adjudicado"]}]},
+ {n:"3",l:"Documentos iniciales del Contrato",f:[],c:[{n:"3.1",l:"Resolución Adjudicación",f:["Resolución","Notificación al Consultor","Documento de entrega y copia de la Resolución protocolizada","V°B° de la Fiscalía de protocolización","Resoluciones de nombramiento de IF"]},{n:"3.2",l:"Garantías del Contrato",f:["Documento de entrega y copia de la Garantía de fiel cumplimiento del Contrato","Constancia de revisión de Boleta de Garantía o V°B° de la Fiscalía si es Póliza","FdG recibido por la DCyF"]}]},
+ {n:"4",l:"Desarrollo del Contrato",f:[],c:[{n:"4.1",l:"Documentos de inicio Consultoría",f:["Comunicación del Consultor al IF del inicio de la Consultoría","Registro de fechas de ingreso y uso de los recursos"]},{n:"4.2",l:"Correspondencia",f:["Documentos del Consultor","Documentos con consultas del Consultor y respuestas del IF"]}]},
+ {n:"5",l:"Modificación de Contrato",f:["Modificación"]},
+ {n:"6",l:"Personal del Consultor",f:[],c:[{n:"6.1",l:"Antecedentes",f:["Antecedentes del Personal","Documentos de cambio de personal y su aprobación"]},{n:"6.2",l:"Carpeta mensual",f:["Cumplimiento Laboral Mensual"]}]},
+ {n:"7",l:"Estados de Pago",f:[],c:[{n:"7.1",l:"Carpeta mensual",f:["Estado de Pago"]}]},
+ {n:"8",l:"Informes",f:["Informes Mensuales","Informe de Especialistas y/o Profesionales"],c:[{n:"8.1",l:"Informes de comportamiento del Consultor (Art. 90 RCTC)",f:["Informe del IF con documento de entrega al Jefe Departamento.","Documento de envío del Informe al Consultor y respuestas."]}]},
+ {n:"9",l:"Prevención de Riesgos",f:["Presentación Plan y Programa de Prevención de Riesgos","Documentos iniciales de PR","Entrega, recepción y aprobación de modificaciones del Programa","Informes de PR","Comité Paritario"]},
+ {n:"10",l:"Fases o Etapas",f:["Entrega de Etapa o Fase"]},
+ {n:"11",l:"Término de Estudio y Contrato",f:[],c:[{n:"11.1",l:"Termino Estudio o Diseño",f:["Certificación de término por parte del IF","Informe IF a Dirección","Aprobación de Dirección","Entrega de informe final de Consultoría"]},{n:"11.2",l:"Calificación",f:["Nombramiento Comisión Calificadora","Acta de Calificación a la Dirección con copia al Registro de Contratistas","Notificación de Calificación a Consultor"]},{n:"11.3",l:"Liquidación",f:["Liquidación final del Contrato","Devolución de garantías"]}]}
+]},
+apr:{name:"APR (Agua Potable Rural)", tree:[
+ {n:"1",l:"Licitación",f:["Aprobación de Bases y Autorización para Publicar","Publicación Aviso","Bases Administrativas","Términos de Referencia","Especificaciones Técnicas","Resolución de aprobación del Anexo Complementario","Presupuesto Oficial","Aclaraciones y serie de preguntas y respuestas"]},
+ {n:"2",l:"Propuesta",f:[],c:[{n:"2.1",l:"Revisión de Ofertas",f:["Nombramiento de Comisión de Apertura y Evaluación de propuestas","Acta de apertura de ofertas técnicas y económicas","Evaluación de ofertas técnicas y económicas","Boleta de seriedad de la oferta","Informe o Acta de Adjudicación y Aprobación"]},{n:"2.2",l:"Oferta del Contratista",f:["Oferta técnica del Contratista adjudicado","Oferta económica del Contratista adjudicado"]}]},
+ {n:"3",l:"Documentos iniciales del Contrato",f:[],c:[{n:"3.1",l:"Resolución adjudicación",f:["Autorización de Adjudicación del MOP","Contrato entre Sanitaria y Contratista","Notificación al Contratista","Documento de entrega y copia del contrato protocolizado","Resoluciones de aprobación del contrato y del gasto por gestión de proyecto","Resoluciones de Nombramientos"]},{n:"3.2",l:"Garantías del Contrato",f:["Documento de entrega y copia de la Garantía de fiel cumplimiento del Contrato","Constancia de revisión de Boleta de Garantía o V°B° de la Fiscalía si es Póliza","FdG recibido por la DCyF"]},{n:"3.3",l:"Póliza Responsabilidad Civil",f:["Documento de entrega y copia de la Póliza","V°B° de la Fiscalía de la Póliza","FdG recibido por la DCyF"]},{n:"3.4",l:"Póliza de Todo Riesgo de Construcción",f:["Documento de entrega y copia de la Póliza","V°B° de la Fiscalía de la Póliza","FdG recibido por la DCyF"]},{n:"3.5",l:"Otras Garantías",f:["Constancia de revisión de Boleta de Garantía","FdG recibido por la DCyF"]},{n:"3.6",l:"Convenio Sanitaria",f:["Convenio asistencia técnica DOH-Sanitaria","Instructivo para la gestión de proyectos","Documento entrega y copia de la Garantía de fiel cumplimiento por Convenio","Constancia de revisión de Boleta de Garantía o V°B° de la Fiscalía si es Póliza","FdG recibido por la DCyF"]}]},
+ {n:"4",l:"Desarrollo del Contrato",f:[],c:[{n:"4.1",l:"Exigencias Contractuales",f:["Acta de entrega de terreno","Documento de entrega y copia del Programa Oficial, Inversiones y Mano de Obra","Aprobación del ITO del Programa Oficial, Inversiones y Mano de Obra","Proposición y Aprobación de la ubicación de las Instalaciones de Faenas","Documento de entrega y aprobación de las instalaciones","Indicación de la ubicación, recepción y aprobación del letrero de Obra"]},{n:"4.2",l:"Subcontratos",f:["Solicitud y antecedentes de subcontratación","Autorización de la Dirección"]},{n:"4.3",l:"Valores Proforma",f:["Documentos de trámites y Cotizaciones","Aprobación de la Dirección","Instrucción del IF de ejecutar la proforma"]},{n:"4.4",l:"Libros",f:["Libro de Obra","Libros de Comunicaciones","Libros de Comunicaciones de Prevención de Riesgos","Libros de Comunicaciones de Topografía","Libros de Comunicaciones de Laboratorio de Autocontrol","Libros de Comunicaciones de Medio Ambiente y Participación Ciudadana","Otro (Agregar)"]}]},
+ {n:"5",l:"Modificación de Contrato",f:["Modificación"]},
+ {n:"6",l:"Personal del Contratista, Subcontratistas y Sanitaria",f:[],c:[{n:"6.1",l:"Antecedentes",f:["Documento de entrega y copia del organigrama y antecedentes del personal exigido, incluyendo las aprobaciones.","Documentos de cambio de personal y su aprobación"]},{n:"6.2",l:"Carpeta Mensual",f:["Cumplimiento Laboral Mensual"]}]},
+ {n:"7",l:"Estados de Pago Contratista y Sanitaria",f:["Estado de Pago"]},
+ {n:"8",l:"Informes",f:["Informe Mensual"]},
+ {n:"9",l:"Especialidades",f:[],c:[
+   {n:"9.1",l:"Gestión de la Calidad",f:["Presentación Plan de Calidad","Acta de exposición y reuniones de Calidad","Entrega, recepción y aprobación de complementos y modificaciones del Plan","Informes de Calidad","Presentación Manual de Procedimientos","Calidad de los materiales","Auditorías Internas","No conformidades"]},
+   {n:"9.2",l:"Topografía",f:["Certificados de calibración de instrumentos topográficos","Entrega, recepción y aprobación de las cubicaciones","Registro Topográfico"]},
+   {n:"9.3",l:"Laboratorio",f:["Presentación y Aprobación del Laboratorio de Autocontrol o externo","Certificados de calibración de instrumentos y equipos del Laboratorio","Resoluciones del Servicio de Salud, en caso de uso de Equipos nucleares","Informes de Laboratorio Autocontrol"]},
+   {n:"9.4",l:"Prevención de Riesgos",f:["Presentación Plan y Programa de Prevención de Riesgos","Documentos iniciales de PR","Entrega, recepción y aprobación de modificaciones del Programa","Informes de PR","Comité Paritario"]},
+   {n:"9.5",l:"Señalización y Seguridad",f:["Presentación Plan de Señalización y Medidas de Seguridad","Entrega, recepción y aprobación de complementos y modificaciones del Plan"]},
+   {n:"9.6",l:"Medio Ambiente",f:["Presentación del Plan de Gestión Ambiental","Entrega, recepción y aprobación de modificaciones del Plan de Gestión Ambiental","Presentación del Planes de Manejo","Entrega, recepción y aprobación de modificaciones de los Planes de Manejo","Informes de Gestión Ambiental"]},
+   {n:"9.7",l:"Participación Ciudadana",f:["Presentación del Plan de Participación Ciudadana","Entrega, recepción y aprobación de modificaciones del Plan de Participación Ciudadana","Material Informativo","Actas de las reuniones de participación ciudadana","Libro de Sugerencias y Reclamos","Informes de Participación Ciudadana"]}]},
+ {n:"10",l:"Término de Obra y Contrato",f:[],c:[{n:"10.1",l:"Recepción Provisional o única",f:["Aviso del Contratista de término de obras","Verificación de término por parte del ITO","Nombramiento Comisión Recep. Provisional","Acta Recepción Provisional o única con o sin reservas"]},{n:"10.2",l:"Calificación",f:["Acta de Calificación a la Dirección","Notificación de Calificación a Contratista"]},{n:"10.3",l:"Devolución de Retenciones o canjes",f:["IC informa recepción conforme","Resolución Devolución retenciones","Devolución retenciones"]},{n:"10.4",l:"Recepción Definitiva",f:["UT Informa recepción definitiva","Nombramiento Comisión Recep. Definitiva","Acta Recepción Definitiva"]},{n:"10.5",l:"Liquidación",f:["Liquidación del Contrato","Devolución garantía fiel cumplimiento"]}]}
+]}
+};
+const SEED={obras:{"13-1":{"Plan vigente calidad":3,"Antecedentes presentados":1},"1":{"Bases administrativas, términos de referencia":1,"Publicación licitación":1}}};
+
+let BOOKS=[
+ {id:"maestro",label:"Maestro",tipo:"maestro",folios:[
+   {f:"#122",fecha:"12/06/2026",tema:"1.2 PR",autor:"M. Soto",tipo:"Comunicación",rep:"Reunión de inicio…",vinc:["Maestro","Prev.R."]},
+   {f:"#121",fecha:"11/06/2026",tema:"AUTO",auto:"M. Soto archivó \"Plan de Calidad v2\" en 13-1 (Carpeta Digital)",vinc:["Maestro"]},
+   {f:"#120",fecha:"10/06/2026",tema:"2.1 Inc.",incid:true,autor:"J. Pérez",tipo:"Incidente",rep:"Paralización por clima",vinc:["Maestro"]},
+   {f:"#119",fecha:"08/06/2026",tema:"1.5 Otras",autor:"M. Soto",tipo:"Comunicación",rep:"Estado de Pago N°4",vinc:["Maestro"]}]},
+ {id:"comunic",label:"Comunicaciones",tipo:"comunic",folios:[
+   {f:"#C18",fecha:"12/06/2026",tema:"1.5 Otras",autor:"C. Rojas",tipo:"Comunicación",rep:"Despacho oficio N°212",vinc:["Comunicaciones"]},
+   {f:"#C17",fecha:"05/06/2026",tema:"1.5 Otras",autor:"M. Soto",tipo:"Comunicación",rep:"Recepción carta contratista",vinc:["Comunicaciones"]}]},
+ {id:"calidad",label:"Gestión Calidad",tipo:"calidad",folios:[
+   {f:"#Q7",fecha:"11/06/2026",tema:"1.1 Calidad",autor:"P. Díaz",tipo:"Comunicación",rep:"Aprobación Plan de Calidad",vinc:["Gestión Calidad","Maestro"]}]},
+ {id:"pr",label:"Prev. Riesgos",tipo:"pr",warn:1,folios:[
+   {f:"#PR9",fecha:"10/06/2026",tema:"2.1 Inc.",incid:true,autor:"L. Muñoz",tipo:"Incidente",rep:"Accidente leve sin días perdidos",vinc:["Prev. Riesgos","Maestro"]},
+   {f:"#PR8",fecha:"02/06/2026",tema:"1.2 PR",autor:"L. Muñoz",tipo:"Comunicación",rep:"Acta Comité Paritario",vinc:["Prev. Riesgos"]}]},
+ {id:"ma",label:"Medio Ambiente",tipo:"ma",folios:[
+   {f:"#MA4",fecha:"09/06/2026",tema:"1.3 MA",autor:"C. Rojas",tipo:"Comunicación",rep:"Plan de Manejo botadero aprobado",vinc:["Medio Ambiente"]}]},
+ {id:"pc",label:"Part. Ciudadana",tipo:"pc",folios:[
+   {f:"#PC3",fecha:"07/06/2026",tema:"1.4 PC",autor:"M. Soto",tipo:"Comunicación",rep:"Acta reunión comunidad",vinc:["Part. Ciudadana"]}]},
+ {sep:"Especialidades"},
+ {id:"esp1",label:"Estructuras + Sanitario",tipo:"especialidad",folios:[
+   {f:"#E12",fecha:"06/06/2026",tema:"Especialidad",autor:"P. Díaz",tipo:"Comunicación",rep:"Revisión enfierradura cámara",vinc:["Estructuras + Sanitario"]}]},
+ {id:"topo",label:"Topografía",tipo:"especialidad",folios:[
+   {f:"#T6",fecha:"03/06/2026",tema:"Especialidad",autor:"J. Pérez",tipo:"Comunicación",rep:"Entrega línea de tierra",vinc:["Topografía"]}]}
+];
+BOOKS.forEach(b=>{if(!b.sep&&b.abierto===undefined)b.abierto=true});
+(()=>{const t=BOOKS.find(b=>b.id==="topo");if(t){t.abierto=false;t.folios=[];}})();
+
+/* ============ Helpers ============ */
+const AUTHORS=["M. Soto","J. Pérez","C. Rojas","P. Díaz","L. Muñoz"];
+const DATES=["12/06/2026","02/06/2026","28/05/2026","19/05/2026","04/05/2026","21/04/2026"];
+const CURRENT_USER="M. Soto (IF)";
+function slug(s){return s.toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g,"").replace(/[^a-z0-9]+/g,"_").replace(/^_|_$/g,"").slice(0,26)}
+function esc(s){return (s==null?"":String(s)).replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;")}
+function todayStr(){const d=new Date();return String(d.getDate()).padStart(2,"0")+"/"+String(d.getMonth()+1).padStart(2,"0")+"/"+d.getFullYear()}
+
+/* ===== Estado Carpeta ===== */
+let curContract="obras";
+let curSel=null;
+const expanded=new Set();
+const uploads={};
+let _idc=0;
+function ensureId(node){if(node._id==null)node._id=++_idc;return node._id}
+function uKey(node){return curContract+"::"+node.n}
+function mkFile(tipo,v,total){return{tipo,archivo:slug(tipo)+(v>1?"_v"+v:"")+".pdf",ver:v,fecha:DATES[v%DATES.length],autor:AUTHORS[v%AUTHORS.length],obs:"",vig:v===total,estado:"activo"}}
+function getUploads(node){
+  const k=uKey(node);
+  if(!uploads[k]){uploads[k]=[];const seed=(SEED[curContract]||{})[node.n];if(seed)Object.entries(seed).forEach(([t,n])=>{for(let v=1;v<=n;v++)uploads[k].push(mkFile(t,v,n))});}
+  return uploads[k];
+}
+function countTipo(node,tipo){return getUploads(node).filter(f=>f.tipo===tipo&&f.estado!=="archivado").length}
+function distinctTipos(node){const base=(node.f||[]).slice();getUploads(node).forEach(f=>{if(f.estado!=="archivado"&&!base.includes(f.tipo))base.push(f.tipo)});return base}
+function folderCount(node){let n=getUploads(node).filter(f=>f.estado!=="archivado").length;(node.c||[]).forEach(c=>n+=folderCount(c));return n}
+function nextVersion(node,tipo){const ex=getUploads(node).filter(f=>f.tipo===tipo);return ex.length?Math.max(...ex.map(f=>f.ver||1))+1:1}
+function findChain(target,nodes,chain){for(const n of (nodes||CONTRACTS[curContract].tree)){const c2=chain.concat(n);if(n===target)return c2;if(n.c){const r=findChain(target,n.c,c2);if(r)return r}}return null}
+
+/* ===== Árbol Carpeta ===== */
+function buildFolder(node,depth){
+  ensureId(node);
+  const wrap=document.createElement("div");
+  const row=document.createElement("div");
+  row.className="node-row folder"+(node.custom?" custom":"");
+  row.style.paddingLeft=(8+depth*15)+"px";row.dataset.fid=node._id;
+  const op=expanded.has(node._id);
+  row.innerHTML=`<span class="chev ${op?'open':''}">▶</span><span class="ic">📁</span><span class="label" title="${esc(node.n+' '+node.l)}">${esc(node.n+' '+node.l)}</span><span class="count">${folderCount(node)}</span>`+
+    `<span class="rowact"><button class="ra-add" title="Agregar archivo">＋</button><button class="ra-sub" title="Nueva subcarpeta">📁</button>${node.custom?'<button class="ra-del" title="Eliminar carpeta">🗑</button>':''}</span>`;
+  wrap.appendChild(row);
+  const kids=document.createElement("div");kids.className="children"+(op?"":" collapsed");
+  const _tipos=distinctTipos(node);
+  if(_tipos.length){
+    const vid="v"+node._id, vo=(node.c&&node.c.length)?expanded.has(vid):true;
+    const vwrap=document.createElement("div");
+    const vrow=document.createElement("div");vrow.className="node-row virtual";vrow.style.paddingLeft=(8+(depth+1)*15)+"px";
+    vrow.innerHTML=`<span class="chev ${vo?'open':''}">▶</span><span class="ic">📄</span><span class="label">Documentos de la carpeta</span><span class="count">${getUploads(node).length}</span>`;
+    vwrap.appendChild(vrow);
+    const vkids=document.createElement("div");vkids.className="children"+(vo?"":" collapsed");
+    _tipos.forEach(t=>vkids.appendChild(buildFile(node,t,depth+2)));
+    vwrap.appendChild(vkids);
+    vrow.addEventListener("click",()=>{if(expanded.has(vid))expanded.delete(vid);else expanded.add(vid);vkids.classList.toggle("collapsed");vrow.querySelector(".chev").classList.toggle("open")});
+    kids.appendChild(vwrap);
+  }
+  (node.c||[]).forEach(c=>kids.appendChild(buildFolder(c,depth+1)));
+  wrap.appendChild(kids);
+  row.addEventListener("click",e=>{
+    if(e.target.classList.contains("ra-add")){e.stopPropagation();selectFolder(node);openAddArchivo(node);return}
+    if(e.target.classList.contains("ra-sub")){e.stopPropagation();openNewSubfolder(node);return}
+    if(e.target.classList.contains("ra-del")){e.stopPropagation();deleteFolder(node);return}
+    if(expanded.has(node._id))expanded.delete(node._id);else expanded.add(node._id);
+    kids.classList.toggle("collapsed");row.querySelector(".chev").classList.toggle("open");
+    selectFolder(node);
+  });
+  return wrap;
+}
+function buildFile(node,tipo,depth){
+  const wrap=document.createElement("div");
+  const row=document.createElement("div");
+  row.className="node-row file";row.style.paddingLeft=(8+depth*15+14)+"px";
+  row.dataset.fid=node._id;row.dataset.tipo=tipo;
+  const c=countTipo(node,tipo);
+  row.innerHTML=`<span class="chev leaf">▶</span><span class="ic">📄</span><span class="label" title="${esc(tipo)}">${esc(tipo)}</span><span class="count ${c?'':'zero'}">${c}</span>`;
+  row.addEventListener("click",()=>selectFile(node,tipo));
+  wrap.appendChild(row);return wrap;
+}
+function renderTree(){
+  const el=document.getElementById("tree");el.innerHTML="";
+  CONTRACTS[curContract].tree.forEach(n=>el.appendChild(buildFolder(n,0)));
+  const arow=document.createElement("div");arow.className="node-row folder";arow.style.marginTop="6px";arow.dataset.arch="1";
+  arow.innerHTML=`<span class="chev leaf">▶</span><span class="ic">🗃️</span><span class="label">Archivados</span><span class="count">${archivedFiles.filter(a=>a.contract===curContract).length}</span>`;
+  arow.addEventListener("click",()=>{curSel=null;renderDetailArchivados();});
+  el.appendChild(arow);
+  applySelection();updateStatusCarpeta();
+}
+function applySelection(){
+  document.querySelectorAll("#tree .node-row.sel").forEach(r=>r.classList.remove("sel"));
+  if(!curSel){renderDetailEmpty();return}
+  let sel=null;
+  document.querySelectorAll("#tree .node-row").forEach(r=>{
+    if(r.dataset.fid==curSel.node._id){
+      if(curSel.kind==="folder"&&!r.dataset.tipo)sel=r;
+      if(curSel.kind==="file"&&r.dataset.tipo===curSel.tipo)sel=r;
+    }
+  });
+  if(sel)sel.classList.add("sel");
+  if(curSel.kind==="folder")renderDetailFolder(curSel.node);else renderDetailFile(curSel.node,curSel.tipo);
+}
+function expandAncestors(node){const ch=findChain(node,null,[]);if(ch)ch.slice(0,-1).forEach(a=>expanded.add(a._id))}
+function selectFolder(node){curSel={kind:"folder",node};expandAncestors(node);applySelection();setCrumb(node)}
+function selectFile(node,tipo){curSel={kind:"file",node,tipo};expandAncestors(node);expanded.add("v"+node._id);applySelection();setCrumb(node,tipo)}
+function setCrumb(node,tipo){
+  const ch=findChain(node,null,[])||[node];
+  let s=ch.map(a=>esc(a.n+' '+a.l)).join(' <span class="chev">▸</span> ');
+  if(tipo)s+=' <span class="chev">▸</span> <b>📄 '+esc(tipo)+'</b>';
+  document.getElementById("crumb").innerHTML='<span class="chev">▸</span> '+s;
+}
+function renderDetailEmpty(){document.getElementById("cdDetail").innerHTML=`<div class="empty"><div class="ico">📂</div><p>Selecciona una carpeta o un documento del árbol para ver su detalle.</p></div>`}
+function renderDetailFolder(node){
+  const isCommon=["1","2","3","4","6","7","8","9"].includes(node.n);
+  const tipos=distinctTipos(node);
+  let h=`<h2><span class="bar"></span>${esc(node.n+' '+node.l)}</h2><div class="path">Carpeta ${node.custom?'· creada por el usuario':'· estructura maestra'}</div>`;
+  h+=`<div class="desc">Documentos correspondientes a "${esc(node.l)}" según el instructivo de Carpeta Digital del contrato.</div>`;
+  h+=`<div class="acts"><button class="btn primary" id="dAdd">+ Agregar archivo</button><button class="btn" id="dSub">+ Nueva subcarpeta</button>${node.custom?'<button class="btn danger" id="dDel">🗑 Eliminar carpeta</button>':''}</div>`;
+  if(node.c&&node.c.length){h+=`<div class="divider">Subcarpetas (${node.c.length})</div><ul>`+node.c.map(c=>`<li><span class="nm fold" style="font-weight:600">${esc(c.n+' '+c.l)}</span><span class="count">${folderCount(c)}</span></li>`).join("")+`</ul>`}
+  h+=`<div class="divider">Documentos predeterminados (${tipos.length})</div>`;
+  h+= tipos.length?`<ul>`+tipos.map(t=>`<li><span class="nm">${esc(t)}</span><span class="count ${countTipo(node,t)?'':'zero'}">${countTipo(node,t)}</span></li>`).join("")+`</ul>`:`<p style="color:var(--text-muted);font-size:12.5px">Carpeta libre / sin lista predeterminada.</p>`;
+  h+=`<span class="badge-norm">${isCommon?'◧ Normativo: común a varios árboles':'◑ Específico de '+CONTRACTS[curContract].name}</span>`;
+  const el=document.getElementById("cdDetail");el.innerHTML=h;el.scrollTop=0;
+  document.getElementById("dAdd").onclick=()=>openAddArchivo(node);
+  document.getElementById("dSub").onclick=()=>openNewSubfolder(node);
+  if(node.custom)document.getElementById("dDel").onclick=()=>deleteFolder(node);
+}
+function renderDetailFile(node,tipo){
+  const vers=getUploads(node).filter(f=>f.tipo===tipo&&f.estado!=="archivado").sort((a,b)=>b.ver-a.ver);
+  let h=`<h2><span class="bar"></span>📄 ${esc(tipo)}</h2><div class="path">${esc(node.n+' '+node.l)}</div>`;
+  h+=`<div class="acts"><button class="btn primary" id="dAddv">+ Agregar archivo / versión</button></div>`;
+  if(!vers.length){h+=`<div class="empty" style="padding:18px 0"><div class="ico">📄</div><p>Aún no hay archivos de este tipo. Sube el primero y quedará como v1.</p></div>`;}
+  else{
+    const maxv=Math.max(...vers.map(v=>v.ver));
+    h+=`<div class="divider">Versiones (${vers.length})</div><table><thead><tr><th>Ver</th><th>Archivo</th><th>Fecha</th><th>Autor</th><th>Acción</th></tr></thead><tbody>`;
+    h+=vers.map((v,i)=>`<tr ${v._new?'style="animation:pop .3s ease"':''}><td><span class="chip ver">${v.ver===maxv?'<span class="dotv">●</span>':''}v${v.ver}</span></td><td class="strong">${esc(v.archivo)}${v.obs?` <span title="${esc(v.obs)}">💬</span>`:''}</td><td class="tabnum">${v.fecha}</td><td>${esc(v.autor)}</td><td style="white-space:nowrap"><button class="btn-ver" data-i="${i}">👁 Ver</button> <button class="btn-dl" data-i="${i}" title="Descargar">⬇</button> <button class="btn-arch" data-i="${i}" title="Archivar">📥</button></td></tr>`).join("");
+    h+=`</tbody></table>`;
+  }
+  const el=document.getElementById("cdDetail");el.innerHTML=h;el.scrollTop=0;
+  document.getElementById("dAddv").onclick=()=>openAddArchivo(node,tipo);
+  el.querySelectorAll(".btn-ver").forEach(b=>b.onclick=()=>openVerArchivo(node,tipo,vers[+b.dataset.i]));
+  el.querySelectorAll(".btn-dl").forEach(b=>b.onclick=()=>showToast(`Descargando "${esc(vers[+b.dataset.i].archivo)}"… (simulado)`));
+  el.querySelectorAll(".btn-arch").forEach(b=>b.onclick=()=>archivarArchivo(node,tipo,vers[+b.dataset.i]));
+}
+function openVerArchivo(node,tipo,v){
+  openModal(`<div class="m-head"><div><h3>${esc(v.archivo)}</h3><div class="sub">${esc(tipo)} · v${v.ver} · ${v.fecha} · ${esc(v.autor)}</div></div><button class="x" data-close>✕</button></div>
+   <div class="m-body">
+     <div style="background:var(--bg-muted);border:1px solid var(--border-theme);border-radius:8px;height:280px;display:flex;align-items:center;justify-content:center;color:var(--text-muted);flex-direction:column;gap:8px"><div style="font-size:42px">📄</div><div>Vista previa simulada del documento</div><div style="font-size:11.5px">${esc(node.n+' '+node.l)}</div></div>
+     ${v.obs?`<div class="field" style="margin-top:12px"><label>Comentarios u observaciones</label><div class="readonly-box">${esc(v.obs)}</div></div>`:''}
+   </div>
+   <div class="m-foot"><button class="btn-m" data-close>Cerrar</button><button class="btn-m primary" id="verDl">⬇ Descargar</button></div>`,"modal");
+  document.getElementById("verDl").onclick=()=>{closeModal();showToast(`Descargando "${esc(v.archivo)}"… (simulado)`)};
+}
+const archivedFiles=[];
+function archivarArchivo(node,tipo,f){
+  f.estado="archivado";
+  if(!archivedFiles.some(a=>a.f===f))archivedFiles.push({contract:curContract,nodeN:node.n,nodeL:node.l,tipo,f});
+  if(getUploads(node).some(x=>x.tipo===tipo&&x.estado!=="archivado")){curSel={kind:"file",node,tipo};}else{curSel={kind:"folder",node};}
+  renderTree();showToast(`Archivado: "${esc(f.archivo)}" → Archivados`);
+}
+function restaurarArchivo(a){a.f.estado="activo";const i=archivedFiles.indexOf(a);if(i>=0)archivedFiles.splice(i,1);renderTree();renderDetailArchivados();}
+function renderDetailArchivados(){
+  document.querySelectorAll("#tree .node-row.sel").forEach(r=>r.classList.remove("sel"));
+  const ar=document.querySelector('#tree .node-row[data-arch]');if(ar)ar.classList.add("sel");
+  const list=archivedFiles.filter(a=>a.contract===curContract);
+  let h=`<h2><span class="bar"></span>🗃️ Archivados</h2><div class="path">Documentos archivados (descartados) del expediente</div>`;
+  if(!list.length){h+=`<div class="empty" style="padding:18px 0"><div class="ico">🗃️</div><p>No hay documentos archivados.</p></div>`;}
+  else{h+=`<div class="divider">Documentos archivados (${list.length})</div><table><thead><tr><th>Tipo</th><th>Archivo</th><th>Carpeta</th><th>Fecha</th><th></th></tr></thead><tbody>`+
+    list.map((a,i)=>`<tr><td class="strong">${esc(a.tipo)}</td><td>${esc(a.f.archivo)}</td><td class="tabnum">${esc(a.nodeN)}</td><td class="tabnum">${a.f.fecha}</td><td><button class="btn-ver btn-rest" data-i="${i}">♻ Restaurar</button></td></tr>`).join("")+`</tbody></table>`;}
+  const el=document.getElementById("cdDetail");el.innerHTML=h;el.scrollTop=0;
+  el.querySelectorAll(".btn-rest").forEach(b=>b.onclick=()=>restaurarArchivo(list[+b.dataset.i]));
+}
+function updateStatusCarpeta(){
+  const t=CONTRACTS[curContract].tree;
+  const total=t.reduce((a,n)=>a+folderCount(n),0);
+  document.getElementById("statusCarpeta").innerHTML=`<span>${t.length} carpetas</span><span class="dot"></span><span>${total} archivos cargados</span><span class="dot"></span><span>Tipo: ${CONTRACTS[curContract].name}</span><span class="dot"></span><span>Modo: LOD MOP</span>`;
+}
+document.getElementById("contractSel").addEventListener("change",e=>{curContract=e.target.value;const first=CONTRACTS[curContract].tree[0];expanded.add(ensureId(first));curSel={kind:"folder",node:first};renderTree();setCrumb(first)});
+
+/* ===== Crear / eliminar carpetas ===== */
+function newChildNumber(parent){const kids=parent.c||[];let k=kids.length+1;const ex=n=>kids.some(c=>c.n===n);while(ex(parent.n+"-"+k))k++;return parent.n+"-"+k}
+function newRootNumber(){const t=CONTRACTS[curContract].tree;let k=t.length+1;const ex=n=>t.some(c=>c.n===String(n));while(ex(k))k++;return String(k)}
+function openNewSubfolder(parent){
+  openModal(`<div class="m-head"><div><h3>Nueva subcarpeta</h3><div class="sub">Dentro de: ${esc(parent.n+' '+parent.l)}</div></div><button class="x" data-close>✕</button></div>
+   <div class="m-body"><div class="field"><label>Nombre de la subcarpeta</label><input type="text" id="nfName" placeholder="Ej.: Antecedentes adicionales"></div>
+   <div class="hintline">ⓘ Se numerará automáticamente como <b>${esc(newChildNumber(parent))}</b>. Las carpetas creadas se pueden eliminar; las de la estructura maestra no.</div></div>
+   <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" id="nfSave">Crear</button></div>`,"modal");
+  const inp=document.getElementById("nfName");inp.focus();
+  document.getElementById("nfSave").onclick=()=>{
+    const name=inp.value.trim();if(!name){inp.focus();return}
+    if(!parent.c)parent.c=[];
+    const node={n:newChildNumber(parent),l:name,f:[],c:[],custom:true};
+    parent.c.push(node);ensureId(node);expanded.add(parent._id);
+    closeModal();curSel={kind:"folder",node};renderTree();setCrumb(node);
+  };
+}
+function openNewRootFolder(){
+  openModal(`<div class="m-head"><div><h3>Nueva carpeta</h3><div class="sub">Nivel raíz del expediente</div></div><button class="x" data-close>✕</button></div>
+   <div class="m-body"><div class="field"><label>Nombre de la carpeta</label><input type="text" id="nfName" placeholder="Ej.: Documentos especiales"></div>
+   <div class="hintline">ⓘ Se numerará como <b>${esc(newRootNumber())}</b>.</div></div>
+   <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" id="nfSave">Crear</button></div>`,"modal");
+  const inp=document.getElementById("nfName");inp.focus();
+  document.getElementById("nfSave").onclick=()=>{
+    const name=inp.value.trim();if(!name){inp.focus();return}
+    const node={n:newRootNumber(),l:name,f:[],c:[],custom:true};
+    CONTRACTS[curContract].tree.push(node);ensureId(node);
+    closeModal();curSel={kind:"folder",node};renderTree();setCrumb(node);
+  };
+}
+function deleteFolder(node){
+  if(!node.custom)return;
+  openModal(`<div class="m-head"><div><h3>Eliminar carpeta</h3></div><button class="x" data-close>✕</button></div>
+   <div class="m-body"><p style="font-size:13px;color:var(--text-secondary)">¿Eliminar la carpeta <b>${esc(node.n+' '+node.l)}</b> y su contenido? Esta acción no se puede deshacer.</p></div>
+   <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" style="background:var(--red);border-color:var(--red)" id="delOk">Eliminar</button></div>`,"modal");
+  document.getElementById("delOk").onclick=()=>{
+    const ch=findChain(node,null,[]);const parent=ch&&ch.length>1?ch[ch.length-2]:null;
+    if(parent){parent.c=parent.c.filter(c=>c!==node)}else{CONTRACTS[curContract].tree=CONTRACTS[curContract].tree.filter(c=>c!==node)}
+    closeModal();curSel=parent?{kind:"folder",node:parent}:null;renderTree();
+  };
+}
+
+/* ============ Libro de Obras ============ */
+let curBook=BOOKS[0];
+let curMonthKey=null;          // "yyyy-mm" o null = todo el libro
+let openFolioId=null;          // acordeón: solo uno abierto
+const expandedB=new Set();     // expansión de libros/años en el índice
+const MES=["","enero","febrero","marzo","abril","mayo","junio","julio","agosto","septiembre","octubre","noviembre","diciembre"];
+const LIBRO_TEMA={calidad:"1.1 Gestión de la Calidad",pr:"1.2 Prevención de Riesgos",ma:"1.3 Medio Ambiente",pc:"1.4 Participación Ciudadana"};
+function ymOf(fo){const p=fo.fecha.split("/");return{y:p[2],m:p[1],key:p[2]+"-"+p[1]}}
+function groupYM(book){const g={};book.folios.filter(f=>f.estado!=="archivado").forEach(fo=>{const {y,m}=ymOf(fo);(g[y]=g[y]||{});g[y][m]=(g[y][m]||0)+1});return g}
+function renderBooks(){
+  const el=document.getElementById("books");el.innerHTML="";
+  BOOKS.forEach(b=>{
+    if(b.sep){const s=document.createElement("div");s.style.cssText="padding:8px 12px 4px;font-size:11px;text-transform:uppercase;letter-spacing:.04em;color:var(--text-muted);font-weight:600";s.textContent="── "+b.sep+" ──";el.appendChild(s);return}
+    const wrap=document.createElement("div");
+    const open=expandedB.has(b.id);
+    const r=document.createElement("div");r.className="node-row folder"+((b.id===curBook.id&&!curMonthKey)?" sel":"");
+    r.innerHTML=`<span class="chev ${open?'open':''}">▶</span><span class="ic" style="color:${b.id===curBook.id?'var(--primary)':'var(--text-muted)'}">${b.id===curBook.id?'●':'○'}</span><span class="label">${esc(b.label)}</span>${b.abierto===false?'<span class="chip" style="background:var(--bg-muted-2);color:var(--text-muted);margin-right:4px">🔒 cerrado</span>':''}${b.warn?`<span class="chip incid" style="margin-right:4px">⚠️${b.warn}</span>`:""}<span class="count">${b.folios.filter(f=>f.estado!=="archivado").length}</span>`;
+    wrap.appendChild(r);
+    const kids=document.createElement("div");kids.className="children"+(open?"":" collapsed");
+    const g=groupYM(b);
+    Object.keys(g).sort((a,c)=>c-a).forEach(y=>{
+      const yk=b.id+"|"+y, yo=expandedB.has(yk);
+      const yr=document.createElement("div");yr.className="node-row folder";yr.style.paddingLeft="26px";
+      const ytot=Object.values(g[y]).reduce((a,c)=>a+c,0);
+      yr.innerHTML=`<span class="chev ${yo?'open':''}">▶</span><span class="ic">🗓️</span><span class="label">${y}</span><span class="count">${ytot}</span>`;
+      wrap.appendChild(kids);kids.appendChild(yr);
+      const mk=document.createElement("div");mk.className="children"+(yo?"":" collapsed");
+      Object.keys(g[y]).sort((a,c)=>c-a).forEach(m=>{
+        const key=y+"-"+m;
+        const mr=document.createElement("div");mr.className="node-row file"+((curBook.id===b.id&&curMonthKey===key)?" sel":"");mr.style.paddingLeft="48px";
+        mr.innerHTML=`<span class="chev leaf">▶</span><span class="ic">📅</span><span class="label">${MES[+m]||m} ${y}</span><span class="count">${g[y][m]}</span>`;
+        mr.addEventListener("click",()=>{curBook=b;curMonthKey=key;openFolioId=null;renderBooks();renderFolios()});
+        mk.appendChild(mr);
+      });
+      kids.appendChild(mk);
+      yr.addEventListener("click",()=>{if(expandedB.has(yk))expandedB.delete(yk);else expandedB.add(yk);renderBooks()});
+    });
+    r.addEventListener("click",e=>{
+      if(e.target.classList.contains("chev")){if(expandedB.has(b.id))expandedB.delete(b.id);else expandedB.add(b.id);renderBooks();return}
+      expandedB.add(b.id);curBook=b;curMonthKey=null;openFolioId=null;renderBooks();renderFolios();
+    });
+    el.appendChild(wrap);
+  });
+  {const arr=document.createElement("div");arr.className="node-row folder";arr.style.marginTop="6px";
+   const arN=BOOKS.filter(b=>!b.sep).reduce((a,b)=>a+b.folios.filter(f=>f.estado==="archivado").length,0);
+   arr.innerHTML=`<span class="ic">🗃️</span><span class="label">Archivados</span><span class="count">${arN}</span>`;
+   arr.addEventListener("click",showLibroArchivados);el.appendChild(arr);}
+}
+function folioLabel(fo){return fo.subtema||fo.rep||fo.tipo||fo.tema}
+function folioDetailHTML(fo){
+  let h=`<div class="fv-row"><span>Tema</span><span>${esc(fo.tema)}</span></div><div class="fv-row"><span>Sub-tema</span><span>${esc(fo.subtema||"—")}</span></div><div class="fv-row"><span>Tipo</span><span>${esc(fo.tipo||"—")}</span></div><div class="fv-row"><span>Autor</span><span>${esc(fo.autor||"—")}</span></div><div class="fv-row"><span>Reporte</span><span>${esc(fo.rep||"—")}</span></div><div class="divider">Libros vinculados</div><div style="display:flex;gap:6px;flex-wrap:wrap">${(fo.vinc||[]).map(v=>`<span class="chip book">⬡ ${esc(v)}</span>`).join("")}</div>`;
+  if(fo.participantes&&fo.participantes.length)h+=`<div class="divider">Participantes</div><div style="display:flex;gap:6px;flex-wrap:wrap">${fo.participantes.map(p=>`<span class="chip-p${p.includes('(sin cuenta)')?' ext':''}">${p.includes('(sin cuenta)')?'✦':'👤'} ${esc(p)}</span>`).join("")}</div>`;
+  if(fo.adjuntos&&fo.adjuntos.length)h+=`<div class="divider">Adjuntos (${fo.adjuntos.length})</div><div style="display:flex;gap:6px;flex-wrap:wrap">${fo.adjuntos.map(a=>`<span class="chip-p">📎 ${esc(a)}</span>`).join("")}</div>`;
+  return h;
+}
+function renderFolios(){
+  document.getElementById("libroActivo").innerHTML="&nbsp;"+curBook.label;
+  const ml=curMonthKey?(" · "+(MES[+curMonthKey.split("-")[1]]||"")+" "+curMonthKey.split("-")[0]):"";
+  document.getElementById("lTitle").textContent="FOLIOS · Libro "+curBook.label+ml;
+  const cont=document.getElementById("bFolios");
+  if(curBook.abierto===false){document.getElementById("lTitle").textContent="FOLIOS · Libro "+curBook.label+" (cerrado)";cont.innerHTML=`<div class="empty"><div class="ico">🔒</div><p>El libro "${esc(curBook.label)}" está <b>cerrado</b>. Ábrelo para comenzar a registrar; se creará el <b>Acta de Apertura</b>.</p><button class="btn primary js-apertura">📖 Abrir libro de obras</button></div>`;document.getElementById("statusLibro").innerHTML=`<span>Libro ${esc(curBook.label)} · cerrado</span>`;return}
+  let list=curBook.folios.filter(f=>f.estado!=="archivado");
+  if(curMonthKey)list=list.filter(fo=>ymOf(fo).key===curMonthKey);
+  if(!list.length){cont.innerHTML=`<div class="empty"><div class="ico">📖</div><p>${curMonthKey?'No hay folios en este mes.':'El libro "'+esc(curBook.label)+'" no tiene entradas todavía.'}</p><button class="btn primary js-newentry">+ Nueva entrada</button></div>`;document.getElementById("statusLibro").innerHTML=`<span>Libro ${esc(curBook.label)} · ${curBook.folios.length} folios</span>`;return}
+  cont.innerHTML="";
+  list.forEach(fo=>{
+    const div=document.createElement("div");
+    if(fo.tema==="AUTO"){
+      div.className="folio auto";
+      div.innerHTML=`<div class="folio-head"><span class="folio-id">${fo.f}</span><span class="folio-date">${fo.fecha}</span><span class="folio-sub"><span class="chip auto">AUTO ◧</span> ↳ ${esc(fo.auto)}</span></div>`;
+      cont.appendChild(div);return;
+    }
+    const chip=fo.incid?`<span class="chip incid">⚑ ${esc(folioLabel(fo))}</span>`:`<span class="chip book">${esc(folioLabel(fo))}</span>`;
+    const op=openFolioId===fo.f;
+    div.className="folio"+(op?" open":"");
+    div.innerHTML=`<div class="folio-head"><span class="folio-id">${fo.f}</span><span class="folio-date">${fo.fecha}</span><span class="folio-sub">${chip}</span><div class="folio-vinc">${(fo.vinc||[]).map(v=>`<span class="chip book">⬡ ${esc(v)}</span>`).join("")}</div><button class="vermas">${op?'− ocultar':'+ ver más'}</button></div><div class="folio-body" style="${op?'':'display:none'}">${folioDetailHTML(fo)}<div class="folio-acts"><button class="btn-arch fo-arch">📥 Archivar entrada</button></div></div>`;
+    div.querySelector(".folio-head").addEventListener("click",()=>{openFolioId=(openFolioId===fo.f)?null:fo.f;renderFolios()});
+    const _ab=div.querySelector(".fo-arch");if(_ab)_ab.addEventListener("click",ev=>{ev.stopPropagation();fo.estado="archivado";openFolioId=null;renderBooks();renderFolios();showToast(`Entrada ${fo.f} archivada → Archivados`)});
+    cont.appendChild(div);
+  });
+  document.getElementById("statusLibro").innerHTML=`<span>Libro ${esc(curBook.label)} · ${curBook.folios.length} folios${curMonthKey?` (${list.length} en el mes)`:''}</span><span class="dot"></span><span>Modo: LOD MOP</span><span class="dot"></span><span>IF: M. Soto</span>`;
+}
+
+function showLibroArchivados(){
+  document.querySelectorAll("#books .node-row.sel").forEach(r=>r.classList.remove("sel"));
+  document.getElementById("libroActivo").innerHTML="&nbsp;Archivados";
+  document.getElementById("lTitle").textContent="FOLIOS · Archivados (descartados)";
+  const cont=document.getElementById("bFolios");const arr=[];
+  BOOKS.filter(b=>!b.sep).forEach(b=>b.folios.forEach(f=>{if(f.estado==="archivado")arr.push({b,f})}));
+  if(!arr.length){cont.innerHTML=`<div class="empty"><div class="ico">🗃️</div><p>No hay entradas archivadas.</p></div>`;document.getElementById("statusLibro").innerHTML="<span>Archivados · 0 entradas</span>";return}
+  cont.innerHTML="";
+  arr.forEach(({b,f})=>{const div=document.createElement("div");div.className="folio";
+    div.innerHTML=`<div class="folio-head"><span class="folio-id">${f.f}</span><span class="folio-date">${f.fecha}</span><span class="folio-sub"><span class="chip book">${esc(b.label)}</span> ${esc(f.subtema||f.rep||"")}</span><button class="vermas fo-rest">♻ Restaurar</button></div>`;
+    div.querySelector(".fo-rest").addEventListener("click",()=>{f.estado="activo";renderBooks();showLibroArchivados()});
+    cont.appendChild(div);});
+  document.getElementById("statusLibro").innerHTML=`<span>Archivados · ${arr.length} entradas</span>`;
+}
+/* ============ Permisos ============ */
+const USERS=["M. Soto (IF)","J. Pérez","C. Rojas","P. Díaz","Contratista"];
+const LEVELS=["sin","lectura","escritura","edicion"];
+const LVLABEL={sin:"sin acceso",lectura:"lectura",escritura:"escritura",edicion:"edición"};
+const permCarpeta={"M. Soto (IF)":"edicion","J. Pérez":"escritura","C. Rojas":"lectura","P. Díaz":"lectura","Contratista":"sin"};
+function renderPermisos(){
+  const LIBROS=BOOKS.filter(b=>!b.sep);
+  const w=document.getElementById("permWrap");
+  let c1=`<div class="perm-card"><h4>📁 Carpeta Digital <span class="hint">— permiso general (lectura/escritura)</span></h4><table><thead><tr><th>Usuario</th><th>Permiso general</th></tr></thead><tbody>`;
+  USERS.forEach(u=>{c1+=`<tr><td><b>${u}</b></td><td><span class="pill lv-${permCarpeta[u]}">${LVLABEL[permCarpeta[u]]}</span></td></tr>`});
+  c1+=`</tbody></table></div>`;
+  let head=LIBROS.map(b=>`<th>${esc(b.label)}</th>`).join("");
+  let c2=`<div class="perm-card"><h4>📖 Libros de Obras <span class="hint">— cada libro tiene su propio permiso de lectura/escritura</span></h4><div style="overflow-x:auto"><table><thead><tr><th>Usuario</th>${head}</tr></thead><tbody>`;
+  USERS.forEach((u,ui)=>{c2+=`<tr><td><b>${u}</b></td>`+LIBROS.map((b,i)=>{const lv=LEVELS[(u==='M. Soto (IF)'?3:(i+ui)%4)];return `<td><span class="pill lv-${lv}">${LVLABEL[lv]}</span></td>`}).join("")+`</tr>`});
+  c2+=`</tbody></table></div></div>`;
+  w.innerHTML=c1+c2;
+  w.querySelectorAll(".pill").forEach(p=>p.addEventListener("click",()=>{const cur=[...p.classList].find(c=>c.startsWith("lv-")).slice(3);const nx=LEVELS[(LEVELS.indexOf(cur)+1)%LEVELS.length];p.className="pill lv-"+nx;p.textContent=LVLABEL[nx]}));
+}
+
+/* ============ ModuleSwitcher ============ */
+const switcher=document.getElementById("switcher");
+switcher.addEventListener("click",e=>{const btn=e.target.closest("button[data-mod]");if(!btn)return;switcher.querySelectorAll("button[data-mod]").forEach(b=>b.classList.remove("active"));btn.classList.add("active");document.querySelectorAll(".module").forEach(m=>m.classList.remove("active"));document.getElementById("mod-"+btn.dataset.mod).classList.add("active")});
+
+/* ============ Toast ============ */
+const toast=document.getElementById("toast");let tt;
+function showToast(html){document.querySelector("#toast .t-sub").innerHTML=html;toast.classList.add("show");clearTimeout(tt);tt=setTimeout(()=>toast.classList.remove("show"),4500);const v=document.getElementById("toastVer");if(v)v.addEventListener("click",e=>{e.preventDefault();toast.classList.remove("show");switcher.querySelector('[data-mod="libro"]').click()});}
+
+/* ============ Modal infra ============ */
+const overlay=document.getElementById("overlay"),mount=document.getElementById("modalMount");
+function openModal(html,kind){mount.innerHTML=`<div class="modal ${kind==='drawer'?'drawer':''}">${html}</div>`;overlay.classList.add("show");mount.querySelectorAll("[data-close]").forEach(b=>b.addEventListener("click",closeModal))}
+function closeModal(){overlay.classList.remove("show");mount.innerHTML=""}
+overlay.addEventListener("click",e=>{if(e.target===overlay)closeModal()});
+
+/* ============ Diálogo Agregar archivo ============ */
+function openAddArchivo(node,fixedTipo){
+  if(!node)node=curSel&&curSel.node;if(!node)return;
+  const tiposDef=node.f||[];
+  let tipoUI;
+  if(fixedTipo){tipoUI=`<div class="readonly-box">📄 ${esc(fixedTipo)}</div>`;}
+  else{tipoUI=`<select id="aTipo">${tiposDef.map(d=>`<option value="${esc(d)}">${esc(d)}</option>`).join("")}<option value="__otro__">＋ Otro (nombre personalizado)…</option></select><input type="text" id="aOtro" placeholder="Nombre personalizado del documento" style="display:none;margin-top:7px">`;}
+  openModal(`<div class="m-head"><div><h3>Agregar archivo</h3><div class="sub">Destino: ${esc(node.n+' '+node.l)}</div></div><button class="x" data-close>✕</button></div>
+    <div class="m-body">
+      <div class="field"><label>Tipo / nombre del documento</label>${tipoUI}<div class="hintline ver" id="aVer"></div></div>
+      <div class="field"><label>Vínculo</label><div class="radio-row" id="aVinc"><div class="radio-chip on" data-v="SI">SI</div><div class="radio-chip" data-v="NO">NO</div><div class="radio-chip" data-v="NA">N/A</div></div></div>
+      <div class="field"><label>Archivo</label><div class="dropzone" id="aDrop">⬆ Arrastra el archivo o haz clic — PDF · Word · Excel</div><input type="file" id="aFile" style="display:none"></div>
+      <div class="field"><label>Comentarios u observaciones</label><textarea id="aObs" placeholder="Texto libre (opcional)"></textarea></div>
+      <div class="hintline">ⓘ Se registrará fecha (${todayStr()}) y autor (${esc(CURRENT_USER)}), y se anotará una entrada en el Libro de Obra.</div>
+    </div>
+    <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" id="aSave">Subir</button></div>`,"modal");
+  const sel=document.getElementById("aTipo"),otro=document.getElementById("aOtro"),verH=document.getElementById("aVer"),drop=document.getElementById("aDrop"),file=document.getElementById("aFile");
+  let fname="";
+  function curTipo(){return fixedTipo?fixedTipo:(sel.value==="__otro__"?otro.value.trim():sel.value)}
+  function refreshVer(){const t=curTipo();if(!t){verH.textContent="";return}const v=nextVersion(node,t);verH.textContent=v>1?`Ya existe "${t}". Se guardará automáticamente como v${v}.`:"Primera versión (v1).";}
+  if(sel){sel.addEventListener("change",()=>{otro.style.display=sel.value==="__otro__"?"block":"none";refreshVer()});otro.addEventListener("input",refreshVer);}
+  refreshVer();
+  document.getElementById("aVinc").addEventListener("click",e=>{const c=e.target.closest("[data-v]");if(!c)return;document.querySelectorAll("#aVinc .radio-chip").forEach(x=>x.classList.remove("on"));c.classList.add("on")});
+  drop.addEventListener("click",()=>file.click());
+  file.addEventListener("change",()=>{if(file.files[0]){fname=file.files[0].name;drop.textContent="📄 "+fname;drop.classList.add("has")}});
+  document.getElementById("aSave").addEventListener("click",()=>{
+    const tipo=curTipo();if(!tipo){if(otro)otro.focus();return}
+    const v=nextVersion(node,tipo),arr=getUploads(node);
+    arr.filter(f=>f.tipo===tipo).forEach(f=>f.vig=false);
+    arr.unshift({tipo,archivo:fname||slug(tipo)+(v>1?"_v"+v:"")+".pdf",ver:v,fecha:todayStr(),autor:CURRENT_USER,obs:document.getElementById("aObs").value.trim(),vig:true,_new:true});
+    const maestro=BOOKS.find(b=>b.id==="maestro"),folio="#"+(123+(window.__a=(window.__a||0)+1));
+    maestro.folios.unshift({f:folio,fecha:todayStr(),tema:"AUTO",auto:`${CURRENT_USER} subió "${tipo}${v>1?' v'+v:''}" en ${node.n} ${node.l} (Carpeta Digital)`,vinc:["Maestro"]});
+    closeModal();curSel={kind:"file",node,tipo};expanded.add("v"+node._id);renderTree();renderBooks();
+    showToast(`Registrado en Libro de Obra ▸ Maestro · folio ${folio} <a href="#" id="toastVer">Ver</a>`);
+  });
+}
+/* ============ Diálogo Nueva entrada ============ */
+const TEMAS_LOD={
+ "1.1 Gestión de la Calidad":["Plan de Calidad: Plan inicial y modificaciones.","Acta de exposición y reuniones de Calidad","Calidad de los materiales","Auditorías Internas"],
+ "1.2 Prevención de Riesgos":["Reunión de inicio de prevención de riesgos","Aviso de inicio al Organismo administrador del Seguro","Plan y Programa: Plan y programa inicial, modificaciones","Informes Cumplimiento Programa","Comité Paritario","Accidentes","Fiscalizaciones"],
+ "1.3 Medio Ambiente":["Plan de Gestión Ambiental","Presentación del Planes de Manejo","Fiscalizaciones"],
+ "1.4 Participación Ciudadana":["Plan de Participación Ciudadana","Actas reuniones participación Ciudadana y/o Indígena","Material Informativo","Sugerencias y Reclamos"],
+ "1.5 Otras Comunicaciones":["Letrero de identificación","Señalización y Medidas de Seguridad","Programa de trabajo, inversiones y mano de obra","Permisos para la ejecución de la obra","Gestión del Personal","Carpeta Laboral","Estados de Pago","Garantías","Canje de Retenciones","Modificación de Obra","Subcontratos","Valores proforma","Informes mensuales","Recepción de Etapas","Término de Obra"]
+};
+const INCID_TIPOS=["Accidente","Paralización","Problema de suministros","Derrumbe","Otro"];
+function archivarEnCarpeta(folio,rep){
+  function find(nodes){for(const n of nodes){if(/archivo comunicaciones/i.test(n.l)||/^libros$/i.test(n.l))return n;if(n.c){const r=find(n.c);if(r)return r}}return null}
+  const target=find(CONTRACTS[curContract].tree);if(!target)return null;
+  const tipo="Folios libro "+curBook.label;
+  const arr=getUploads(target);const v=arr.filter(f=>f.tipo===tipo).length+1;
+  arr.unshift({tipo,archivo:slug(curBook.label)+"_"+folio.replace('#','')+".pdf",ver:v,fecha:todayStr(),autor:CURRENT_USER,obs:rep,vig:true,_new:true});
+  return target;
+}
+function openNuevaEntrada(){
+  let formato="comunicacion";
+  const participantes=[],vincSel=new Set([curBook.label]);
+  const LIBRO_LABELS=BOOKS.filter(b=>!b.sep).map(b=>b.label);
+  openModal(`<div class="m-head"><div><h3>Nueva entrada</h3><div class="sub">Libro ${esc(curBook.label)} · ${todayStr()} · ${esc(CURRENT_USER)}</div></div><button class="x" data-close>✕</button></div>
+    <div class="m-body">
+      <div class="field full"><label>Formato de la entrada</label><div class="seg" id="fmtSeg"><div class="radio-chip on" data-f="comunicacion">Comunicación (1.1–1.5)</div><div class="radio-chip" data-f="incidente">Incidente (2.1)</div><div class="radio-chip" data-f="ejecutivo">Rep. Ejecutivo (2.2)</div><div class="radio-chip" data-f="libre">Formato libre</div></div></div>
+      <div class="full" id="fmtBody"></div>
+      <div class="field full"><label>Adjuntar archivos o imágenes</label><div class="dropzone" id="adjDrop">📎 Haz clic para adjuntar (PDF, imágenes, Word, Excel)</div><input type="file" id="adjFile" multiple style="display:none"><div class="chips-input" id="adjList" style="margin-top:8px;display:none"></div></div>
+      <div class="field full"><label>Ver también en (libros vinculados)</label><div class="multi" id="vincMulti">${LIBRO_LABELS.map(l=>`<span class="opt ${l===curBook.label?'on':''}" data-l="${esc(l)}">⬡ ${esc(l)}</span>`).join("")}</div></div>
+      <div class="field full"><label>Participantes (otros usuarios o personas sin cuenta)</label><div class="chips-input" id="partWrap"><input type="text" id="partInput" placeholder="Escribe un nombre y Enter…"></div><div class="hintline">Sugeridos: ${USERS.filter(u=>u!==CURRENT_USER).map(u=>`<a href="#" class="part-sug" data-u="${esc(u)}" style="color:var(--primary);text-decoration:none">${esc(u)}</a>`).join(" · ")}</div></div>
+      <div class="field full"><label>Autor (registrado automáticamente)</label><div class="readonly-box">👤 ${esc(CURRENT_USER)} <span style="color:var(--text-muted)">· ${todayStr()}</span></div></div>
+    </div>
+    <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" id="eSave">Guardar entrada</button></div>`,"drawer");
+  const fmtBody=document.getElementById("fmtBody");
+  function renderFmt(){
+    if(formato==="comunicacion"){
+      fmtBody.innerHTML=`<div class="field"><label>Tema (1.1–1.5)</label><select id="eTema">${Object.keys(TEMAS_LOD).map(t=>`<option>${esc(t)}</option>`).join("")}</select></div><div class="field"><label>Sub-tema</label><select id="eSub"></select></div><div class="field full"><label>Título</label><input type="text" id="eTitulo" placeholder="Título de la comunicación"></div><div class="field full"><label>Contenido</label><textarea id="eCont" placeholder="Detalle de la comunicación…"></textarea></div>`;
+      const ts=document.getElementById("eTema"),ss=document.getElementById("eSub");const def=LIBRO_TEMA[curBook.tipo];if(def)ts.value=def;function fill(){ss.innerHTML=TEMAS_LOD[ts.value].map(s=>`<option>${esc(s)}</option>`).join("")}ts.addEventListener("change",fill);fill();
+    }else if(formato==="incidente"){
+      fmtBody.innerHTML=`<div class="field"><label>Tipo de incidente</label><select id="eTipoInc">${INCID_TIPOS.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div><div class="field"><label>Fecha del incidente</label><input type="date" id="eFechaInc"></div><div class="field full"><label>Detalle</label><textarea id="eDetalle" placeholder="Describe el evento que pone en riesgo el desarrollo del contrato…"></textarea></div>`;
+    }else if(formato==="ejecutivo"){
+      fmtBody.innerHTML=`<div class="field"><label>Estado del contrato</label><select id="eEstado"><option>ejecución</option><option>terminado</option><option>terminado anticipado</option><option>paralizado</option></select></div><div class="field"><label>Avance físico (% Plan / Ejec)</label><div style="display:flex;gap:8px"><input type="text" id="eFisP" placeholder="Plan %"><input type="text" id="eFisE" placeholder="Ejec %"></div></div><div class="field"><label>Avance financiero (% Plan / Ejec)</label><div style="display:flex;gap:8px"><input type="text" id="eFinP" placeholder="Plan %"><input type="text" id="eFinE" placeholder="Ejec %"></div></div><div class="field full"><label>Descripción de brechas (físico / financiero)</label><textarea id="eBrecha" placeholder="Brecha planificado vs ejecutado…"></textarea></div><div class="hintline full">ⓘ Reporte 2.2 — incluye además Mano de Obra, PR, Calidad, MA y PC (subsecciones 2.2.3–2.2.7).</div>`;
+    }else{
+      fmtBody.innerHTML=`<div class="field full"><label>Título</label><input type="text" id="eTitulo" placeholder="Título de la entrada"></div><div class="field full"><label>Contenido</label><textarea id="eCont" placeholder="Texto libre…"></textarea></div><div class="hintline full">ⓘ Formato libre: solo título y contenido. La fecha y el autor se registran automáticamente.</div>`;
+    }
+  }
+  renderFmt();
+  document.getElementById("fmtSeg").addEventListener("click",e=>{const c=e.target.closest("[data-f]");if(!c)return;document.querySelectorAll("#fmtSeg .radio-chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");formato=c.dataset.f;renderFmt()});
+  document.getElementById("vincMulti").addEventListener("click",e=>{const o=e.target.closest(".opt");if(!o)return;o.classList.toggle("on");if(o.classList.contains("on"))vincSel.add(o.dataset.l);else vincSel.delete(o.dataset.l)});
+  const partWrap=document.getElementById("partWrap"),partInput=document.getElementById("partInput");
+  function addPart(nombre,ext){if(!nombre)return;participantes.push({nombre,ext});const chip=document.createElement("span");chip.className="chip-p"+(ext?" ext":"");chip.innerHTML=`${ext?'✦ ':'👤 '}${esc(nombre)} <span class="rm">✕</span>`;chip.querySelector(".rm").addEventListener("click",()=>{const i=participantes.findIndex(p=>p.nombre===nombre);if(i>=0)participantes.splice(i,1);chip.remove()});partWrap.insertBefore(chip,partInput)}
+  partInput.addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const v=partInput.value.trim();if(v){addPart(v,!USERS.includes(v));partInput.value=""}}});
+  document.querySelectorAll(".part-sug").forEach(a=>a.addEventListener("click",e=>{e.preventDefault();if(!participantes.some(p=>p.nombre===a.dataset.u))addPart(a.dataset.u,false)}));
+  const adjuntos=[];const adjDrop=document.getElementById("adjDrop"),adjFile=document.getElementById("adjFile"),adjList=document.getElementById("adjList");
+  function renderAdj(){if(!adjuntos.length){adjList.style.display="none";return}adjList.style.display="flex";adjList.innerHTML=adjuntos.map((n,i)=>`<span class="chip-p">📎 ${esc(n)} <span class="rm" data-i="${i}">✕</span></span>`).join("");adjList.querySelectorAll(".rm").forEach(x=>x.onclick=()=>{adjuntos.splice(+x.dataset.i,1);renderAdj()})}
+  adjDrop.addEventListener("click",()=>adjFile.click());
+  adjFile.addEventListener("change",()=>{[...adjFile.files].forEach(f=>adjuntos.push(f.name));renderAdj()});
+  document.getElementById("eSave").addEventListener("click",()=>{
+    let tema="",tipo="Comunicación",rep="",subtema="";
+    if(formato==="comunicacion"){tema=document.getElementById("eTema").value.split(" ").slice(0,2).join(" ");tipo="Comunicación";subtema=document.getElementById("eSub").value;rep=document.getElementById("eTitulo").value.trim()||subtema}
+    else if(formato==="incidente"){tema="2.1 Inc.";tipo="Incidente";subtema=document.getElementById("eTipoInc").value;rep=subtema+" — "+(document.getElementById("eDetalle").value.slice(0,40)||"sin detalle")}
+    else if(formato==="ejecutivo"){tema="2.2 Ejec.";tipo="Reporte Ejecutivo Mensual";subtema="Reporte Ejecutivo Mensual";rep="Estado: "+document.getElementById("eEstado").value}
+    else{tema="Libre";tipo="Formato libre";subtema=document.getElementById("eTitulo").value.trim()||"Entrada libre";rep=subtema}
+    const folio="#"+curBook.label.substring(0,1).toUpperCase()+(Math.floor(Math.random()*900)+100);
+    const entry={f:folio,fecha:todayStr(),tema,subtema,autor:CURRENT_USER,tipo,rep,vinc:[...vincSel],participantes:participantes.map(p=>p.nombre+(p.ext?" (sin cuenta)":"")),adjuntos:adjuntos.slice(),estado:"activo",incid:formato==="incidente"};
+    curBook.folios.unshift(entry);
+    const tgt=archivarEnCarpeta(folio,rep);
+    expandedB.add(curBook.id);curMonthKey=null;openFolioId=folio;
+    renderBooks();renderFolios();closeModal();
+    if(tgt)showToast(`Archivado en Carpeta Digital ▸ ${esc(tgt.n+' '+tgt.l)} · ${esc("Folios libro "+curBook.label)}`);
+  });
+}
+
+function openApertura(){
+  openModal(`<div class="m-head"><div><h3>Abrir libro de obras</h3><div class="sub">${esc(curBook.label)} · se registrará el Acta de Apertura</div></div><button class="x" data-close>✕</button></div>
+   <div class="m-body">
+     <div class="field"><label>Fecha de apertura</label><input type="date" id="apFecha"></div>
+     <div class="field"><label>Indicaciones de la apertura (texto libre)</label><textarea id="apTexto" placeholder="Ej.: Se da apertura al Libro de Obras con la entrega de terreno del dd/mm/aaaa…"></textarea></div>
+     <div class="hintline">ⓘ Autor: ${esc(CURRENT_USER)}. Será la primera entrada (folio) del libro.</div>
+   </div>
+   <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" id="apSave">Abrir y registrar acta</button></div>`,"modal");
+  const fi=document.getElementById("apFecha");try{fi.valueAsDate=new Date();}catch(e){}
+  document.getElementById("apSave").onclick=()=>{
+    let fecha=todayStr();const v=fi.value;if(v){const p=v.split("-");fecha=p[2]+"/"+p[1]+"/"+p[0];}
+    const texto=document.getElementById("apTexto").value.trim();
+    const folio="#A"+(Math.floor(Math.random()*900)+100);
+    curBook.abierto=true;curBook.aperturaFecha=fecha;
+    curBook.folios.unshift({f:folio,fecha,tema:"Apertura",subtema:"Acta de apertura del libro de obras",tipo:"Acta de apertura",autor:CURRENT_USER,rep:texto||"Apertura del libro de obras",vinc:[curBook.label],estado:"activo",apertura:true});
+    curMonthKey=null;openFolioId=folio;closeModal();renderBooks();renderFolios();
+    showToast(`Libro "${esc(curBook.label)}" abierto · Acta ${folio}`);
+  };
+}
+/* ============ Abrir libro ============ */
+const ESPECIALIDADES=["Estructuras","Sanitario","Electricidad","Topografía","Laboratorio"];
+const TEMATICOS=["Comunicaciones","Gestión de Calidad","Prevención de Riesgos","Medio Ambiente","Participación Ciudadana"];
+function openAbrirLibro(){
+  let modo="tematico";const esp=new Set();
+  openModal(`<div class="m-head"><div><h3>Agregar libro</h3><div class="sub">Registra un nuevo sub-libro (queda cerrado hasta su apertura)</div></div><button class="x" data-close>✕</button></div>
+   <div class="m-body">
+     <div class="field"><label>Tipo de libro</label><div class="radio-row" id="alModo"><div class="radio-chip on" data-m="tematico">Temático</div><div class="radio-chip" data-m="especialidad">Por especialidad</div></div></div>
+     <div id="alBody"></div>
+   </div>
+   <div class="m-foot"><button class="btn-m" data-close>Cancelar</button><button class="btn-m primary" id="alSave">Agregar libro</button></div>`,"modal");
+  const body=document.getElementById("alBody");
+  function render(){
+    if(modo==="tematico"){body.innerHTML=`<div class="field"><label>Libro temático</label><select id="alSel">${TEMATICOS.map(t=>`<option>${esc(t)}</option>`).join("")}</select></div>`;}
+    else{body.innerHTML=`<div class="field"><label>Especialidades (1 o más)</label><div class="multi" id="alEsp">${ESPECIALIDADES.map(e=>`<span class="opt" data-e="${esc(e)}">${esc(e)}</span>`).join("")}</div><div class="chips-input" style="margin-top:8px"><input type="text" id="alNew" placeholder="Agregar especialidad nueva y Enter…"></div><div class="hintline">ⓘ Un libro puede agrupar varias especialidades.</div></div>`;
+      document.getElementById("alEsp").addEventListener("click",e=>{const o=e.target.closest(".opt");if(!o)return;o.classList.toggle("on");if(o.classList.contains("on"))esp.add(o.dataset.e);else esp.delete(o.dataset.e)});
+      document.getElementById("alNew").addEventListener("keydown",e=>{if(e.key==="Enter"){e.preventDefault();const v=e.target.value.trim();if(v){esp.add(v);const s=document.createElement("span");s.className="opt on";s.dataset.e=v;s.textContent=v;s.addEventListener("click",()=>{s.classList.toggle("on");if(s.classList.contains("on"))esp.add(v);else esp.delete(v)});document.getElementById("alEsp").appendChild(s);e.target.value=""}}});
+    }
+  }
+  render();
+  document.getElementById("alModo").addEventListener("click",e=>{const c=e.target.closest("[data-m]");if(!c)return;document.querySelectorAll("#alModo .radio-chip").forEach(x=>x.classList.remove("on"));c.classList.add("on");modo=c.dataset.m;render()});
+  document.getElementById("alSave").addEventListener("click",()=>{
+    let label,tipo;
+    const TMAP={"Gestión de Calidad":"calidad","Prevención de Riesgos":"pr","Medio Ambiente":"ma","Participación Ciudadana":"pc","Comunicaciones":"comunic"};
+    if(modo==="tematico"){label=document.getElementById("alSel").value;tipo=TMAP[label]||"tematico";}
+    else{if(!esp.size)return;label=[...esp].join(" + ");tipo="especialidad";}
+    const nb={id:"b"+Date.now(),label,tipo,folios:[],abierto:false};
+    if(tipo==="especialidad")BOOKS.push(nb);else{const i=BOOKS.findIndex(b=>b.sep);BOOKS.splice(i<0?BOOKS.length:i,0,nb);}
+    curBook=nb;curMonthKey=null;openFolioId=null;closeModal();renderBooks();renderFolios();renderPermisos();
+  });
+}
+
+/* ============ Delegación ============ */
+document.body.addEventListener("click",e=>{if(e.target.closest(".js-apertura"))openApertura();if(e.target.closest(".js-newentry")){if(curBook&&curBook.abierto===false)openApertura();else openNuevaEntrada();}});
+document.getElementById("abrirLibro").addEventListener("click",openAbrirLibro);
+document.getElementById("addRootFolder").addEventListener("click",openNewRootFolder);
+
+/* ============ Init ============ */
+const f0=CONTRACTS.obras.tree[0];expanded.add(ensureId(f0));curSel={kind:"folder",node:f0};
+renderTree();setCrumb(f0);renderBooks();renderFolios();renderPermisos();
+</script>
+</body>
+</html>

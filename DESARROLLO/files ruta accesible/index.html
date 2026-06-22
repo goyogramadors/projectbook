@@ -1,0 +1,718 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Memoria Ruta Accesible — Archibots</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg-background:#f8fafc;--bg-card:#ffffff;--bg-muted:#f1f5f9;--bg-muted-2:#e9eef5;
+  --border-theme:#e2e8f0;--border-strong:#cbd5e1;
+  --text-primary:#0f172a;--text-secondary:#475569;--text-muted:#94a3b8;
+  --primary:#2563eb;--primary-soft:rgba(37,99,235,.12);
+  --amber:#d97706;--amber-soft:rgba(217,119,6,.14);--green:#16a34a;--green-soft:rgba(22,163,74,.12);--red:#dc2626;--red-soft:rgba(220,38,38,.10);
+}
+*{box-sizing:border-box;margin:0;padding:0}
+html,body{height:100%}
+body{font-family:'Inter',system-ui,sans-serif;font-size:13px;line-height:1.4;color:var(--text-primary);background:var(--bg-background);-webkit-font-smoothing:antialiased}
+button,select,input,textarea{font-family:inherit;font-size:inherit;color:inherit}
+button{cursor:pointer}
+
+.tool{max-width:1180px;margin:0 auto;padding:0 0 90px}
+.tool-head{position:sticky;top:0;z-index:20;background:var(--bg-card);border-bottom:1px solid var(--border-theme);padding:14px 22px;display:flex;align-items:center;gap:10px}
+.tool-head .chk{width:18px;height:18px;accent-color:var(--primary);flex:0 0 auto}
+.tool-head h1{font-size:15px;font-weight:600;flex:1}
+.tool-head .collapse{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:6px;width:30px;height:30px;color:var(--text-secondary);font-size:13px}
+.tool-head .collapse:hover{border-color:var(--border-strong)}
+
+.section{padding:22px 22px 4px}
+.section > .s-title{font-size:14px;font-weight:600;margin-bottom:3px}
+.section > .s-sub{font-size:11.5px;color:var(--text-muted);margin-bottom:14px}
+.section > .s-sub.hint{color:var(--primary)}
+
+.grid3{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+.grid2{display:grid;grid-template-columns:repeat(2,1fr);gap:14px;margin-top:14px}
+.field label{display:block;font-size:11px;color:var(--text-muted);margin-bottom:4px;font-weight:500}
+.field input,.field textarea,.field select{width:100%;background:var(--bg-muted);border:1px solid var(--border-theme);border-radius:8px;padding:10px 12px;color:var(--text-primary);font-weight:500}
+.field input:focus,.field textarea:focus,.field select:focus{outline:none;border-color:var(--primary);background:var(--bg-card)}
+
+.area{width:100%;min-height:120px;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:8px;padding:12px 13px;font-family:'Courier New',ui-monospace,monospace;font-size:12px;color:var(--text-primary);resize:vertical;line-height:1.55}
+.area:focus{outline:none;border-color:var(--primary)}
+
+/* ---- Collapsible GROUPS (1, 2, 3...) ; items always visible ---- */
+.vlist{display:flex;flex-direction:column;gap:10px;margin-top:6px}
+.vgroup{border:1px solid var(--border-theme);border-radius:10px;overflow:hidden}
+.vgroup-head{display:flex;align-items:center;gap:10px;background:var(--bg-muted-2);padding:11px 14px;cursor:pointer;user-select:none;font-weight:600;font-size:12.5px;color:var(--text-primary)}
+.vgroup-head:hover{background:var(--bg-muted)}
+.vgroup-head .chev{width:14px;color:var(--text-muted);font-size:11px;flex:0 0 14px;text-align:center;transition:transform .15s}
+.vgroup-head.open .chev{transform:rotate(90deg)}
+.vgroup-head .gtitle{flex:1;min-width:0}
+.vgroup-head .gsummary{font-size:11px;color:var(--text-muted);font-weight:500;white-space:nowrap}
+.vgroup-body{display:none}
+.vgroup-body.open{display:block}
+
+.vitem{border-top:1px solid var(--border-theme);padding:13px 14px}
+.vitem .item-t{font-weight:600;font-size:12.5px;margin-bottom:3px}
+.vitem .item-d{font-size:11.5px;color:var(--text-secondary);line-height:1.5;margin-bottom:4px}
+.vitem .item-r{font-size:11px;color:var(--text-muted);margin-bottom:10px}
+
+.statepill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:9px;white-space:nowrap}
+.statepill.cumple,.statepill.rampas,.statepill.ascensor,.statepill.rampa-ascensor,.statepill.aplica{background:var(--green-soft);color:var(--green)}
+.statepill.no-cumple{background:var(--red-soft);color:var(--red)}
+.statepill.no-aplica,.statepill.pend{background:var(--bg-muted-2);color:var(--text-muted)}
+
+/* ---- Checkbox triad (Cumple / No cumple / No aplica) — always visible ---- */
+.triad{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:10px}
+.triad .opt{display:inline-flex;align-items:center;gap:7px;border:1px solid var(--border-theme);background:var(--bg-card);border-radius:8px;padding:7px 11px;cursor:pointer;font-weight:500;font-size:12px;transition:all .12s}
+.triad .opt:hover{border-color:var(--border-strong)}
+.triad .opt input{width:16px;height:16px;cursor:pointer;margin:0}
+.triad .opt.sel.cumple,.triad .opt.sel.aplica{border-color:var(--green);background:var(--green-soft);color:var(--green)}
+.triad .opt.sel.cumple input,.triad .opt.sel.aplica input{accent-color:var(--green)}
+.triad .opt.sel.no-cumple{border-color:var(--red);background:var(--red-soft);color:var(--red)}
+.triad .opt.sel.no-cumple input{accent-color:var(--red)}
+.triad .opt.sel.no-aplica{border-color:var(--border-strong);background:var(--bg-muted-2);color:var(--text-secondary)}
+.triad .opt.sel.rampas,.triad .opt.sel.ascensor,.triad .opt.sel.rampa-ascensor{border-color:var(--green);background:var(--green-soft);color:var(--green)}
+.triad .opt.sel.rampas input,.triad .opt.sel.ascensor input,.triad .opt.sel.rampa-ascensor input{accent-color:var(--green)}
+
+.obs input{width:100%;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:7px;padding:8px 11px;font-weight:500}
+.obs input:focus{outline:none;border-color:var(--primary)}
+.obs input::placeholder{color:var(--text-muted);font-weight:400}
+
+/* ---- Assisted block (2.1) ---- */
+.assist{border:1px solid var(--border-theme);border-radius:10px;padding:16px;margin-top:12px;background:var(--bg-card)}
+.assist .ck{display:flex;align-items:center;gap:8px;margin-bottom:4px}
+.assist .ck input{width:16px;height:16px;accent-color:var(--primary)}
+.assist .ck label{font-weight:600;font-size:12.5px}
+.assist .ck-sub{font-size:11px;color:var(--text-muted);margin:0 0 14px 24px}
+.assist .a-field{margin-bottom:13px}
+.assist .a-field > label{display:block;font-size:12px;color:var(--text-secondary);margin-bottom:5px;font-weight:500}
+.assist .a-field input{width:100%;background:var(--bg-card);border:1px solid var(--border-theme);border-radius:8px;padding:10px 12px;font-weight:500}
+.assist .a-field input:focus{outline:none;border-color:var(--primary)}
+.assist hr{border:0;border-top:1px dashed var(--border-theme);margin:10px 0}
+.assist .a-out{display:flex;flex-wrap:wrap;gap:18px;font-size:11.5px;color:var(--text-secondary)}
+.assist .a-out b{color:var(--text-primary);font-variant-numeric:tabular-nums}
+.assist .a-verif{margin-top:12px;font-size:12.5px;font-weight:600}
+.assist .a-verif.ok{color:var(--green)}
+.assist .a-verif.bad{color:var(--red)}
+.assist .a-formula{margin-top:8px;font-size:11px;color:var(--text-muted);font-style:italic}
+
+/* ---- Sub-blocks (servicios higiénicos, ducha) ---- */
+.subblock{margin-top:8px}
+.estado-general{display:flex;align-items:center;gap:12px;border:1px solid var(--border-theme);border-radius:10px;padding:12px 16px;margin-bottom:12px;background:var(--bg-card);flex-wrap:wrap}
+.estado-general label{font-size:12.5px;font-weight:600;color:var(--text-secondary)}
+.estado-general .seg{display:flex;gap:6px}
+.estado-general .seg button{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:7px;padding:6px 14px;font-weight:600;font-size:12px;color:var(--text-secondary)}
+.estado-general .seg button.on[data-v="Aplica"]{border-color:var(--green);background:var(--green-soft);color:var(--green)}
+.estado-general .seg button.on[data-v="No aplica"]{border-color:var(--border-strong);background:var(--bg-muted-2);color:var(--text-secondary)}
+.sub-collapse-note{font-size:11px;color:var(--text-muted);margin-left:auto;font-style:italic}
+.subitems.collapsed{display:none}
+.subitem{border:1px solid var(--border-theme);border-radius:9px;margin-bottom:8px;overflow:hidden}
+.subitem-head{display:flex;align-items:center;gap:10px;padding:10px 13px;cursor:pointer;user-select:none}
+.subitem-head:hover{background:var(--bg-muted)}
+.subitem-head .chev{width:13px;color:var(--text-muted);font-size:11px;flex:0 0 13px;text-align:center;transition:transform .15s}
+.subitem-head.open .chev{transform:rotate(90deg)}
+.subitem-head .st{flex:1;font-weight:500;font-size:12.5px;min-width:0}
+.subitem-head .statepill{font-size:11px;font-weight:600;padding:2px 9px;border-radius:9px;flex:0 0 auto}
+.subitem-body{display:none;padding:0 13px 13px 36px}
+.subitem-body.open{display:block}
+
+/* ---- Images ---- */
+.dropzone{border:1px solid var(--border-theme);border-radius:10px;padding:14px 16px;background:var(--bg-card);display:flex;align-items:center;gap:12px;flex-wrap:wrap}
+.dropzone .btn-file{border:1px solid var(--border-strong);background:var(--bg-muted);border-radius:7px;padding:7px 13px;font-weight:500;color:var(--text-secondary)}
+.dropzone .btn-file:hover{background:var(--bg-muted-2)}
+.dropzone .file-status{font-size:12px;color:var(--text-muted)}
+.thumbs{display:flex;gap:10px;flex-wrap:wrap;margin-top:12px}
+.thumb{position:relative;width:96px;height:96px;border:1px solid var(--border-theme);border-radius:8px;overflow:hidden;background:var(--bg-muted)}
+.thumb img{width:100%;height:100%;object-fit:cover;display:block}
+.thumb .rm{position:absolute;top:3px;right:3px;width:20px;height:20px;border-radius:50%;border:0;background:rgba(15,23,42,.7);color:#fff;font-size:12px;line-height:1;display:flex;align-items:center;justify-content:center}
+.note{font-size:11px;color:var(--text-muted);margin-top:8px}
+
+.firma{font-size:12px;color:var(--text-secondary);line-height:1.6}
+
+.floating{position:fixed;right:22px;bottom:22px;z-index:30;display:flex;gap:10px;align-items:center}
+.floating .expand-all{border:1px solid var(--border-theme);background:var(--bg-card);border-radius:9px;padding:11px 16px;font-weight:500;font-size:12.5px;color:var(--text-secondary);box-shadow:0 4px 12px rgba(15,23,42,.1)}
+.floating .gen{background:var(--primary);color:#fff;border:1px solid var(--primary);border-radius:9px;padding:12px 22px;font-weight:600;font-size:13.5px;box-shadow:0 6px 18px rgba(37,99,235,.28)}
+.floating .gen:hover{background:#1d4ed8}
+
+.collapsed-body{display:none}
+
+@media(max-width:900px){
+  .grid3{grid-template-columns:1fr}
+  .grid2{grid-template-columns:1fr}
+  .vitem{padding-left:14px}
+  .triad{flex-direction:column}
+  .triad .opt{width:100%}
+}
+</style>
+</head>
+<body>
+<div class="tool" id="tool">
+
+  <div class="tool-head">
+    <input type="checkbox" class="chk" id="moduleOn" checked>
+    <h1>Memoria Ruta Accesible</h1>
+    <button class="collapse" id="collapseBtn" title="Colapsar / expandir">⌃</button>
+  </div>
+
+  <div id="moduleBody">
+
+  <!-- 1) ENCABEZADO -->
+  <div class="section">
+    <div class="s-title">1) Encabezado / datos base</div>
+    <div class="s-sub">Datos cargados automáticamente desde el cliente/proyecto seleccionado.</div>
+    <div class="grid3">
+      <div class="field"><label>Nombre del proyecto</label><input id="f_nombre" value="Proyecto sin nombre"></div>
+      <div class="field"><label>Ubicación</label><input id="f_ubicacion" value="Dirección no informada · Comuna no informada"></div>
+      <div class="field"><label>Arquitecto</label><input id="f_arquitecto" value="Arquitecto no informado"></div>
+    </div>
+    <div class="grid2">
+      <div class="field"><label>Superficie referencial (m2)</label><input id="f_superficie" type="number" value="0"></div>
+      <div class="field"><label>Carga de ocupación</label><input id="f_carga" type="number" value="0" data-carga></div>
+    </div>
+  </div>
+
+  <!-- 2) GENERALIDADES -->
+  <div class="section">
+    <div class="s-title">2) Generalidades</div>
+    <div class="s-sub hint">Texto sugerido editable. Puedes ajustarlo antes de generar el informe.</div>
+    <textarea class="area" id="f_generalidades"></textarea>
+  </div>
+
+  <!-- 3) VERIFICACIONES -->
+  <div class="section">
+    <div class="s-title">3) Verificaciones normativas principales</div>
+    <div class="s-sub">Cada grupo (1, 2, 3…) viene colapsado. Despliégalo con la flecha; los checkboxes de cada ítem se ven directamente.</div>
+    <div class="vlist" id="vlist"></div>
+  </div>
+
+  <!-- 4) SERVICIOS HIGIÉNICOS -->
+  <div class="section">
+    <div class="s-title">4) Servicios higiénicos accesibles</div>
+    <div class="s-sub">Bloque con estado general y subítems individuales.</div>
+    <div class="subblock">
+      <div class="estado-general" data-sub="shh">
+        <label>Estado general</label>
+        <div class="seg">
+          <button data-v="Aplica" class="on">Aplica</button>
+          <button data-v="No aplica">No aplica</button>
+        </div>
+        <span class="sub-collapse-note"></span>
+      </div>
+      <div class="subitems" id="shh_items"></div>
+    </div>
+  </div>
+
+  <!-- 5) DUCHA -->
+  <div class="section">
+    <div class="s-title">5) Ducha</div>
+    <div class="s-sub">Bloque con estado general y subítems operativos.</div>
+    <div class="subblock">
+      <div class="estado-general" data-sub="ducha">
+        <label>Estado general</label>
+        <div class="seg">
+          <button data-v="Aplica" class="on">Aplica</button>
+          <button data-v="No aplica">No aplica</button>
+        </div>
+        <span class="sub-collapse-note"></span>
+      </div>
+      <div class="subitems" id="ducha_items"></div>
+    </div>
+  </div>
+
+  <!-- 6) CONCLUSIÓN -->
+  <div class="section">
+    <div class="s-title">6) Conclusión</div>
+    <div class="s-sub hint">Sugerencia automática editable según resultados de cumplimiento.</div>
+    <textarea class="area" id="f_conclusion">La revisión no presenta incumplimientos para los ítems evaluados y mantiene una base favorable de accesibilidad universal. Se sugiere conservar respaldo técnico y evidencias de terreno para la tramitación.</textarea>
+  </div>
+
+  <!-- 7) IMÁGENES -->
+  <div class="section">
+    <div class="s-title">7) Imágenes (opcional)</div>
+    <div class="s-sub">Puedes adjuntar hasta 4 imágenes (planta/ruta y detalles).</div>
+    <div class="dropzone">
+      <label class="btn-file" for="imgInput">Elegir archivos</label>
+      <span class="file-status" id="fileStatus">Ningún archivo seleccionado</span>
+      <input id="imgInput" type="file" accept="image/jpeg,image/png" multiple hidden>
+    </div>
+    <div class="thumbs" id="thumbs"></div>
+    <div class="note">Formatos soportados: JPG/JPEG y PNG. Los archivos seleccionados no persisten por limitación del navegador.</div>
+  </div>
+
+  <!-- 8) FIRMA -->
+  <div class="section">
+    <div class="s-title">8) Firma</div>
+    <div class="firma">Se utilizarán automáticamente los datos del arquitecto registrados en el sistema al momento de generar el PDF.</div>
+    <div class="note" id="serialNote">Estructura serializada actualizada.</div>
+  </div>
+
+  </div>
+</div>
+
+<div class="floating">
+  <button class="expand-all" id="expandAll">Expandir todo</button>
+  <button class="gen" id="genBtn">Generar informe activo</button>
+</div>
+
+<script>
+/* ====================== ESTADOS ====================== */
+const ESTADO_3 = [
+  {v:"cumple",t:"Cumple"},
+  {v:"no-cumple",t:"No cumple"},
+  {v:"no-aplica",t:"No aplica"},
+];
+const EST_3_1 = [
+  {v:"rampas",t:"Contempla rampas"},
+  {v:"ascensor",t:"Contempla ascensor"},
+  {v:"rampa-ascensor",t:"Rampa y ascensor"},
+  {v:"no-aplica",t:"No aplica"},
+];
+function labelFor(v){
+  const all=[...ESTADO_3,...EST_3_1]; const f=all.find(x=>x.v===v);
+  return f?f.t:"Sin marcar";
+}
+
+/* ====================== CATÁLOGO ====================== */
+const GROUPS = [
+  { g:"1. Condiciones generales de la ruta accesible", items:[
+    {id:"1.1", t:"1.1 Ancho mínimo interior de la ruta",
+      d:"La ruta accesible interior debe mantener un ancho libre mínimo de 1,10 m, sin estrangulamientos por puertas, pilares, muebles o elementos salientes.",
+      r:"Referencia: mínimo 1,10 m", def:"no-aplica"},
+    {id:"1.2", t:"1.2 Altura mínima libre de paso",
+      d:"La altura libre de la ruta en todo su recorrido debe ser mayor a 2,10 m, teniendo en cuenta interferencias por vigas, equipos, señalética u otros elementos suspendidos.",
+      r:"Referencia: mayor a 2,10 m", def:"cumple"},
+    {id:"1.3", t:"1.3 Pasillos que forman parte de la ruta con ancho mínimo de 1,5 m",
+      d:"Incluye todos los pasillos que sean parte de la ruta accesible y conduzcan a unidades o recintos que contemplen atención de público.",
+      r:"Referencia: mínimo 1,5 m", def:"cumple"},
+  ]},
+  { g:"2. Continuidad desde salida del edificio al espacio público", items:[
+    {id:"2.1", t:"2.1 Ancho de ruta entre salida y espacio público",
+      d:"El tramo que conecta la salida del edificio con el espacio público debe ser continuo, estable, antideslizante y con ancho libre verificable, con un ancho mínimo de 1,10 m.",
+      r:"Referencia: mínimo 1,10 m", assisted:true, def:"cumple"},
+  ]},
+  { g:"3. Cambios de nivel y continuidad de desplazamiento", items:[
+    {id:"3.1", t:"3.1 Desniveles salvados mediante rampas y ascensores",
+      d:"Todo cambio de nivel de la ruta accesible debe resolverse mediante rampa o ascensor accesible.",
+      r:"Referencia: debe existir solución accesible", states:EST_3_1, def:"rampas"},
+    {id:"3.2", t:"3.2 Desnivel máximo entre juntas de pisos de 0,5 cm",
+      d:"El desnivel máximo permitido entre juntas o cambios de pavimento es de 0,5 cm.",
+      r:"Referencia: máximo 0,5 cm", def:"cumple"},
+    {id:"3.3", t:"3.3 Pendientes de planos inclinados inferiores a 5%",
+      d:"Cuando el plano inclinado se declara como circulación con baja pendiente, se debe verificar en terreno que los tramos no superen el valor declarado.",
+      r:"Referencia: < 5%", def:"cumple"},
+  ]},
+  { g:"4. Escaleras y seguridad de circulación", items:[
+    {id:"4.1", t:"4.1 Franja de contraste cromático frente a escaleras de 0,6 m de ancho",
+      d:"Debe incorporarse señalización visual de contraste antes del inicio de la escalera para advertir cambios de nivel y mejorar legibilidad del borde.",
+      r:"Referencia: debe existir señalización", def:"cumple"},
+    {id:"4.2", t:"4.2 Protección bajo escaleras",
+      d:"Bajo escaleras, cuando la altura sea inferior a 2,1 m, debe existir barrera o protección de 0,95 m de alto.",
+      r:"Referencia: altura de protección 0,95 m", def:"cumple"},
+  ]},
+  { g:"5. Rampa o plano inclinado", items:[
+    {id:"5.1", t:"5.1 Ancho de rampa equivalente a la vía de evacuación de la que es parte",
+      d:"En interiores, su ancho corresponderá al de esta vía. En exteriores, debe ser el ancho de la vereda que enfrenta, con un mínimo de 1,2 m.",
+      r:"Referencia: mínimo 1,2 m en exteriores", def:"cumple"},
+    {id:"5.2", t:"5.2 Ancho de rampa cuando no forma parte de una vía de evacuación",
+      d:"Si no es parte de una vía de evacuación, su ancho mínimo podrá ser 0,90 m.",
+      r:"Referencia: mínimo 0,90 m", def:"cumple"},
+    {id:"5.3", t:"5.3 Inicio y fin de recorrido",
+      d:"Inicio y fin de recorrido en un plano horizontal del mismo ancho y de 1,50 m de largo mínimo, fuera del barrido de las hojas de puertas.",
+      r:"Referencia: largo mínimo 1,50 m", def:"cumple"},
+    {id:"5.4", t:"5.4 Pendiente y largo normativo",
+      d:"La pendiente normativa será entre 8% y 12%, con un largo mínimo de 1,5 m y un máximo de 9 m.",
+      r:"Referencia: pendiente 8%-12% y largo 1,5 m a 9 m", def:"cumple"},
+    {id:"5.5", t:"5.5 Pasamanos en rampas mayores a 1,5 m",
+      d:"Las rampas cuya longitud sea mayor a 1,50 m deberán estar provistas, en ambos costados, de un pasamanos continuo de dos alturas.",
+      r:"Referencia: pasamanos continuo en ambos costados", def:"cumple"},
+    {id:"5.6", t:"5.6 Las rampas de longitud hasta 1,5 m",
+      d:"Las rampas con longitud de hasta 1,50 m deberán contemplar una solera o resalte de borde de 0,10 m como mínimo, o una baranda a una altura mínima de 0,95 m.",
+      r:"Referencia: resalte 0,10 m o baranda 0,95 m", def:"cumple"},
+  ]},
+  { g:"6. Ascensores y áreas de maniobra", items:[
+    {id:"6.1", t:"6.1 Área mínima frente a ascensor de 1,5 x 1,5 m",
+      d:"Frente a la puerta del ascensor debe tener un largo y ancho mínimo de 1,50 m.",
+      r:"Referencia: mínimo 1,5 x 1,5 m", def:"no-aplica"},
+    {id:"6.2", t:"6.2 Ancho frente a cabina",
+      d:"El ancho frente a la puerta del ascensor no podrá ser menor que la profundidad de la cabina.",
+      r:"Referencia: ancho >= profundidad de cabina", def:"no-aplica"},
+  ]},
+  { g:"7. Puertas y pasillos", items:[
+    {id:"7.1", t:"7.1 Puerta de ingreso al edificio y a unidades de 0,9 m",
+      d:"Las puertas de ingreso al edificio, o a las unidades o a los recintos de la edificación colectiva que consulten atención de público, deberán tener un ancho libre de paso de 0,90 m.",
+      r:"Referencia: ancho libre 0,90 m", def:"cumple"},
+    {id:"7.2", t:"7.2 Puerta de ingreso al edificio dobles",
+      d:"De contemplarse doble puerta, el espacio entre estas debe considerar un espacio libre de mínimo 1,20 m de largo, además del largo del barrido de ambas puertas.",
+      r:"Referencia: espacio libre mínimo 1,20 m", def:"cumple"},
+    {id:"7.3", t:"7.3 Fondos de pasillos que son parte de una ruta accesible",
+      d:"Se contemplará una superficie libre de un diámetro mínimo de 1,50 m que garantice el giro en 360° de una persona en silla de ruedas.",
+      r:"Referencia: diámetro mínimo 1,50 m", def:"cumple"},
+  ]},
+  { g:"8. Atención accesible", items:[
+    {id:"8.1", t:"8.1 Mesones de atención accesible",
+      d:"Deben contemplar al menos un tramo de 1,2 m de ancho, con altura terminada máxima de 0,8 m y 0,7 m libre bajo esta, con una profundidad de 0,6 m compatible para atención de usuarios en silla de ruedas.",
+      r:"Referencia: tramo 1,2 m; altura 0,8 m; libre 0,7 m; profundidad 0,6 m", def:"cumple"},
+    {id:"8.2", t:"8.2 Área de aproximación a mesón accesible",
+      d:"Debe contemplar una superficie de 1,5 m de diámetro para el giro de silla de ruedas, pudiendo incluir el área bajo el mesón.",
+      r:"Referencia: diámetro 1,5 m", def:"cumple"},
+  ]},
+];
+
+const SHH = [
+  "Superficie para giro 360° de diámetro 1,5 m",
+  "Puerta de acceso con ancho libre mínimo 0,8 m",
+  "Altura de lavamanos de 0,8 m desde el NPT y espacio libre bajo cubierta de 0,7 m",
+  "Grifería de palanca, de presión o de acción automática mediante sensor.",
+  "Espejo de altura de inicio de 3 cm máximo desde cubierta de lavamanos.",
+  "El inodoro contempla espacio de transferencia lateral de 0,8 x 1,2 m.",
+  "Altura de asiento de inodoro entre 0,46 y 0,48 m.",
+  "Barras fijas y abatibles para inodoro.",
+  "Altura de accesorios máximo a 1,2 m.",
+];
+const DUCHA = [
+  "Puerta paso libre 0,8 m",
+  "Apertura puerta no debe interferir con radio de giro.",
+  "Tamaño de receptáculo 0,9 x 1,20 m",
+  "Espacio de transferencia lateral.",
+  "Espacio para asiento de 0,45 x 0,45 m y altura terminada de 0,46.",
+];
+
+/* ====================== STATE ====================== */
+const state = {
+  carga: 0,
+  items: {},
+  shh: { general:"Aplica", subs:{} },
+  ducha: { general:"Aplica", subs:{} },
+  assist: { use:true, vias:1, min:1.1 }
+};
+GROUPS.forEach(g=>g.items.forEach(it=>{ state.items[it.id]={estado:it.def, obs:""}; }));
+SHH.forEach((s,i)=>state.shh.subs["shh-"+i]={label:s,estado:"cumple",obs:""});
+DUCHA.forEach((s,i)=>state.ducha.subs["ducha-"+i]={label:s,estado:"cumple",obs:""});
+
+/* ====================== HELPERS ====================== */
+function triadHtml(id, states, current){
+  return `<div class="triad" data-for="${id}">` + states.map(s=>{
+    const sel = s.v===current ? " sel "+s.v : "";
+    const checked = s.v===current ? " checked" : "";
+    return `<label class="opt${sel}" data-v="${s.v}">
+        <input type="radio" name="r-${id}" value="${s.v}"${checked}><span>${s.t}</span>
+      </label>`;
+  }).join("") + `</div>`;
+}
+
+/* ====================== RENDER SECTION 3 ====================== */
+const vlist=document.getElementById("vlist");
+GROUPS.forEach((group,gi)=>{
+  const groupEl=document.createElement("div");
+  groupEl.className="vgroup"; groupEl.dataset.group=gi;
+  groupEl.innerHTML=`
+    <div class="vgroup-head" data-gtoggle>
+      <span class="chev">▶</span>
+      <span class="gtitle">${group.g}</span>
+      <span class="gsummary"></span>
+    </div>
+    <div class="vgroup-body"></div>`;
+  const body=groupEl.querySelector(".vgroup-body");
+  group.items.forEach(it=>{
+    const states=it.states||ESTADO_3;
+    const cur=state.items[it.id].estado;
+    const item=document.createElement("div");
+    item.className="vitem"; item.dataset.id=it.id;
+    item.innerHTML=`
+      <div class="item-t">${it.t}</div>
+      <div class="item-d">${it.d}</div>
+      <div class="item-r">${it.r}</div>
+      ${triadHtml(it.id, states, cur)}
+      ${it.assisted ? assistHtml() : `<div class="obs"><input type="text" placeholder="Valor / observación" data-obs="${it.id}"></div>`}`;
+    body.appendChild(item);
+  });
+  vlist.appendChild(groupEl);
+});
+
+/* ====================== ASSISTED 2.1 ====================== */
+function assistHtml(){
+  return `
+  <div class="assist">
+    <div class="ck"><input type="checkbox" id="useCarga" checked><label for="useCarga">Usar carga de ocupación total</label></div>
+    <div class="ck-sub">Modo recomendado para la versión actual (proyectos de hasta 2 pisos).</div>
+    <div class="a-field"><label>Carga de ocupación total</label><input id="a_carga" type="number" value="0" data-carga></div>
+    <div class="a-field"><label>Número de vías de evacuación / salidas</label><input id="a_vias" type="number" min="1" value="1"></div>
+    <div class="a-field"><label>ancho mínimo a usar para la ruta acesible (m)</label><input id="a_min" type="number" step="0.01" value="1.1"></div>
+    <hr>
+    <div class="a-out">
+      <span>Ancho exigido OGUC: <b id="o_oguc">1.10</b> m</span>
+      <span>Ancho exigido por vía: <b id="o_via">1.10</b> m</span>
+      <span>Ancho mínimo aplicable: <b id="o_apl">1.10</b> m</span>
+    </div>
+    <div class="a-verif ok" id="o_verif">Verificación: Cumple (ancho proyectado &gt;= ancho mínimo aplicable)</div>
+    <div class="a-formula">OGUC Art. 4.2.18 / 4.2.5: ancho = 0,5 cm × (carga ÷ N° vías), con mínimo normativo de 1,10 m.</div>
+  </div>`;
+}
+
+/* OGUC calc — Art. 4.2.18: 0,5 cm (0,005 m) por persona; Art. 4.2.5: carga ÷ N° vías; piso 1,10 m */
+function recalcAssist(){
+  const elVias=document.getElementById("a_vias");
+  const elMin=document.getElementById("a_min");
+  const elUse=document.getElementById("useCarga");
+  const elApl=document.getElementById("o_apl");
+  if(!elVias||!elMin||!elUse||!elApl) return; // bloque 2.1 aún no montado
+  const carga=state.carga;
+  const vias=Math.max(1, parseInt(elVias.value)||1);
+  const min=parseFloat(elMin.value)||0;
+  const use=elUse.checked;
+  state.assist={use,vias,min};
+
+  const personasPorVia = use ? carga/vias : 0;
+  const anchoCalc = personasPorVia*0.005;
+  const anchoOGUC = Math.max(1.10, anchoCalc);
+  const aplicable = Math.max(min, anchoOGUC);
+
+  document.getElementById("o_oguc").textContent = anchoOGUC.toFixed(2);
+  document.getElementById("o_via").textContent  = Math.max(1.10, anchoCalc).toFixed(2);
+  elApl.textContent  = aplicable.toFixed(2);
+
+  const cumple = min >= aplicable - 1e-9;
+  const verif=document.getElementById("o_verif");
+  verif.textContent = cumple
+    ? "Verificación: Cumple (ancho proyectado >= ancho mínimo aplicable)"
+    : "Verificación: No cumple (ancho proyectado < ancho mínimo aplicable)";
+  verif.className="a-verif "+(cumple?"ok":"bad");
+  setItemEstado("2.1", cumple?"cumple":"no-cumple");
+}
+
+/* ====================== RENDER SUB-BLOCKS ====================== */
+function renderSubs(containerId, store){
+  const c=document.getElementById(containerId);
+  Object.entries(store.subs).forEach(([key,sub])=>{
+    const el=document.createElement("div");
+    el.className="subitem"; el.dataset.key=key;
+    el.innerHTML=`
+      <div class="subitem-head" data-toggle>
+        <span class="chev">▶</span>
+        <span class="st">${sub.label}</span>
+        <span class="statepill ${sub.estado}">${labelFor(sub.estado)}</span>
+      </div>
+      <div class="subitem-body">
+        ${triadHtml(key, ESTADO_3, sub.estado)}
+        <div class="obs"><input type="text" placeholder="Valor / observación" data-obs="${key}"></div>
+      </div>`;
+    c.appendChild(el);
+  });
+}
+renderSubs("shh_items", state.shh);
+renderSubs("ducha_items", state.ducha);
+
+/* ====================== ESTADO SETTERS ====================== */
+function setItemEstado(id, v){
+  state.items[id].estado=v;
+  const item=document.querySelector(`.vitem[data-id="${id}"]`);
+  if(item){
+    const triad=item.querySelector(`.triad[data-for="${id}"]`);
+    if(triad){
+      triad.querySelectorAll(".opt").forEach(o=>{
+        const on=o.dataset.v===v;
+        o.className="opt"+(on?" sel "+v:"");
+        o.querySelector("input").checked=on;
+      });
+    }
+    const groupEl=item.closest(".vgroup");
+    if(groupEl) updateGroupSummary(groupEl);
+  }
+}
+/* Resumen del grupo: cuenta estados de sus ítems para mostrar en la cabecera colapsada */
+function updateGroupSummary(groupEl){
+  const gi=+groupEl.dataset.group;
+  const ids=GROUPS[gi].items.map(it=>it.id);
+  let cumple=0,noCumple=0,noAplica=0,otros=0;
+  ids.forEach(id=>{
+    const v=state.items[id].estado;
+    if(v==="no-cumple") noCumple++;
+    else if(v==="no-aplica") noAplica++;
+    else if(v==="cumple") cumple++;
+    else otros++; // estados de 3.1 (rampas/ascensor/...)
+  });
+  const parts=[];
+  if(noCumple) parts.push(`${noCumple} no cumple`);
+  if(noAplica) parts.push(`${noAplica} no aplica`);
+  const ok=cumple+otros;
+  if(ok) parts.push(`${ok} ok`);
+  const sum=groupEl.querySelector(".gsummary");
+  if(sum) sum.textContent = parts.join(" · ");
+}
+function setSubEstado(store, key, v){
+  store.subs[key].estado=v;
+  const el=document.querySelector(`[data-key="${key}"]`);
+  if(el){
+    const pill=el.querySelector(".statepill");
+    pill.className="statepill "+v; pill.textContent=labelFor(v);
+    const triad=el.querySelector(`.triad[data-for="${key}"]`);
+    triad.querySelectorAll(".opt").forEach(o=>{
+      const on=o.dataset.v===v;
+      o.className="opt"+(on?" sel "+v:"");
+      o.querySelector("input").checked=on;
+    });
+  }
+}
+
+/* ====================== EVENT DELEGATION ====================== */
+// collapse GROUPS (section 3)
+document.addEventListener("click",e=>{
+  const ghead=e.target.closest("[data-gtoggle]");
+  if(ghead){
+    ghead.classList.toggle("open");
+    const body=ghead.nextElementSibling;
+    if(body) body.classList.toggle("open");
+    return;
+  }
+  // collapse SUBITEMS (sections 4 & 5)
+  const head=e.target.closest("[data-toggle]");
+  if(head && !e.target.closest(".triad") && !e.target.closest("input")){
+    head.classList.toggle("open");
+    const body=head.nextElementSibling;
+    if(body) body.classList.toggle("open");
+  }
+});
+document.addEventListener("change",e=>{
+  if(e.target.matches('.triad input[type="radio"]')){
+    const v=e.target.value;
+    const triad=e.target.closest(".triad");
+    const forId=triad.dataset.for;
+    if(state.items[forId]) setItemEstado(forId, v);
+    else if(state.shh.subs[forId]) setSubEstado(state.shh, forId, v);
+    else if(state.ducha.subs[forId]) setSubEstado(state.ducha, forId, v);
+  }
+});
+document.addEventListener("input",e=>{
+  if(e.target.dataset.obs){
+    const k=e.target.dataset.obs;
+    if(state.items[k]) state.items[k].obs=e.target.value;
+    else if(state.shh.subs[k]) state.shh.subs[k].obs=e.target.value;
+    else if(state.ducha.subs[k]) state.ducha.subs[k].obs=e.target.value;
+  }
+});
+
+/* ====================== ESTADO GENERAL (sub-blocks) ====================== */
+document.querySelectorAll(".estado-general").forEach(eg=>{
+  const which=eg.dataset.sub;
+  const store= which==="shh"?state.shh:state.ducha;
+  const itemsEl=document.getElementById(which+"_items");
+  const note=eg.querySelector(".sub-collapse-note");
+  function apply(){
+    const noAplica = store.general==="No aplica";
+    itemsEl.classList.toggle("collapsed", noAplica);
+    note.textContent = noAplica ? "Bloque «No aplica»: subítems ocultos. Cambia a «Aplica» para desplegarlos." : "";
+    eg.querySelectorAll(".seg button").forEach(b=>b.classList.toggle("on", b.dataset.v===store.general));
+  }
+  eg.querySelectorAll(".seg button").forEach(b=>{
+    b.addEventListener("click",()=>{ store.general=b.dataset.v; apply(); });
+  });
+  apply();
+});
+
+/* ====================== CARGA DE OCUPACIÓN PERSISTENTE ====================== */
+function syncCarga(val, source){
+  const n = parseFloat(val); state.carga = isNaN(n)?0:n;
+  document.querySelectorAll("[data-carga]").forEach(inp=>{ if(inp!==source) inp.value = val; });
+  syncGeneralidades();
+  if(document.getElementById("a_carga")) recalcAssist();
+}
+document.addEventListener("input",e=>{
+  if(e.target.matches("[data-carga]")) syncCarga(e.target.value, e.target);
+  if(e.target.id==="a_vias"||e.target.id==="a_min") recalcAssist();
+});
+document.addEventListener("change",e=>{ if(e.target.id==="useCarga") recalcAssist(); });
+
+/* ====================== GENERALIDADES SYNC ====================== */
+function syncGeneralidades(){
+  const s=document.getElementById("f_superficie").value||"0";
+  const c=state.carga||0;
+  document.getElementById("f_generalidades").value =
+`La presente memoria tiene como objetivo analizar cada punto de la normativa relativa a la accesibilidad universal en la edificación pública. En este caso se trata de una edificación con una superficie de ${s} m2 y una carga de ocupación de ${c} personas.
+A continuación, se enumera un listado de requerimientos según el artículo 4.1.7 de la Ordenanza General de Urbanismo y Construcciones y parte de los artículos 4.2.5, 4.2.18, 4.5.8 y 6.4.2 de la misma, que son atingentes al presente proyecto de diseño.`;
+}
+document.getElementById("f_superficie").addEventListener("input",syncGeneralidades);
+
+/* ====================== IMAGES ====================== */
+const imgInput=document.getElementById("imgInput"),
+      thumbs=document.getElementById("thumbs"),
+      fileStatus=document.getElementById("fileStatus");
+let files=[];
+imgInput.addEventListener("change",()=>{
+  for(const f of imgInput.files){
+    if(files.length>=4) break;
+    if(!/image\/(jpeg|png)/.test(f.type)) continue;
+    files.push(f);
+  }
+  imgInput.value=""; renderThumbs();
+});
+function renderThumbs(){
+  thumbs.innerHTML="";
+  files.forEach((f,i)=>{
+    const url=URL.createObjectURL(f);
+    const el=document.createElement("div"); el.className="thumb";
+    el.innerHTML=`<img src="${url}"><button class="rm" data-i="${i}">×</button>`;
+    thumbs.appendChild(el);
+  });
+  fileStatus.textContent = files.length ? `${files.length} archivo(s) seleccionado(s)` : "Ningún archivo seleccionado";
+}
+thumbs.addEventListener("click",e=>{
+  if(e.target.matches(".rm")){ files.splice(+e.target.dataset.i,1); renderThumbs(); }
+});
+
+/* ====================== COLLAPSE / EXPAND ALL ====================== */
+document.getElementById("collapseBtn").addEventListener("click",()=>{
+  document.getElementById("moduleBody").classList.toggle("collapsed-body");
+});
+let allOpen=false;
+document.getElementById("expandAll").addEventListener("click",e=>{
+  allOpen=!allOpen;
+  document.querySelectorAll(".vgroup-head[data-gtoggle], .subitem-head[data-toggle]").forEach(h=>{
+    h.classList.toggle("open", allOpen);
+    if(h.nextElementSibling) h.nextElementSibling.classList.toggle("open", allOpen);
+  });
+  e.target.textContent = allOpen ? "Colapsar todo" : "Expandir todo";
+});
+
+/* ====================== SERIALIZE ====================== */
+function serialize(){
+  const verifs=GROUPS.flatMap(g=>g.items).map(it=>({
+    id:it.id, titulo:it.t,
+    estado:labelFor(state.items[it.id].estado),
+    observacion:state.items[it.id].obs
+  }));
+  function subSer(store){
+    return { estadoGeneral:store.general,
+      subitems:Object.values(store.subs).map(s=>({subitem:s.label,estado:labelFor(s.estado),observacion:s.obs})) };
+  }
+  return {
+    moduloActivo:document.getElementById("moduleOn").checked,
+    encabezado:{ nombre:f_nombre.value, ubicacion:f_ubicacion.value, arquitecto:f_arquitecto.value,
+      superficie:+f_superficie.value, carga:state.carga },
+    generalidades:f_generalidades.value,
+    verificaciones:verifs,
+    anchoAsistido:{ usarCarga:state.assist.use, carga:state.carga, vias:state.assist.vias,
+      anchoMinDeclarado:state.assist.min, anchoMinAplicable:(document.getElementById("o_apl")?+document.getElementById("o_apl").textContent:state.assist.min) },
+    serviciosHigienicos:subSer(state.shh),
+    ducha:subSer(state.ducha),
+    conclusion:f_conclusion.value,
+    imagenes:files.map(f=>f.name)
+  };
+}
+document.getElementById("genBtn").addEventListener("click",()=>{
+  const data=serialize();
+  document.getElementById("serialNote").textContent="Estructura serializada actualizada · "+new Date().toLocaleTimeString();
+  console.log("MEMORIA_RUTA_ACCESIBLE", data);
+  /* window.parent.postMessage({type:'ruta-accesible:generar', payload:data}, '*'); */
+  alert("Informe serializado. Revisa la consola para ver la estructura (hook listo para generar PDF en Archibots).");
+});
+
+/* ====================== INIT ====================== */
+document.querySelectorAll(".vgroup").forEach(updateGroupSummary);
+syncGeneralidades();
+recalcAssist();
+</script>
+</body>
+</html>

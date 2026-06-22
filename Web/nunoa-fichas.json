@@ -1,0 +1,16 @@
+{
+  "nunoa_z-4b": {
+    "zona_codigo": "Z-4B",
+    "zona_nombre": "Zona Residencial de Mediana Altura Z-4B",
+    "zona_descripcion": "Edificación aislada y pareada destinada a vivienda y equipamiento menor.",
+    "constructibilidad": "2.0",
+    "coeficienteOcupacion": "0.6",
+    "alturaMaxima": "10,5 m (≈3 pisos)",
+    "sistemaAgrupamiento": "Aislado / Pareado",
+    "superficiePredialMin": "160 m²",
+    "antejardinMinimo": "3 m",
+    "usosPermitidos": "Residencial, Equipamiento de escala menor",
+    "usosProhibidos": "Industria molesta o peligrosa",
+    "fuente": "PRC Ñuñoa Oficial - Actualización 2026"
+  }
+}

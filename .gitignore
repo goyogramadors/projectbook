@@ -1,13 +1,16 @@
-# ── Dependencias ─────────────────────────────────────────────────────────────
+# ─────────────────────────────────────────────────────────────────────────────
+# .gitignore del repositorio Project_Book (raíz = E:\2CLAUDE\ProjectBook)
+# Estructura: DESARROLLO/ (documentación) + Web/ (SPA productiva). Un solo repo.
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── Dependencias (en cualquier nivel: Web/, Web/functions/, Web/scripts/, Mockup/) ──
 node_modules/
-functions/node_modules/
-Mockup/**/node_modules/
 
 # ── Salidas de compilación ───────────────────────────────────────────────────
+# build del frontend (Web/dist), compilado de functions y caché de TypeScript.
 dist/
-functions/lib/
-tsconfig.tsbuildinfo
-functions/tsconfig.tsbuildinfo
+Web/functions/lib/
+*.tsbuildinfo
 
 # ── Firebase (estado local / caché de deploy) ────────────────────────────────
 .firebase/
@@ -21,8 +24,11 @@ functions/tsconfig.tsbuildinfo
 !.env.local.example
 !.env*.example
 
-# ── Proyecto paralelo de referencia (no productivo) ──────────────────────────
-Mockup/
+# ── Mockup (referencia UX/CSS deprecada) ─────────────────────────────────────
+# Se versiona su CÓDIGO FUENTE (vive en DESARROLLO/ y queremos respaldarlo),
+# pero NO sus dependencias (node_modules/ ya está cubierto arriba).
+# Si prefieres NO versionar el mockup, descomenta la línea siguiente:
+# DESARROLLO/Mockup/
 
 # ── Sistema operativo / editor ───────────────────────────────────────────────
 .DS_Store
