@@ -10,6 +10,59 @@
 
 ---
 
+## 2026-06-23 16:40 (Chile) — UX: Carpeta Digital (2/3-1/3 + ver/agregar) · Libro de Obras (índice colapsable por mes + columna folios) · header BASEPRO + logo
+
+### Contexto
+Tres cambios de UI pedidos por Andrés sobre producción. Edición quirúrgica; sin tocar persistencia ni reglas.
+
+### Carpeta Digital (`src/tools/CarpetaDigitalView.tsx`)
+- Layout a **2/3 (árbol) + 1/3 (panel)** con clase nueva `.tool-split-21` (no se tocó `.ab-split`, que es compartido y apilado a propósito).
+- El **contador de documentos** de cada carpeta del árbol ahora es **link** cuando es ≥1: al pincharlo el panel 1/3 cambia de **AGREGAR DOCUMENTO** a **MOSTRAR DOCUMENTO** (lista con nombre + Abrir). Estado nuevo `panelModo: 'agregar'|'mostrar'`; botón “+ Agregar documento” para volver y “📄 Mostrar documentos (N)”.
+
+### Libro de Obras (`src/tools/LibroObrasDigitalView.tsx`)
+- Índice de sub-libros ahora **colapsable y agrupado por meses** (▸/▾, `mesLabel`). Estado `abiertoLibros` + `mesSel`.
+- Layout `.tool-split-21`: **2/3 índice + 1/3 columna de FOLIOS** (con `maxHeight:460 + scroll`). La columna **filtra** según selección: sub-libro completo → todos sus folios; mes → solo ese mes. El editor (apertura / nueva entrada) bajó a **ancho completo** debajo; el listado de folios se sacó del editor.
+
+### Header / marca (`src/components/ShellTop.tsx` + `src/archibots.css`)
+- Ambos slogans (“Gestión Documental…” y “La infraestructura digital… Proyecta. Cumple. Construye.”) van **arriba a la izquierda** (`.ab-top-tagline` + `.ab-top-slogan`). BASEPRO queda **grande y abajo** con logo a la derecha; tamaño +30% (2.7→3.5rem; móvil 2→2.6rem).
+- Logo del perímetro: se usa una **sola** imagen de contornos `/Basepro-N-t.png`; en barra clara (matrix) se aplica `.ab-logo-invert{filter:invert(1)}` para que el **borde contraste en ambos temas** (antes `Basepro-B-t.png` tenía perímetro blanco invisible sobre fondo claro). Imagen central `/Logo-Archibots.png` intacta.
+
+### Incidencia §8 (mount) — resuelta
+El montaje truncó la cola de los 4 archivos editados (ShellTop, archibots.css, las 2 vistas) en el `Edit` (read/write-lag). Reparado en el montaje: `head -n N` + reanexo de la cola exacta por heredoc (ShellTop reescrito completo). Los archivos en Windows/tracked estaban correctos; se homogeneizó el montaje antes de compilar.
+
+### Verificado
+`tsc -b` → **0 errores**. `vite build` (outDir temporal) → **exit 0**, con chunks `CarpetaDigitalView` y `LibroObrasDigitalView` regenerados.
+
+### Pendientes
+- [ ] **Publicar**: `git push` (Cloudflare Pages reconstruye solo) para que los usuarios vean los 3 cambios.
+- [ ] (Sigue abierto) Deploy backend: `firebase deploy --only storage` + `--only firestore:rules`.
+- [ ] Revisar en vivo el contraste del logo en los 4 temas (cad/washi/matrix/white).
+
+---
+
+## 2026-06-23 15:30 (Chile) — Frontend en Cloudflare Pages CONECTADO a GitHub (auto-build); docs corregidas
+
+### Contexto
+Verificado en el dashboard de Cloudflare (HITL con capturas): el proyecto `projectbook` **ya está conectado al repo `goyogramadors/projectbook`** (rama `main`, *Automatic deployments: Enabled*) — NO era un Direct Upload irreversible como se supuso en la entrada de las 14:40. Dominios activos: **`archibots.cl`** + `projectbook-8qt.pages.dev`. El problema real era la **Build configuration vacía** (sin Build command / output / root).
+
+### Acciones (HITL Andrés en el dashboard)
+- Build configuration seteada: **Root directory** `Web`, **Build command** `npm run build`, **Output** `dist`.
+- Cargadas las **7 variables `VITE_*`** (Production, Plaintext) desde `Web/.env.local`.
+- Lock fantasma `.git/index.lock` (del 22-jun) eliminado en Windows; `git push` exitoso (`4aef65f..10e5f00`) → dispara build nuevo que ya usa la config.
+
+### Cambios (archivos tocados)
+- **`DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`** — PARTE 4 reescrita: flujo vigente = GitHub-sync (publicar = `git push`); build config + vars documentadas; Direct Upload degradado a histórico/emergencia; Firebase Hosting marcado sin uso. Resumen, tabla de problemas e intro corregidos.
+- **`Iniciar Aquí.md`** — §4 frontend reescrito: Cloudflare Pages conectado a GitHub, publicar = `git push`; eliminada la sección de "migración pendiente" (ya no aplica).
+
+### Nota
+La entrada de las 14:40 (que hablaba de "migrar Direct Upload → GitHub") quedó **superada**: el proyecto ya estaba en Git; solo faltaba configurar el build. No se borra por regla de bitácora.
+
+### Pendientes
+- [ ] Confirmar que el deploy del commit `10e5f00` quede en **Success** y el sitio (`archibots.cl`) muestre Térmico acreditando + adjuntos de Obra Digital.
+- [ ] (Sigue abierto) Deploy backend: `firebase deploy --only storage` + `--only firestore:rules` desde `Web/`.
+
+---
+
 ## 2026-06-23 14:40 (Chile) — Corrección de doc: despliegue del frontend = Cloudflare Pages (no Firebase Hosting)
 
 ### Contexto

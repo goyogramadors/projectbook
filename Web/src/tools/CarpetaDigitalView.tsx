@@ -22,6 +22,7 @@ import type { ToolProps, ObraAdjunto } from '../core/types';
 import { CARPETA_CONTRATOS } from './carpetaDigitalData';
 import type { CDFolder } from './carpetaDigitalData';
 
+// layout 2/3 árbol + 1/3 agregar/mostrar
 type EstadoArch = 'activo' | 'archivado';
 interface Archivo { id: number; folderN: string; tipoDoc: string; version: number; fecha: string; estado: EstadoArch; adjunto?: ObraAdjunto; }
 const hoy = () => new Date().toISOString().slice(0, 10);
@@ -58,6 +59,8 @@ export default function CarpetaDigitalView({ projectId, access = 'edit' }: ToolP
   const [abierto, setAbierto] = useState<Record<string, boolean>>({});
   const [verArchivados, setVerArchivados] = useState(false);
   const [selN, setSelN] = useState<string>('');
+  // Panel derecho (1/3): 'agregar' (formulario) o 'mostrar' (documentos de la carpeta).
+  const [panelModo, setPanelModo] = useState<'agregar' | 'mostrar'>('agregar');
   const [nuevoTipo, setNuevoTipo] = useState('');
   const [nuevoAdj, setNuevoAdj] = useState<ObraAdjunto | null>(null);
   const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
@@ -245,7 +248,7 @@ export default function CarpetaDigitalView({ projectId, access = 'edit' }: ToolP
     return (
       <div>
         <button type="button"
-          onClick={() => { setAbierto(p => ({ ...p, [node.n]: !p[node.n] })); setSelN(node.n); setVerArchivados(false); }}
+          onClick={() => { setAbierto(p => ({ ...p, [node.n]: !p[node.n] })); setSelN(node.n); setVerArchivados(false); setPanelModo('agregar'); }}
           style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 6,
             padding: '6px 8px', paddingLeft: 8 + depth * 14, cursor: 'pointer', textAlign: 'left',
             border: `1px solid ${isSel ? '#6d28d9' : 'transparent'}`, borderRadius: 6,
@@ -253,7 +256,15 @@ export default function CarpetaDigitalView({ projectId, access = 'edit' }: ToolP
           <span style={{ minWidth: 0, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>
             {op ? '📂' : '📁'} <span style={{ fontVariantNumeric: 'tabular-nums', opacity: 0.7 }}>{node.n}</span> {node.l}
           </span>
-          <span style={{ fontSize: 10, opacity: 0.7, flex: '0 0 auto' }}>{total}</span>
+          {total > 0 ? (
+            <span role="button" tabIndex={0} title="Ver documentos de esta carpeta"
+              onClick={(e) => { e.stopPropagation(); setAbierto(p => ({ ...p, [node.n]: true })); setSelN(node.n); setVerArchivados(false); setPanelModo('mostrar'); }}
+              style={{ fontSize: 10, fontWeight: 800, flex: '0 0 auto', color: '#6d28d9', textDecoration: 'underline', cursor: 'pointer', padding: '0 2px' }}>
+              {total}
+            </span>
+          ) : (
+            <span style={{ fontSize: 10, opacity: 0.7, flex: '0 0 auto' }}>{total}</span>
+          )}
         </button>
         {op && (
           <div style={{ marginTop: 2 }}>
@@ -315,8 +326,8 @@ export default function CarpetaDigitalView({ projectId, access = 'edit' }: ToolP
         </div>
       )}
 
-      <div className="ab-split">
-        {/* IZQUIERDA · árbol numerado */}
+      <div className="tool-split-21">
+        {/* IZQUIERDA (2/3) · árbol numerado */}
         <div className="tool-panel ab-split-left">
           <div className="module-header">| ÁRBOL — {contrato?.name.toUpperCase()}</div>
           <div className="panel-content">
@@ -354,7 +365,37 @@ export default function CarpetaDigitalView({ projectId, access = 'edit' }: ToolP
                 </>
               ) : !sel ? (
                 <div className="module-header">| Selecciona una carpeta del árbol</div>
+              ) : panelModo === 'mostrar' ? (
+                /* ── MODO MOSTRAR DOCUMENTO ── */
+                <>
+                  <div className="module-header" style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <span>| MOSTRAR DOCUMENTO · {sel.n} {sel.l.toUpperCase()}</span>
+                    <button type="button" onClick={() => setPanelModo('agregar')}
+                      style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 11, fontWeight: 700, color: '#6d28d9' }}>+ Agregar documento</button>
+                  </div>
+                  {docsDe(sel.n).length === 0 ? <p className="tech-quote">Sin documentos activos en esta carpeta.</p> : (
+                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12, marginTop: 8 }}>
+                      <tbody>
+                        {docsDe(sel.n).map(a => (
+                          <tr key={a.id} style={{ borderBottom: '1px solid var(--ab-border,#eee)' }}>
+                            <td style={{ padding: '5px 4px' }}>📄 {a.tipoDoc}
+                              {a.adjunto && (a.adjunto.url
+                                ? <a href={a.adjunto.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, fontSize: 11 }}>📎 {a.adjunto.name} · Abrir</a>
+                                : <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.6 }}>📎 {a.adjunto.name} ·local</span>)}
+                            </td>
+                            <td style={{ padding: '5px 4px', opacity: 0.7 }}>v{a.version} · {a.fecha}</td>
+                            <td style={{ padding: '5px 4px', textAlign: 'right' }}>
+                              <button type="button" disabled={readOnly} onClick={() => setEstado(a.id, 'archivado')}
+                                style={{ border: 0, background: 'transparent', cursor: 'pointer' }}>📥 Archivar</button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  )}
+                </>
               ) : (
+                /* ── MODO AGREGAR DOCUMENTO ── */
                 <>
                   <div className="module-header">| {sel.n} {sel.l.toUpperCase()}</div>
 
@@ -398,26 +439,11 @@ export default function CarpetaDigitalView({ projectId, access = 'edit' }: ToolP
                   </p>
                   <button type="button" className="technical-btn" disabled={readOnly || !nuevoTipo.trim()} onClick={agregar}>+ [ AGREGAR / NUEVA VERSIÓN ]</button>
 
-                  <div className="module-header" style={{ marginTop: 16 }}>| DOCUMENTOS EN «{sel.n} {sel.l}» ({docsDe(sel.n).length})</div>
-                  {docsDe(sel.n).length === 0 ? <p className="tech-quote">Sin documentos activos en esta carpeta.</p> : (
-                    <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: 12 }}>
-                      <tbody>
-                        {docsDe(sel.n).map(a => (
-                          <tr key={a.id} style={{ borderBottom: '1px solid var(--ab-border,#eee)' }}>
-                            <td style={{ padding: '5px 4px' }}>📄 {a.tipoDoc}
-                              {a.adjunto && (a.adjunto.url
-                                ? <a href={a.adjunto.url} target="_blank" rel="noopener noreferrer" style={{ marginLeft: 6, fontSize: 11 }}>📎 {a.adjunto.name}</a>
-                                : <span style={{ marginLeft: 6, fontSize: 11, opacity: 0.6 }}>📎 {a.adjunto.name} ·local</span>)}
-                            </td>
-                            <td style={{ padding: '5px 4px', opacity: 0.7 }}>v{a.version} · {a.fecha}</td>
-                            <td style={{ padding: '5px 4px', textAlign: 'right' }}>
-                              <button type="button" disabled={readOnly} onClick={() => setEstado(a.id, 'archivado')}
-                                style={{ border: 0, background: 'transparent', cursor: 'pointer' }}>📥 Archivar</button>
-                            </td>
-                          </tr>
-                        ))}
-                      </tbody>
-                    </table>
+                  {docsDe(sel.n).length > 0 && (
+                    <button type="button" onClick={() => setPanelModo('mostrar')}
+                      style={{ width: '100%', marginTop: 12, padding: '7px 8px', border: '1px solid #6d28d9', borderRadius: 6, cursor: 'pointer', background: 'transparent', color: '#6d28d9', fontSize: 12, fontWeight: 700 }}>
+                      📄 Mostrar documentos ({docsDe(sel.n).length})
+                    </button>
                   )}
                 </>
               )}

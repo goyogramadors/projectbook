@@ -100,6 +100,9 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
   const [folios, setFolios] = useState<Folio[]>([]);
   const [sel, setSel] = useState<string>('maestro');
   const [verArchivados, setVerArchivados] = useState(false);
+  // Índice colapsable: expand por sub-libro + mes seleccionado (filtro del panel de folios).
+  const [abiertoLibros, setAbiertoLibros] = useState<Record<string, boolean>>({});
+  const [mesSel, setMesSel] = useState<string | null>(null);
   // Counters Año→Mes (numeración AAAA-MM-NNN) + cursor de paginación (cloud).
   const [counters, setCounters] = useState<Record<string, number>>({});
   const [cursor, setCursor] = useState<QueryDocumentSnapshot<DocumentData> | null>(null);
@@ -199,10 +202,25 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
   };
 
   const libro = libros.find(l => l.id === sel);
-  const foliosLibro = useMemo(
-    () => folios.filter(f => f.libroId === sel && f.estado === 'activo').sort((a, b) => Number(b.folio.replace(/\D/g, '')) - Number(a.folio.replace(/\D/g, ''))),
-    [folios, sel],
-  );
+  /* folios activos de un sub-libro (para conteo y agrupación por mes) */
+  const foliosActivosDe = (libroId: string) => folios.filter(f => f.libroId === libroId && f.estado === 'activo');
+  /* meses (YYYY-MM) presentes en un sub-libro, recientes primero, con su conteo */
+  const mesesDeLibro = (libroId: string): { mes: string; n: number }[] => {
+    const map = new Map<string, number>();
+    foliosActivosDe(libroId).forEach(f => { const m = f.fecha.slice(0, 7); map.set(m, (map.get(m) ?? 0) + 1); });
+    return [...map.entries()].map(([mes, n]) => ({ mes, n })).sort((a, b) => b.mes.localeCompare(a.mes));
+  };
+  const mesLabel = (m: string) => {
+    const [y, mm] = m.split('-');
+    const nombres = ['ene', 'feb', 'mar', 'abr', 'may', 'jun', 'jul', 'ago', 'sep', 'oct', 'nov', 'dic'];
+    return `${nombres[Number(mm) - 1] ?? mm} ${y}`;
+  };
+  /* vista filtrada del panel de folios: sub-libro seleccionado + (opcional) mes */
+  const foliosVista = useMemo(() => {
+    let arr = folios.filter(f => f.libroId === sel && f.estado === 'activo');
+    if (mesSel) arr = arr.filter(f => f.fecha.slice(0, 7) === mesSel);
+    return arr.sort((a, b) => Number(b.folio.replace(/\D/g, '')) - Number(a.folio.replace(/\D/g, '')));
+  }, [folios, sel, mesSel]);
   const archivados = useMemo(() => folios.filter(f => f.estado === 'archivado'), [folios]);
 
   if (!project) return (
@@ -210,7 +228,8 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
   );
 
   const seleccionarLibro = (id: string) => {
-    setSel(id); setVerArchivados(false);
+    setSel(id); setVerArchivados(false); setMesSel(null);
+    setAbiertoLibros(p => ({ ...p, [id]: true }));
     const l = libros.find(x => x.id === id);
     const def = l ? LIBRO_TEMA[l.tipo] : undefined;
     if (def && TEMAS_LOD[def]) { setNeTema(def); setNeSubtema(TEMAS_LOD[def]?.[0] ?? ''); }
@@ -349,21 +368,50 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
         </div>
       )}
 
-      <div className="ab-split">
-        {/* IZQUIERDA · índice de sub-libros */}
+      <div className="tool-split-21">
+        {/* IZQUIERDA (2/3) · índice de sub-libros colapsable por meses */}
         <div className="tool-panel ab-split-left">
           <div className="module-header">| SUB-LIBROS</div>
           <div className="panel-content">
             {libros.map(l => {
-              const n = folios.filter(f => f.libroId === l.id && f.estado === 'activo').length;
+              const activos = foliosActivosDe(l.id);
+              const meses = mesesDeLibro(l.id);
+              const op = !!abiertoLibros[l.id];
+              const bookSel = sel === l.id && !verArchivados && !mesSel;
               return (
-                <button key={l.id} type="button" onClick={() => seleccionarLibro(l.id)}
-                  style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px', marginBottom: 4,
-                    border: `1px solid ${sel === l.id && !verArchivados ? '#6d28d9' : 'var(--ab-border, #ddd)'}`, borderRadius: 6, cursor: 'pointer',
-                    background: sel === l.id && !verArchivados ? 'rgba(109,40,217,.08)' : 'transparent', textAlign: 'left' }}>
-                  <span style={{ fontSize: 12, fontWeight: 600 }}>{l.abierto ? '📖' : '🔒'} {l.nombre}</span>
-                  <span style={{ fontSize: 10, opacity: 0.7 }}>{l.abierto ? `${n} folio(s)` : 'cerrado'}</span>
-                </button>
+                <div key={l.id} style={{ marginBottom: 4 }}>
+                  <button type="button" onClick={() => seleccionarLibro(l.id)}
+                    style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '8px 10px',
+                      border: `1px solid ${bookSel ? '#6d28d9' : 'var(--ab-border, #ddd)'}`, borderRadius: 6, cursor: 'pointer',
+                      background: sel === l.id && !verArchivados ? 'rgba(109,40,217,.08)' : 'transparent', textAlign: 'left' }}>
+                    <span style={{ fontSize: 12, fontWeight: 600, display: 'inline-flex', alignItems: 'center', gap: 6, minWidth: 0 }}>
+                      {meses.length > 0 && (
+                        <span role="button" tabIndex={0} title={op ? 'Colapsar' : 'Expandir meses'}
+                          onClick={(e) => { e.stopPropagation(); setAbiertoLibros(p => ({ ...p, [l.id]: !p[l.id] })); }}
+                          style={{ cursor: 'pointer', opacity: 0.7, flex: '0 0 auto' }}>{op ? '▾' : '▸'}</span>
+                      )}
+                      <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{l.abierto ? '📖' : '🔒'} {l.nombre}</span>
+                    </span>
+                    <span style={{ fontSize: 10, opacity: 0.7, flex: '0 0 auto' }}>{l.abierto ? `${activos.length} folio(s)` : 'cerrado'}</span>
+                  </button>
+                  {op && meses.length > 0 && (
+                    <div style={{ marginTop: 2, paddingLeft: 18 }}>
+                      {meses.map(({ mes, n }) => {
+                        const mSel = sel === l.id && mesSel === mes && !verArchivados;
+                        return (
+                          <button key={mes} type="button"
+                            onClick={() => { setSel(l.id); setVerArchivados(false); setMesSel(mes); }}
+                            style={{ width: '100%', display: 'flex', justifyContent: 'space-between', alignItems: 'center', padding: '4px 8px', marginBottom: 2,
+                              border: `1px solid ${mSel ? '#6d28d9' : 'transparent'}`, borderRadius: 5, cursor: 'pointer',
+                              background: mSel ? 'rgba(109,40,217,.08)' : 'transparent', textAlign: 'left', fontSize: 11 }}>
+                            <span>🗓️ {mesLabel(mes)}</span>
+                            <span style={{ opacity: 0.6, fontSize: 10 }}>{n}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
               );
             })}
 
@@ -419,7 +467,7 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
               </div>
             )}
 
-            <button type="button" onClick={() => setVerArchivados(true)}
+            <button type="button" onClick={() => { setVerArchivados(true); setMesSel(null); }}
               style={{ width: '100%', padding: '8px 10px', marginTop: 6, border: '1px dashed var(--ab-border, #ccc)', borderRadius: 6, cursor: 'pointer',
                 background: verArchivados ? 'rgba(0,0,0,.05)' : 'transparent', textAlign: 'left', fontSize: 12 }}>
               🗃️ Archivados ({archivados.length})
@@ -427,11 +475,52 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
           </div>
         </div>
 
-        {/* DERECHA · detalle */}
-        <div className="ab-split-right">
-          <div className="tool-panel">
-            <div className="panel-content">
-              {verArchivados ? (
+        {/* DERECHA (1/3) · listado de folios filtrado por sub-libro / mes (alto máx + scroll) */}
+        <div className="tool-panel">
+          <div className="module-header">| FOLIOS{mesSel ? ` · ${mesLabel(mesSel)}` : ''} ({foliosVista.length})</div>
+          <div className="panel-content" style={{ maxHeight: 460, overflowY: 'auto' }}>
+            {!libro?.abierto ? (
+              <p className="tech-quote">Sub-libro cerrado. Ábrelo abajo para registrar folios.</p>
+            ) : foliosVista.length === 0 ? (
+              <p className="tech-quote">Sin folios {mesSel ? 'en este mes' : 'activos'}.</p>
+            ) : foliosVista.map(f => (
+              <div key={f.folio} style={{ border: `1px solid ${f.incid ? 'rgba(217,119,6,.4)' : 'var(--ab-border,#eee)'}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
+                  <span>{f.folio} · {f.fecha}
+                    {f.apertura && <span style={{ background: '#1f7a3d', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 9, marginLeft: 6 }}>ACTA</span>}
+                    {f.incid && <span style={{ background: '#d97706', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 9, marginLeft: 6 }}>INCIDENTE</span>}
+                  </span>
+                  <button type="button" disabled={readOnly} onClick={() => setEstadoFolio(f.folio, 'archivado')}
+                    style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 11 }}>📥 Archivar</button>
+                </div>
+                <div style={{ fontSize: 12, marginTop: 2 }}><strong>{f.tema}</strong> · {f.subtema}</div>
+                {f.texto && <div style={{ fontSize: 12, opacity: 0.85 }}>{f.texto}</div>}
+                {f.vinc.length > 0 && (
+                  <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
+                    {f.vinc.map(v => <span key={v} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, border: '1px solid var(--ab-border,#ddd)', opacity: 0.8 }}>⬡ {v}</span>)}
+                  </div>
+                )}
+                {(f.participantes.length > 0 || f.adjuntos.length > 0) && (
+                  <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4, display: 'flex', gap: 12 }}>
+                    {f.participantes.length > 0 && <span>👤 {f.participantes.length} participante(s)</span>}
+                    {f.adjuntos.length > 0 && <span>📎 {f.adjuntos.length} adjunto(s)</span>}
+                  </div>
+                )}
+              </div>
+            ))}
+            {cursor && (
+              <button type="button" className="technical-btn" disabled={cargandoMas} onClick={() => void cargarMas()} style={{ marginTop: 8, fontSize: 11 }}>
+                {cargandoMas ? 'Cargando…' : '↓ Cargar más folios'}
+              </button>
+            )}
+          </div>
+        </div>
+      </div>{/* /tool-split-21 */}
+
+      {/* EDITOR (ancho completo) · archivados / apertura / nueva entrada */}
+      <div className="tool-panel" style={{ marginTop: 20 }}>
+        <div className="panel-content">
+          {verArchivados ? (
                 <>
                   <div className="module-header">| 🗃️ ARCHIVADOS</div>
                   {archivados.length === 0 ? <p className="tech-quote">No hay entradas archivadas.</p> : archivados.map(f => (
@@ -590,44 +679,11 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
                     <Icons.Lock size={11} /> Autor ({CURRENT_USER}) y fecha se registran automáticamente. Premium: el binario sube a Storage con nombre UUID; Free: queda como metadato local.
                   </p>
                   <button type="button" className="technical-btn" disabled={readOnly} onClick={nuevaEntrada}>+ [ GUARDAR ENTRADA / FOLIO ]</button>
-
-                  <div className="module-header" style={{ marginTop: 16 }}>| FOLIOS ({foliosLibro.length})</div>
-                  {foliosLibro.length === 0 ? <p className="tech-quote">Sin folios activos.</p> : foliosLibro.map(f => (
-                    <div key={f.folio} style={{ border: `1px solid ${f.incid ? 'rgba(217,119,6,.4)' : 'var(--ab-border,#eee)'}`, borderRadius: 6, padding: '8px 10px', marginBottom: 6 }}>
-                      <div style={{ display: 'flex', justifyContent: 'space-between', fontSize: 11, fontWeight: 700 }}>
-                        <span>{f.folio} · {f.fecha}
-                          {f.apertura && <span style={{ background: '#1f7a3d', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 9, marginLeft: 6 }}>ACTA</span>}
-                          {f.incid && <span style={{ background: '#d97706', color: '#fff', borderRadius: 4, padding: '1px 6px', fontSize: 9, marginLeft: 6 }}>INCIDENTE</span>}
-                        </span>
-                        <button type="button" disabled={readOnly} onClick={() => setEstadoFolio(f.folio, 'archivado')}
-                          style={{ border: 0, background: 'transparent', cursor: 'pointer', fontSize: 11 }}>📥 Archivar</button>
-                      </div>
-                      <div style={{ fontSize: 12, marginTop: 2 }}><strong>{f.tema}</strong> · {f.subtema}</div>
-                      {f.texto && <div style={{ fontSize: 12, opacity: 0.85 }}>{f.texto}</div>}
-                      {f.vinc.length > 0 && (
-                        <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, marginTop: 4 }}>
-                          {f.vinc.map(v => <span key={v} style={{ fontSize: 10, padding: '1px 7px', borderRadius: 10, border: '1px solid var(--ab-border,#ddd)', opacity: 0.8 }}>⬡ {v}</span>)}
-                        </div>
-                      )}
-                      {(f.participantes.length > 0 || f.adjuntos.length > 0) && (
-                        <div style={{ fontSize: 10, opacity: 0.7, marginTop: 4, display: 'flex', gap: 12 }}>
-                          {f.participantes.length > 0 && <span>👤 {f.participantes.length} participante(s)</span>}
-                          {f.adjuntos.length > 0 && <span>📎 {f.adjuntos.length} adjunto(s)</span>}
-                        </div>
-                      )}
-                    </div>
-                  ))}
-                  {cursor && (
-                    <button type="button" className="technical-btn" disabled={cargandoMas} onClick={() => void cargarMas()} style={{ marginTop: 8, fontSize: 11 }}>
-                      {cargandoMas ? 'Cargando…' : '↓ Cargar más folios'}
-                    </button>
-                  )}
+                  <p style={{ fontSize: 10, opacity: 0.55, marginTop: 8 }}>Los folios registrados aparecen en la columna «FOLIOS» (arriba a la derecha), filtrables por mes desde el índice.</p>
                 </>
               )}
-            </div>
-          </div>
         </div>
-      </div>{/* /ab-split */}
+      </div>
     </motion.div>
   );
 }

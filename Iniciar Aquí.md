@@ -118,19 +118,14 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 >
 > ⚠️ Los comandos `npm` se ejecutan desde `E:\2CLAUDE\ProjectBook\Web`; los `git` desde la raíz `E:\2CLAUDE\ProjectBook`. El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
 
-### Frontend (Cloudflare Pages) — dashboard: proyecto `projectbook`
-Indicadores en el repo: `Web/public/_redirects` (`/*  /index.html  200`) es la convención SPA de Cloudflare Pages. No hay `wrangler.toml` ni workflow de GitHub Actions.
+### Frontend (Cloudflare Pages) — proyecto `projectbook`, conectado a GitHub
+El proyecto `projectbook` está **conectado al repo `goyogramadors/projectbook`** (rama `main`, *Automatic deployments: Enabled*). Dominios: **`archibots.cl`** + `projectbook-8qt.pages.dev`. `Web/public/_redirects` (`/*  /index.html  200`) hace la reescritura SPA.
 
-**Estado actual (2026-06-23): subida MANUAL (Direct Upload).** El sitio se publicó arrastrando la carpeta `dist/` al dashboard de Cloudflare Pages. Por eso `git push` **NO** publica todavía: solo versiona el código en GitHub. Para publicar hoy:
-1. `npm run build` desde `Web\` → genera `dist/`.
-2. Ir a Cloudflare Pages (proyecto `projectbook`) y **arrastrar `dist/`** (Create deployment → upload).
+**Publicar = hacer `git push`.** Cada push a `main` dispara un build en Cloudflare (`npm run build` dentro de `Web/`) y publica solo. **No** se arrastra `dist/` (eso fue el método viejo de Direct Upload, ya obsoleto). Encaja con `/Basepro Terminar`.
 
-**Migración pendiente → sincronizar desde GitHub (auto-build).** Cloudflare **no permite convertir** un proyecto Direct Upload a Git; hay que **crear un proyecto Pages nuevo conectado al repo** y luego mover el dominio. Pasos (acción del usuario, una sola vez):
-1. Cloudflare Pages → **Create application → Connect to Git** → repo `goyogramadors/projectbook`.
-2. Build settings: **Root directory** = `Web`, **Build command** = `npm run build`, **Output directory** = `dist`.
-3. **Variables de entorno** en Cloudflare (las `VITE_*` no se versionan, ver §5): copiar las de `Web/.env.local` (Firebase + `VITE_GOOGLE_MAPS_API_KEY`).
-4. Verificar el deploy de prueba; luego mover el **dominio personalizado** del proyecto viejo (Direct Upload) al nuevo y eliminar el viejo.
-5. Desde entonces: **cada `git push` reconstruye y publica solo** → encaja con `/Basepro Terminar`.
+Build configuration del proyecto (ya seteada; documentada por si hay que recrearla): **Root directory** = `Web` · **Build command** = `npm run build` · **Output** = `dist`. Variables `VITE_*` cargadas en Cloudflare (Settings → Variables and secrets, Production) porque no se versionan (§5).
+
+⚠️ **Firebase Hosting sin uso.** `firebase deploy --only hosting` sube a `archibots-497423.web.app`, que **no** es el sitio real. No lo uses para el frontend.
 
 ### Backend (Cloud Functions)
 1. `cd functions && npm install && npm run build` (compila TS → `lib/`).

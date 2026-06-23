@@ -1,10 +1,10 @@
 /* =============================================================================
    SHELL · TOP UNIFICADO (ab-top) — S7.1
    -----------------------------------------------------------------------------
-   Controles a la IZQUIERDA (tagline + Inicio · Usuario · Tema · Proyecto ·
-   SYSTEM_OK) y la marca BASEPRO + logos a la DERECHA. El logo Basepro alterna
-   entre versión clara (N) y oscura (B) según el color de la barra (oscura en
-   cad/washi/white · clara en matrix).
+   Controles a la IZQUIERDA (slogans + Inicio · Usuario · Tema · Proyecto ·
+   SYSTEM_OK) y la marca BASEPRO + logos a la DERECHA. El logo Basepro usa una
+   sola imagen de contornos; en barra clara (matrix) se invierte por CSS para que
+   el perímetro del documento contraste en ambos temas.
    ============================================================================= */
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -24,10 +24,9 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
   const plan = user?.plan ?? 'Free';
   const nombre = user?.nombre ?? 'Invitado';
 
-  // La barra es oscura en todos los temas salvo "matrix" (barra clara). El logo
-  // Basepro alterna: barra oscura → versión clara (N) · barra clara → oscura (B).
+  // La barra es oscura en todos los temas salvo "matrix" (barra clara). Una sola
+  // imagen de contornos; en barra clara se invierte por CSS (.ab-logo-invert).
   const barIsDark = theme !== 'matrix';
-  const baseproLogo = barIsDark ? '/Basepro-N-t.png' : '/Basepro-B-t.png';
 
   const cerrarSesion = async () => {
     setMenuOpen(false);
@@ -37,9 +36,10 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
   return (
     <div className="ab-top">
       <div className="ab-topbar">
-        {/* 0 · Tagline arriba a la izquierda (fila propia, no se topa con la marca) */}
+        {/* 0 · Slogans arriba a la izquierda (fila propia, no se topa con la marca) */}
         <div className="ab-top-tagline">
-          Gestión Documental - <strong style={{ color: 'var(--destructive)' }}>Expedientes técnicos</strong> - Arquitectura - Permisos
+          <div>Gestión Documental - <strong style={{ color: 'var(--destructive)' }}>Expedientes técnicos</strong> - Arquitectura - Permisos</div>
+          <div className="ab-top-slogan">La infraestructura digital de tu proyecto. <strong style={{ color: 'var(--destructive)' }}>Proyecta. Cumple. Construye.</strong></div>
         </div>
 
         {/* 1 · Inicio */}
@@ -113,11 +113,8 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
         <img className="ab-brand-logo" src="/Logo-Archibots.png" alt="Archibots" />
         <div className="ab-brand-text">
           <div className="ab-brand-title" onClick={() => navigate('/')} title="Ir al inicio">BASE<span className="pro">PRO</span></div>
-          <div className="ab-brand-sub">
-            La infraestructura digital de tu proyecto. <strong style={{ color: 'var(--destructive)' }}>Proyecta. Cumple. Construye.</strong>
-          </div>
         </div>
-        <img className="ab-brand-logo ab-brand-logo-new" src={baseproLogo} alt="Basepro" />
+        <img className={`ab-brand-logo ab-brand-logo-new${barIsDark ? '' : ' ab-logo-invert'}`} src="/Basepro-N-t.png" alt="Basepro" />
       </div>
     </div>
   );

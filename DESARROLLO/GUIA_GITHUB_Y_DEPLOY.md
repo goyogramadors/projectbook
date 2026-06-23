@@ -160,34 +160,30 @@ firebase deploy --only firestore:indexes
 
 El sitio es una SPA; `Web/public/_redirects` (`/*  /index.html  200`) hace que Cloudflare reescriba todas las rutas a `/index.html`.
 
-### 4.A — Estado ACTUAL: publicación MANUAL (Direct Upload)
-El proyecto se creó arrastrando `dist/` al dashboard. Por eso `git push` **NO** publica el sitio (solo versiona en GitHub). Para publicar hoy:
+### FLUJO VIGENTE: GitHub-sync (auto-build con cada `git push`)
+El proyecto `projectbook` **ya está conectado a GitHub** (repo `goyogramadors/projectbook`, rama de producción `main`, *Automatic deployments: Enabled*). Dominios activos: **`archibots.cl`** y `projectbook-8qt.pages.dev`. **Cada `git push` a `main` dispara un build y publica solo** — no se arrastra `dist/` nunca.
 
+**Para publicar cambios de la app, basta con (desde la raíz):**
 ```powershell
-cd E:\2CLAUDE\ProjectBook\Web
-npm install              # solo si cambiaron dependencias
-npm run build            # genera dist/  (tsc -b && vite build)
+cd E:\2CLAUDE\ProjectBook
+git add -A
+git commit -m "feat: ..."
+git push
 ```
-Luego, en el dashboard de Cloudflare Pages (proyecto `projectbook`) → **Create deployment** → arrastrar la carpeta **`Web\dist`**.
+Cloudflare detecta el commit, corre `npm run build` dentro de `Web/` y publica. Sigue el avance en la pestaña **Deployments**.
 
-Si el build falla por TypeScript, **corrígelo antes** de subir (no se sube un `dist/` roto).
+**Build configuration del proyecto** (Settings → Build — ya configurada; documentada por si hay que recrearla):
+- **Root directory:** `Web`  ← la SPA vive ahí, no en la raíz del repo. Si queda vacío, el build falla (no encuentra `package.json`).
+- **Build command:** `npm run build`
+- **Build output directory:** `dist`
 
-### 4.B — MIGRACIÓN a GitHub-sync (auto-build con cada `git push`)
-Cloudflare **no permite convertir** un proyecto Direct Upload a Git. Hay que **crear un proyecto Pages nuevo conectado al repo** y mover el dominio. Se hace **una sola vez**:
+**Variables de entorno** (Settings → Variables and secrets, entorno **Production**, tipo Plaintext): las 7 `VITE_*` de `Web/.env.local` (`VITE_FIREBASE_*` + `VITE_GOOGLE_MAPS_API_KEY`). No se versionan (ver `Iniciar Aquí.md` §5); si faltan, el sitio compila pero sale sin Firebase ni mapa.
 
-1. **Conecta el repo.** Cloudflare Dashboard → **Workers & Pages** → **Create application** → pestaña **Pages** → **Connect to Git** → autoriza GitHub y elige el repo **`goyogramadors/projectbook`**. Rama de producción: **`main`**.
-2. **Build settings** (clave, porque la SPA vive en `Web/`, no en la raíz):
-   - **Framework preset:** `Vite` (o `None`).
-   - **Root directory (advanced):** `Web`
-   - **Build command:** `npm run build`
-   - **Build output directory:** `dist`
-3. **Variables de entorno.** En *Settings → Environment variables* del proyecto, agrega todas las `VITE_*` (no se versionan, ver `Iniciar Aquí.md` §5). Cópialas desde `Web/.env.local`: las `VITE_FIREBASE_*` y `VITE_GOOGLE_MAPS_API_KEY`. Sin esto el build sale sin Firebase ni mapa.
-4. **Primer deploy.** Guarda → Cloudflare clona, corre `npm run build` en `Web/` y publica. Verifica en la URL `*.pages.dev` del proyecto nuevo que carga login, mapa y las herramientas.
-5. **Mueve el dominio.** Cuando el proyecto nuevo funcione: en el proyecto **viejo** (Direct Upload) quita el dominio personalizado (*Custom domains*) y agrégalo en el proyecto **nuevo**. Si no usas dominio propio y solo te sirve la URL `.pages.dev`, basta con empezar a usar la del proyecto nuevo.
-6. **Limpia.** Borra el proyecto Direct Upload viejo para no confundirte de URL.
-7. **Desde entonces:** `git push` (o `/Basepro Terminar`) reconstruye y publica solo. Ya no arrastras `dist/` nunca más.
+Si el build falla por TypeScript, Cloudflare marca el deploy como *failed* y mantiene el anterior. Corrige el TS y vuelve a hacer `git push`.
 
-> Tras la migración, este documento debe actualizarse para que 4.A quede como histórico y 4.B como el flujo vigente.
+> **Histórico:** al principio el sitio se publicaba a mano (Direct Upload, arrastrando `Web\dist` al dashboard). Eso quedó obsoleto al conectar el repo a Git. Si alguna vez se necesita un deploy de emergencia sin pasar por GitHub: `npm run build` en `Web\` y arrastrar `Web\dist` en *Deployments → Create deployment*.
+>
+> **Firebase Hosting:** sigue sin uso. `firebase deploy --only hosting` sube a `archibots-497423.web.app`, que **no** es el sitio real. No lo uses para el frontend.
 
 ---
 
