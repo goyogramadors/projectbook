@@ -1,0 +1,47 @@
+rules_version = '2';
+
+// =============================================================================
+//  STORAGE RULES — Archibots / BASEPRO (proyecto archibots-497423)
+//  Zero-Trust, espejo del modelo de firestore.rules: solo MIEMBROS del proyecto
+//  leen, solo DUEÑO/EDITOR activo escribe. La membresía se lee desde Firestore
+//  (default) → projects/{pid}.{ownerId, members}.
+//  Cubre adjuntos de Obra Digital (Libro de Obras y Carpeta Digital):
+//    projects/{pid}/obra/{libro|carpeta}/{uuid}-{nombre}
+// =============================================================================
+service firebase.storage {
+  match /b/{bucket}/o {
+
+    function isAuth() { return request.auth != null; }
+    function uid()    { return request.auth.uid; }
+
+    // Documento máster del proyecto en Firestore (default).
+    function projectData(pid) {
+      return firestore.get(/databases/(default)/documents/projects/$(pid)).data;
+    }
+    function isMember(pid) {
+      return isAuth()
+        && firestore.exists(/databases/(default)/documents/projects/$(pid))
+        && ( projectData(pid).ownerId == uid()
+             || projectData(pid).members[uid()] != null );
+    }
+    function isEditor(pid) {
+      return isAuth()
+        && firestore.exists(/databases/(default)/documents/projects/$(pid))
+        && ( projectData(pid).ownerId == uid()
+             || projectData(pid).members[uid()] == 'editor' );
+    }
+
+    // ── Adjuntos de Obra Digital ─────────────────────────────────────────────
+    match /projects/{pid}/obra/{allPaths=**} {
+      allow read:   if isMember(pid);
+      // create/update: editor activo + límite de tamaño (25 MB).
+      allow write:  if isEditor(pid) && request.resource.size < 25 * 1024 * 1024;
+      allow delete: if isEditor(pid);
+    }
+
+    // ── Denegación por defecto para cualquier otra ruta ──────────────────────
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

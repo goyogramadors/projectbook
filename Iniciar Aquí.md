@@ -5,7 +5,11 @@
 > (4) las reglas obligatorias de desarrollo. Si algo no está aquí, está en los documentos
 > enlazados en la sección §7. **No re-explores el árbol a ciegas: usa el mapa.**
 >
-> **Última actualización:** 2026-06-22 · **Repositorio:** `E:\2CLAUDE\ProjectBook` · **Raíz de la SPA:** `E:\2CLAUDE\ProjectBook\Web`
+> 🗒️ **OBLIGATORIO — BITÁCORA:** todo lo que se realice en CADA sesión debe quedar escrito en
+> **`Last Update.md`** (raíz del repo): fecha, hora, detalle de lo hecho, archivos tocados y
+> pendientes generados/resueltos. Es el reporte de estado que se entrega a la siguiente instancia.
+>
+> **Última actualización:** 2026-06-23 · **Repositorio:** `E:\2CLAUDE\ProjectBook` · **Raíz de la SPA:** `E:\2CLAUDE\ProjectBook\Web`
 
 ---
 
@@ -40,7 +44,7 @@ E:\2CLAUDE\ProjectBook\          ← raíz del repo (.git, .gitignore, Iniciar A
 
 ## 1. Qué es este proyecto
 
-**Archibots** (rotulado en la web como **Project_Book — Gestión Documental**) es una **SPA web para organizar la información de proyectos de arquitectura y construcción**. Funciona como un "expediente digital" donde cada proyecto tiene una ficha maestra y un set de **herramientas** (calculadoras, generadores de documentos, geolocalizador normativo, etc.) que el usuario agrega a carpetas temáticas.
+**Archibots** (rotulado en la web como **BASEPRO — Gestión Documental**; el nombre interno del repo sigue siendo Archibots / Project_Book) es una **SPA web para organizar la información de proyectos de arquitectura y construcción**. Funciona como un "expediente digital" donde cada proyecto tiene una ficha maestra y un set de **herramientas** (calculadoras, generadores de documentos, geolocalizador normativo, etc.) que el usuario agrega a carpetas temáticas.
 
 Está **en producción y funcionando**. El rol de cualquier sesión de desarrollo es **agregar valor sin romper la base existente**, implementando el modelo **"Dos Cerebros"**:
 
@@ -107,23 +111,36 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 
 ## 4. Cómo se sube el proyecto a la web (despliegue)
 
-> **Nota de nomenclatura:** el frontend NO está en "Firestore pages". Está en **Firebase Hosting** (servicio de hosting de Firebase). El backend son **Cloud Functions**. Ambos en el proyecto Firebase `archibots-497423`.
+> **MODELO MENTAL (no olvidar):**
+> - **Frontend** (el sitio compilado, `dist/`) → **Cloudflare Pages**. Es el host real que ven los usuarios. Se publica **cada vez que cambia el código de la app**.
+> - **Backend** (reglas Firestore, reglas Storage, Cloud Functions) → **Firebase** (`archibots-497423`).
+> - ⚠️ **Firebase Hosting NO se usa.** Existe `hosting` en `firebase.json` y la URL `archibots-497423.web.app`, pero es **secundaria/sin uso**. Un `firebase deploy --only hosting` sube a esa URL Firebase, **no** actualiza el sitio real (Cloudflare). No lo uses para publicar el frontend.
 >
-> ⚠️ **Todos los comandos `npm` y `firebase` de abajo se ejecutan desde `E:\2CLAUDE\ProjectBook\Web`** (ahí están `package.json` y `firebase.json`). El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
+> ⚠️ Los comandos `npm` se ejecutan desde `E:\2CLAUDE\ProjectBook\Web`; los `git` desde la raíz `E:\2CLAUDE\ProjectBook`. El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
 
-### Frontend (Firebase Hosting)
-1. Se compila el sitio: `npm run build` → genera la carpeta `dist/`.
-2. Se publica: `firebase deploy --only hosting` → sube `dist/` a Firebase Hosting.
-3. Hosting reescribe todo a `/index.html` (SPA) y cachea `/geo-data/**` por 1 año (immutable).
+### Frontend (Cloudflare Pages) — dashboard: proyecto `projectbook`
+Indicadores en el repo: `Web/public/_redirects` (`/*  /index.html  200`) es la convención SPA de Cloudflare Pages. No hay `wrangler.toml` ni workflow de GitHub Actions.
+
+**Estado actual (2026-06-23): subida MANUAL (Direct Upload).** El sitio se publicó arrastrando la carpeta `dist/` al dashboard de Cloudflare Pages. Por eso `git push` **NO** publica todavía: solo versiona el código en GitHub. Para publicar hoy:
+1. `npm run build` desde `Web\` → genera `dist/`.
+2. Ir a Cloudflare Pages (proyecto `projectbook`) y **arrastrar `dist/`** (Create deployment → upload).
+
+**Migración pendiente → sincronizar desde GitHub (auto-build).** Cloudflare **no permite convertir** un proyecto Direct Upload a Git; hay que **crear un proyecto Pages nuevo conectado al repo** y luego mover el dominio. Pasos (acción del usuario, una sola vez):
+1. Cloudflare Pages → **Create application → Connect to Git** → repo `goyogramadors/projectbook`.
+2. Build settings: **Root directory** = `Web`, **Build command** = `npm run build`, **Output directory** = `dist`.
+3. **Variables de entorno** en Cloudflare (las `VITE_*` no se versionan, ver §5): copiar las de `Web/.env.local` (Firebase + `VITE_GOOGLE_MAPS_API_KEY`).
+4. Verificar el deploy de prueba; luego mover el **dominio personalizado** del proyecto viejo (Direct Upload) al nuevo y eliminar el viejo.
+5. Desde entonces: **cada `git push` reconstruye y publica solo** → encaja con `/Basepro Terminar`.
 
 ### Backend (Cloud Functions)
 1. `cd functions && npm install && npm run build` (compila TS → `lib/`).
 2. `firebase deploy --only functions`.
 3. Secretos vía `firebase functions:secrets:set <NOMBRE>` (p. ej. `SENDGRID_API_KEY`, claves de IA para `apiProxy`). **Nunca** en código.
 
-### Reglas e índices Firestore
+### Reglas e índices Firestore (y Storage)
 - `firebase deploy --only firestore:rules`
 - `firebase deploy --only firestore:indexes`
+- `firebase deploy --only storage` — **reglas de Storage** (`storage.rules`, adjuntos de Obra Digital). Requerido tras habilitar adjuntos reales (2026-06-23).
 
 > El procedimiento detallado, comando por comando, está en **`GUIA_GITHUB_Y_DEPLOY.md`** (entregable hermano de este documento).
 
@@ -162,17 +179,21 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 
 ---
 
-## 6. Herramientas nuevas planificadas (mockups en preparación)
+## 6. Herramientas nuevas (5) — INTEGRADAS a producción (2026-06-23)
 
-Andrés tiene preparados los mockups de **5 herramientas nuevas** que se incorporarán al `src/tools/` siguiendo el patrón existente (registro en `registry.ts` + metadata en `catalog.ts`, lazy load, `types.ts` centralizado). Al momento de escribir este documento **aún no están subidas a la carpeta** — se documentan aquí como planificadas:
+Las **5 herramientas nuevas** ya están **incorporadas y cableadas** (`registry.ts` lazy + `catalog.ts` `estado:'active'`, tipos en `types.ts`), con **persistencia real** y avance del expediente (`ProjectMaster.toolStates[toolId]`). Modelo de persistencia decidido (HITL 2026-06-23):
 
-1. **Carpeta Digital** — repositorio documental estructurado del proyecto (expediente digital).
-2. **Libro de Obras Digital** — bitácora digital de obra (registro de avances, instrucciones, observaciones).
-3. **Generador de Memoria de Ruta Accesible** — informe de cumplimiento de accesibilidad universal.
-4. **Generador de Informe Norma Térmica** — informe de cumplimiento de la reglamentación térmica.
-5. **Generador de Informe de Subsuelo** — informe técnico de subsuelo.
+| Herramienta | `toolId` | Archivo (`src/tools/`) | Tier | Persistencia |
+|---|---|---|---|---|
+| Informe de Subsuelo | `informe-suelo` | `InformeSubsueloView.tsx` | free | `useToolData` → `toolData/informe-suelo` |
+| Memoria de Ruta Accesible | `accesibilidad` | `RutaAccesibleView.tsx` | free | `useToolData` → `toolData/accesibilidad` |
+| Informe Norma Térmica | `informe-termico` | `InformesTermicosView.tsx` | premium | `useToolData` → `toolData/informe-termico`. **Acredita CUMPLE/NO CUMPLE** contra Tabla 1 RT oficial (motor en Web Worker `termico.worker.ts` + `termico/tablas.ts`+`engine.ts`) |
+| Libro de Obras Digital | `libro-obras` | `LibroObrasDigitalView.tsx` | premium | **doc-por-folio** `projects/{pid}/libroObras/state/folios/{id}` + meta `state` (counters Año→Mes, paginación) · `obra/libroStore.ts` |
+| Carpeta Digital | `carpeta-digital` | `CarpetaDigitalView.tsx` | premium | **doc-por-archivo** `projects/{pid}/carpetaDigital/state/archivos/{id}` + meta `state` · `obra/carpetaStore.ts` |
 
-> Cuando los mockups estén en la carpeta, leerlos, adaptar imports + tipos al stack productivo (no copiar patrones del `Mockup/` deprecado) y registrarlos. Actualizar esta sección con el `toolId` y archivo real de cada una.
+- **Datos comunes reutilizados** (no se re-capturan): `ProjectMaster` (nombre/comuna/dirección/propietario) vía `useProjects().getProject`; el Térmico siembra `comuna`→zona; al guardar, todas escriben `toolStates`.
+- **Free vs Premium:** los 3 con `useToolData` degradan a `localStorage ab-<toolId>-{pid}`; los 2 de Obra Digital también caen a local si la nube falla. **Adjuntos reales en Storage (UUID)**, counters Año→Mes y paginación por cursor ya implementados (2026-06-23 · Opción A). En Free el adjunto queda como metadato local (sin binario).
+- **Reglas:** `toolData/{document=**}` cubre los 3 primeros; `libroObras/{document=**}` y `carpetaDigital/{document=**}` (recursivas) cubren meta + subdocs (folios/archivos). **Storage:** `storage.rules` (nuevo) protege `projects/{pid}/obra/**` zero-trust (miembro lee · editor escribe · ≤25 MB) — **requiere `firebase deploy --only storage`**. **Sin** índices nuevos.
 
 ---
 
@@ -210,6 +231,8 @@ Actúa como **Senior Full-Stack Engineer** sobre un entorno **de producción ya 
 
 5. **PREGUNTA ANTES DE BORRAR.** Si detectas que un bloque actual interfiere con la nueva "Coreografía de Conexión" de 4 pasos, **no asumas que debes borrarlo**: indica el conflicto en una sola línea y espera confirmación.
 
+6. **REGISTRA LA SESIÓN EN `Last Update.md` (OBLIGATORIO).** Al cerrar cualquier sesión de trabajo, agrega una entrada NUEVA arriba del todo en **`Last Update.md`** (raíz del repo) con **fecha + hora**, detalle de lo realizado, archivos tocados y pendientes generados/resueltos. No borres entradas previas. Mantén los pendientes sincronizados con `Tintero - Pendientes.md`. Este registro es la fuente de continuidad entre instancias.
+
 ### Reglas técnicas heredadas (por el stack)
 - `import type { X }` o `{ type X }` **obligatorio** para Vite/oxc (su ausencia produce pantalla en blanco).
 - El `db` normativo usa **Firestore DB nombrada** (`coordenadasnormativas`), no `(default)`.
@@ -225,3 +248,5 @@ Al iniciar una sesión nueva, basta con indicar:
 > "Lee **`Iniciar Aquí.md`** en la raíz del proyecto y trabaja según esas instrucciones."
 
 Eso carga el contexto del proyecto, la ubicación de la información, el flujo de despliegue y las reglas de desarrollo.
+
+**Antes de empezar**, lee **`Last Update.md`** para conocer el estado real más reciente y los pendientes abiertos. **Al terminar**, registra la sesión en `Last Update.md` (ver §8, regla 6) — es obligatorio.

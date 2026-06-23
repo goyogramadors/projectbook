@@ -6,9 +6,9 @@
    compPremium (los custom claims no son legibles desde el cliente). El guard
    requireAdmin vive en el router. Imports estáticos de firebase/firestore.
    ============================================================================= */
-import { collection, getDocs, doc, updateDoc, query, where } from 'firebase/firestore';
+import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, where } from 'firebase/firestore';
 import { db } from './firebase';
-import type { Plan } from './types';
+import type { Plan, TopToolsConfig } from './types';
 
 export type UserEstado = 'Activo' | 'Suspendido';
 
@@ -71,4 +71,23 @@ export async function promoteByEmail(email: string): Promise<boolean> {
     snap.docs.map((d) => updateDoc(doc(db, 'users', d.id), { plan: 'Premium', compPremium: true })),
   );
   return true;
+}
+
+/* ── TOP TOOLS (CONST §2) — ranking anclado en la barra inferior ──────────────
+   Documento único `config/topTools` { ids: string[] }. Lectura pública con auth;
+   escritura solo admin (reglas Firestore). La barra (TopToolsBar) ya lee este doc. */
+export async function getTopTools(): Promise<string[] | null> {
+  try {
+    const snap = await getDoc(doc(db, 'config', 'topTools'));
+    if (!snap.exists()) return null;
+    const ids = (snap.data() as TopToolsConfig).ids;
+    return Array.isArray(ids) && ids.every((x) => typeof x === 'string') ? ids : null;
+  } catch {
+    return null;
+  }
+}
+
+/** Persiste el ranking de Top Tools (solo admin por reglas). */
+export async function setTopTools(ids: string[]): Promise<void> {
+  await setDoc(doc(db, 'config', 'topTools'), { ids } satisfies TopToolsConfig, { merge: true });
 }

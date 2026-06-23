@@ -133,6 +133,19 @@ service cloud.firestore {
         allow read:   if isActive() && isProjectMember(projectId);
         allow write:  if isActive() && isProjectEditor(projectId);
       }
+      // Obra Digital — Libro de Obras (libro-obras). Subcolección propia: doc único
+      // 'state' (MVP) y, a futuro, un documento por folio. Mismo modelo de acceso
+      // que las hermanas: lectura para miembros, escritura para dueño/editor activo.
+      match /libroObras/{document=**} {
+        allow read:   if isActive() && isProjectMember(projectId);
+        allow write:  if isActive() && isProjectEditor(projectId);
+      }
+      // Obra Digital — Carpeta Digital (carpeta-digital). Subcolección propia: doc
+      // único 'state' (MVP) y, a futuro, un documento por archivo (storageRef UUID).
+      match /carpetaDigital/{document=**} {
+        allow read:   if isActive() && isProjectMember(projectId);
+        allow write:  if isActive() && isProjectEditor(projectId);
+      }
     }
 
     // ── Colección: customers (Stripe extension) ───────────────────────────────

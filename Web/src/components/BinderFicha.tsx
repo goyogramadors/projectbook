@@ -48,11 +48,13 @@ export default function BinderFicha({
   binderTab,
   onTab,
   otherProjects = [],
+  onShare,
 }: {
   project: ProjectMaster | null;
   binderTab: CarpetaId;
   onTab: (tab: CarpetaId) => void;
   otherProjects?: ProjectMaster[];
+  onShare?: () => void; // ítem 6: Compartir reubicado aquí (antes en ShellTop)
 }) {
   const navigate = useNavigate();
   const { projectId } = useParams();
@@ -106,24 +108,9 @@ export default function BinderFicha({
     reader.readAsDataURL(file);
   };
 
-  // Avance del expediente (15 ítems) — idéntico criterio al Mockup.
+  // Ítems 7+8: el bloque "Avance del expediente" se removió de la ficha. El avance
+  // vive ahora solo en WorkspaceView (ab-wavance, con accesos directos a las agregadas).
   const added = project?.addedTools ?? [];
-  const fichaItems = project ? [
-    { k: 'Nombre', done: !!project.name }, { k: 'Año', done: !!project.anio },
-    { k: 'Propietario', done: !!project.propietario }, { k: 'Rol', done: !!project.rol },
-    { k: 'Dirección', done: !!project.direccion }, { k: 'Comuna', done: !!project.comuna },
-    { k: 'Sup. Terreno', done: !!project.superficieTerrenoLegal },
-    { k: 'Sup. Proyecto', done: !!superficieProyecto(project) },
-    { k: 'Presupuesto', done: !!project.presupuestoUF }, { k: 'Fase', done: !!project.etapa },
-    { k: 'Participantes', done: added.includes('participantes') },
-    { k: 'Ubicación', done: added.includes('ubicacion') },
-    { k: 'Geoloc.', done: added.includes('geolocalizador') },
-    { k: 'Dimensionado', done: added.includes('dimensionador') },
-    { k: 'Exp. DOM', done: added.includes('expediente-dom') },
-  ] : [];
-  const fichaDone = fichaItems.filter((i) => i.done).length;
-  const fichaPct = fichaItems.length ? Math.round((fichaDone / fichaItems.length) * 100) : 0;
-
   const supProyecto = project ? superficieProyecto(project) : '';
   const linkedTools = project
     ? added.map((id) => getManifest(id)).filter((t): t is NonNullable<typeof t> => !!t && t.folder === binderTab)
@@ -182,24 +169,19 @@ export default function BinderFicha({
                           </button>
                         )}
                       </div>
-                      <h2 style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>{project.name}</h2>
-                      <p style={{ marginTop: 8, fontSize: 12, opacity: 0.7, display: 'flex', alignItems: 'center', gap: 6 }}>
-                        <Icon name="MapPin" size={14} /> {project.direccion}, {project.comuna}
-                      </p>
-
-                      <div className="ab-progress">
-                        <div className="ab-progress-head">
-                          <span><Icon name="ListChecks" size={13} /> Avance del expediente</span>
-                          <span className="ab-progress-pct">{fichaDone}/{fichaItems.length} · {fichaPct}%</span>
+                      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', gap: 10 }}>
+                        <div>
+                          <h2 style={{ fontSize: 18, fontWeight: 800, textTransform: 'uppercase', letterSpacing: '-0.5px' }}>{project.name}</h2>
+                          <p style={{ marginTop: 8, fontSize: 12, opacity: 0.7, display: 'flex', alignItems: 'center', gap: 6 }}>
+                            <Icon name="MapPin" size={14} /> {project.direccion}, {project.comuna}
+                          </p>
                         </div>
-                        <div className="ab-progress-bar"><div className="ab-progress-fill" style={{ width: `${fichaPct}%` }} /></div>
-                        <div className="ab-progress-grid">
-                          {fichaItems.map((it) => (
-                            <div key={it.k} className={`ab-chk ${it.done ? 'on' : ''}`} title={it.k}>
-                              <Icon name={it.done ? 'CheckSquare' : 'Square'} size={14} /><span>{it.k}</span>
-                            </div>
-                          ))}
-                        </div>
+                        {/* Ítem 6: Compartir reubicado a la ficha (antes en ShellTop). */}
+                        {onShare && (
+                          <button className="ab-btn sec sm" onClick={onShare} title="Compartir proyecto con colaboradores (Editor/Lector)" style={{ flex: 'none' }}>
+                            <Icon name="UserPlus" size={12} /> Compartir
+                          </button>
+                        )}
                       </div>
                     </div>
 

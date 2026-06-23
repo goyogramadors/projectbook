@@ -1,11 +1,10 @@
 /* =============================================================================
    SHELL · TOP UNIFICADO (ab-top) — S7.1
    -----------------------------------------------------------------------------
-   Reemplaza ModuleHeader + StatusBar. Controles a la IZQUIERDA (Inicio · Usuario
-   con menú de cuenta · Tema · selector de Proyecto · SYSTEM_OK) y la marca
-   (_Archibots + subtítulo + logo) a la DERECHA, ocupando el alto completo.
-   Conserva todo el wiring real: menú de cuenta (planes/compartir/admin/cerrar
-   sesión), ciclo de tema y navegación por proyecto.
+   Controles a la IZQUIERDA (tagline + Inicio · Usuario · Tema · Proyecto ·
+   SYSTEM_OK) y la marca BASEPRO + logos a la DERECHA. El logo Basepro alterna
+   entre versión clara (N) y oscura (B) según el color de la barra (oscura en
+   cad/washi/white · clara en matrix).
    ============================================================================= */
 import { useState } from 'react';
 import { useNavigate, useParams } from 'react-router-dom';
@@ -25,6 +24,11 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
   const plan = user?.plan ?? 'Free';
   const nombre = user?.nombre ?? 'Invitado';
 
+  // La barra es oscura en todos los temas salvo "matrix" (barra clara). El logo
+  // Basepro alterna: barra oscura → versión clara (N) · barra clara → oscura (B).
+  const barIsDark = theme !== 'matrix';
+  const baseproLogo = barIsDark ? '/Basepro-N-t.png' : '/Basepro-B-t.png';
+
   const cerrarSesion = async () => {
     setMenuOpen(false);
     try { await signOut(); navigate('/'); } catch { /* ignora errores de cierre */ }
@@ -33,6 +37,11 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
   return (
     <div className="ab-top">
       <div className="ab-topbar">
+        {/* 0 · Tagline arriba a la izquierda (fila propia, no se topa con la marca) */}
+        <div className="ab-top-tagline">
+          Gestión Documental - <strong style={{ color: 'var(--destructive)' }}>Expedientes técnicos</strong> - Arquitectura - Permisos
+        </div>
+
         {/* 1 · Inicio */}
         <button className="ab-topbtn" onClick={() => navigate('/')}><Icon name="Home" size={13} /> Inicio</button>
 
@@ -95,26 +104,20 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
           </select>
         </div>
 
-        {/* 4b · Compartir — acceso directo (antes solo vivía dentro del menú de cuenta) */}
-        {projectId && onShare && (
-          <button className="ab-topbtn" onClick={onShare} title="Compartir proyecto con colaboradores (Editor/Lector)">
-            <Icon name="UserPlus" size={13} /> [ COMPARTIR ]
-          </button>
-        )}
-
         {/* 5 · System OK */}
         <span className="ab-topsysok"><span className="ab-blink" style={{ color: 'var(--success)' }}>●</span> SYSTEM_OK</span>
       </div>
 
-      {/* Marca + logo a la derecha (alto completo) */}
+      {/* Marca + logos a la derecha (alto completo) */}
       <div className="ab-brand">
-        <div>
-          <div className="ab-brand-title" onClick={() => navigate('/')} title="Ir al inicio">Project<span className="pulse">_</span>Book</div>
+        <img className="ab-brand-logo" src="/Logo-Archibots.png" alt="Archibots" />
+        <div className="ab-brand-text">
+          <div className="ab-brand-title" onClick={() => navigate('/')} title="Ir al inicio">BASE<span className="pro">PRO</span></div>
           <div className="ab-brand-sub">
-            Gestión Documental - <strong style={{ color: 'var(--destructive)' }}>Expedientes técnicos</strong> - Arquitectura - Permisos
+            La infraestructura digital de tu proyecto. <strong style={{ color: 'var(--destructive)' }}>Proyecta. Cumple. Construye.</strong>
           </div>
         </div>
-        <img className="ab-brand-logo" src="/Logo-Archibots.png" alt="Archibots" />
+        <img className="ab-brand-logo ab-brand-logo-new" src={baseproLogo} alt="Basepro" />
       </div>
     </div>
   );

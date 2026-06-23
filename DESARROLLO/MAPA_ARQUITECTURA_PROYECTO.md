@@ -99,7 +99,16 @@ src/
 │   ├── CalculadoraHonorariosView.tsx  → T-06 (hsa): boleta bruto/líquido, retención editable
 │   ├── GeneradorContratosView.tsx     → T-45: plantillas paramétricas de contratos
 │   ├── BibliotecaView.tsx             → Biblioteca de Recursos: formularios MINVU (PDF en public/Biblioteca/) en acordeón por tipología (id 'form-municipales')
-│   └── CalculadoraArquitectonica.tsx  → Calculadora con mapa (variante de geolocalización/cálculo)
+│   ├── CalculadoraArquitectonica.tsx  → Calculadora con mapa (variante de geolocalización/cálculo)
+│   ├── InformeSubsueloView.tsx        → id 'informe-suelo' (free): calicata + estratigrafía + aptitud · useToolData(toolData/informe-suelo) + toolStates
+│   ├── RutaAccesibleView.tsx          → id 'accesibilidad' (free): revisión OGUC 4.1.7 · useToolData(toolData/accesibilidad) + toolStates
+│   ├── InformesTermicosView.tsx       → id 'informe-termico' (PREMIUM): ACREDITA U vs Tabla 1 RT oficial · Web Worker termico.worker + termico/{tablas,engine}.ts · useToolData + toolStates
+│   ├── termico/tablas.ts              → Tablas oficiales RT (Art. 4.1.10 OGUC, DS N°15 MINVU): U máx A–I, R100, permeabilidad, %ventanas, materiales λ/ρ/μ, comuna→zona
+│   ├── termico/engine.ts              → Motor puro: Rt=Rs+Σe/λ, U=1/Rt, Campo+Puente ponderado, veredictos CUMPLE/NO CUMPLE (lo ejecuta el worker)
+│   ├── LibroObrasDigitalView.tsx      → id 'libro-obras' (PREMIUM): doc-por-folio + counters Año→Mes + adjuntos Storage UUID · obra/libroStore.ts + toolStates
+│   ├── CarpetaDigitalView.tsx         → id 'carpeta-digital' (PREMIUM): doc-por-archivo + adjuntos Storage UUID · obra/carpetaStore.ts + toolStates
+│   ├── carpetaDigitalData.ts          → Catálogo MOP (CARPETA_CONTRATOS / CDFolder) que consume CarpetaDigitalView
+│   └── obra/{storageUpload,libroStore,carpetaStore}.ts → Subida real a Storage (UUID) + stores doc-por-folio/archivo (cloud granular + paginación + local + migración)
 │
 ├── views/                   → VISTAS de página (montadas por el router)
 │   ├── HomeView.tsx          → "/" (Landing) — Hero (usuario nuevo) o grilla Mis Proyectos + Top Tools + catálogo (sin auto-redirección al sandbox)
@@ -118,7 +127,8 @@ src/
 │   └── geoUtils.ts           → Utilidades geo + generarLlaveMaestra({comuna}_{zona})
 │
 └── workers/
-    └── geo.worker.ts         → Cerebro Espacial: Web Worker que aísla Turf.js (ops 'intersect' y 'area')
+    ├── geo.worker.ts         → Cerebro Espacial: Web Worker que aísla Turf.js (ops 'intersect' y 'area')
+    └── termico.worker.ts     → Cerebro Térmico: Web Worker que ejecuta termico/engine (U + acreditación RT)
 ```
 
 ---
@@ -138,7 +148,8 @@ src/
 | **ProjectRepository.ts** | `src/core/db/ProjectRepository.ts` | Persistencia Cloud(Premium)/Local(Free); sin migración (CONST §7) |
 | **geo.worker.ts** | `src/workers/geo.worker.ts` | Web Worker con Turf.js (intersección y área) |
 | **archibots.css** | `src/archibots.css` | Estilos globales, 4 temas, layout `.ab-*` (full-width desde v2.0) |
-| **firestore.rules** | `/firestore.rules` | Reglas zero-trust DB `(default)` (proyectos + subcolecciones) |
+| **firestore.rules** | `/firestore.rules` | Reglas zero-trust DB `(default)`: proyectos + subcolecciones (`toolData/**`, `libroObras/**`, `carpetaDigital/**`, `seguimiento`, `bitacora`, `dim-publicos`, `volumen`…) |
+| **storage.rules** | `Web/storage.rules` | Reglas zero-trust Firebase **Storage**: `projects/{pid}/obra/**` (adjuntos Obra Digital), miembro lee · editor escribe · ≤25 MB. Deploy: `firebase deploy --only storage` |
 | **firestore.coordenadasnormativas.rules** | `/firestore.coordenadasnormativas.rules` | Reglas DB nombrada `coordenadasnormativas` (lectura auth, escritura prohibida) |
 | **firebase.json** | `/firebase.json` | Hosting + multi-DB (`firestore[]` con 2 targets) + functions |
 | **.env / .env.local** | `/` | Variables `VITE_*` (Firebase). ⚠️ **`.env.local` debe incluir `VITE_GOOGLE_MAPS_API_KEY`** (ver `.env.local.example`) |
@@ -155,5 +166,6 @@ src/
 - **Montaje de una herramienta:** URL `/p/:projectId/m/:toolId` → `WorkspaceView` → `ToolHost` resuelve `getManifest(toolId)` → aplica `useAccess` (locked→`PricingView`) → monta el `component` lazy dentro de `<Suspense>` y `ToolErrorBoundary`.
 - **Agregar herramienta al proyecto:** `ToolCatalog.onAdd` → `addTool` (ProjectProvider, persiste `addedTools`) → `WorkspaceView` hace **auto-focus** abriendo la carpeta del tool en `BinderFicha`.
 - **Coreografía espacial ("Dos Cerebros"):** `GeolocalizadorView` → `GeoJsonService` (CDN+IndexedDB) → `geo.worker` (Turf `intersect`) → `NormativaService` (DB `coordenadasnormativas`) → ficha PRC.
-- **Persistencia de datos de tool:** master ligero (<5 KB) en `ProjectRepository`; datos propios de cada tool en subcolección Firestore (Premium) o `localStorage` `ab-<toolId>-${projectId}` (Free).
+- **Persistencia de datos de tool:** master ligero (<5 KB) en `ProjectRepository`; datos propios de cada tool vía `useToolData` → `projects/{pid}/toolData/{toolId}` (Premium, regla glob `toolData/{document=**}`) o `localStorage` `ab-<toolId>-${projectId}` (Free). **Obra Digital** usa **doc-por-folio/archivo**: meta en `projects/{pid}/libroObras/state` + folios en `.../state/folios/{id}` (counters Año→Mes, paginación con cursor), y meta `.../carpetaDigital/state` + `.../state/archivos/{id}`; **adjuntos reales en Firebase Storage** (`projects/{pid}/obra/{libro|carpeta}/{uuid}`, reglas `storage.rules`), con migración one-time del MVP y fallback local. Al guardar, cada tool actualiza `ProjectMaster.toolStates[toolId] = {estado, fecha}` (avance del expediente, S7).
+- **Reutilización de datos comunes (5 tools nuevas, 2026-06-23):** las 5 leen `ProjectMaster` vía `useProjects().getProject` (nombre, comuna, dirección, propietario) para membrete/siembra — el Térmico deriva la zona desde `comuna`; ninguna re-captura datos ya presentes. Conexión de avance: todas escriben `toolStates` al guardar. Colecciones nuevas: solo `libroObras` y `carpetaDigital` (los 3 generadores reusan la colección `toolData` existente → sin colecciones ni índices nuevos).
 - **Mapas:** SDK cargado en runtime vía `@googlemaps/js-api-loader` leyendo `VITE_GOOGLE_MAPS_API_KEY`; si falta, las vistas degradan a ingreso manual.

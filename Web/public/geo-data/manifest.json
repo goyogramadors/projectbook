@@ -1,0 +1,1008 @@
+{
+"01_Alto_Hospicio": [
+"01_PRC_Alto_Hospicio.json"
+],
+"01_Huara": [
+"01_PRC_Huara.json"
+],
+"01_Iquique": [
+"01_PRC_Iquique.json",
+"01_PRC_Iquique_AR_1_6.json",
+"01_PRC_Iquique_AR_2.json",
+"01_PRC_Iquique_AR_3.json",
+"01_PRC_Iquique_ZNE.json",
+"01_PRC_Iquique_ZNE_línea.json"
+],
+"01_Pica": [
+"01_PRC_Pica.json"
+],
+"01_PozoAlmonte": [
+"01_PRC_PozoAlmonte.json"
+],
+"02_Antofagasta": [
+"02_PRC_Antofagasta.json",
+"02_PRC_Antofagasta_R.json",
+"02_PRC_Antofagasta_SECC_LaChimba.json",
+"02_PRC_Antofagasta_SECC_LaNegra.json"
+],
+"02_Calama": [
+"02_PRC_Calama.json",
+"02_PRC_Calama_SECC_SanJuan.json",
+"02_PRC_Calama_SECC_Topater.json"
+],
+"02_Mejillones": [
+"02_PRC_Mejillones.json",
+"02_PRC_Mejillones_R.json",
+"02_PRC_Mejillones_SECC_CostaneraSur.json",
+"02_PRC_Mejillones_SECC_IndPequena.json",
+"02_PRC_Mejillones_SECC_ItataHornitos.json",
+"02_PRC_Mejillones_SECC_Meseta.json",
+"02_PRC_Mejillones_SECC_Portuaria.json"
+],
+"02_Ollague": [
+"02_PRC_Ollague.json"
+],
+"02_SanPedroAtacama": [
+"02_PRC_SanPedroAtacama.json",
+"02_PRC_SanPedroAtacama_Peine.json",
+"02_PRC_SanPedroAtacama_SECC_Pozo.json",
+"02_PRC_SanPedroAtacama_SECC_Quitor.json",
+"02_PRC_SanPedroAtacama_Toconao.json"
+],
+"02_Sierra_Gorda": [
+"02_PRC_Sierra_Gorda.json",
+"02_PRC_Sierra_Gorda_R.json",
+"02_PRC_Sierra_Gorda_ZNE.json"
+],
+"02_Taltal": [
+"02_PRC_Taltal.json",
+"02_PRC_Taltal_R.json",
+"02_PRC_Taltal_SECC_Cifuncho.json"
+],
+"02_Tocopilla": [
+"02_PRC_Tocopilla.json"
+],
+"03_Caldera": [
+"03_PRC_Caldera.json"
+],
+"03_Chanaral": [
+"03_PRC_Chanaral.json",
+"03_PRC_Chanaral_SECC_ElSalado.json",
+"03_PRC_Chanaral_SECC_Flamenco.json",
+"03_PRC_Chanaral_SECC_Portofino.json"
+],
+"03_Copiapo": [
+"03_PRC_Copiapo.json"
+],
+"03_DiegoAlmagro": [
+"03_PRC_DiegoAlmagro.json"
+],
+"03_Freirina": [
+"03_PRC_Freirina.json"
+],
+"03_Huasco": [
+"03_PRC_Huasco.json",
+"03_PRC_Huasco_P.json",
+"03_PRC_Huasco_R.json",
+"03_PRC_Huasco_ZNE.json"
+],
+"03_Vallenar": [
+"03_PRC_Vallenar.json"
+],
+"04_Andacollo": [
+"04_PRC_Andacollo.json"
+],
+"04_Combarbala": [
+"04_PRC_Combarbala.json",
+"04_PRC_Combarbala_R.json"
+],
+"04_Coquimbo": [
+"04_PRC_Coquimbo.json",
+"04_PRC_Coquimbo_R.json",
+"04_PRC_Coquimbo_ZNE.json"
+],
+"04_Illapel": [
+"04_PRC_Illapel.json"
+],
+"04_LaHiguera": [
+"04_PRC_LaHiguera.json",
+"04_PRC_LaHiguera_R.json"
+],
+"04_LaSerena": [
+"04_PRC_LaSerena.json",
+"04_PRC_LaSerena_R.json",
+"04_PRC_LaSerena_ZNE.json"
+],
+"04_Los_Vilos": [
+"04_PRC_Los_Vilos.json"
+],
+"04_Monte_Patria": [
+"04_PRC_Monte_Patria.json",
+"04_PRC_Monte_Patria_AR1.json",
+"04_PRC_Monte_Patria_AR2.json"
+],
+"04_Ovalle": [
+"04_PRC_Ovalle.json",
+"04_PRC_Ovalle_R.json"
+],
+"04_Paiguano": [
+"04_PRC_Paiguano.json",
+"04_PRC_Paiguano_R.json"
+],
+"04_Punitaqui": [
+"04_PRC_Punitaqui.json",
+"04_PRC_Punitaqui_R.json"
+],
+"04_Rio_Hurtado": [
+"04_PRC_Rio_Hurtado.json",
+"04_PRC_Rio_Hurtado_R.json"
+],
+"04_Salamanca": [
+"04_PRC_Salamanca.json"
+],
+"04_Vicuna": [
+"04_PRC_Vicuna.json",
+"04_PRC_Vicuna_R.json"
+],
+"05_Algarrobo": [
+"05_PRC_Algarrobo.json"
+],
+"05_Cabildo": [
+"05_PRC_Cabildo.json",
+"05_PRC_Cabildo_Project.json"
+],
+"05_Calera": [
+"05_PRC_Calera.json"
+],
+"05_Calle_Larga": [
+"05_PRC_Calle_Larga.json"
+],
+"05_Cartagena": [
+"05_PRC_Cartagena.json"
+],
+"05_Casablanca": [
+"05_PRC_Casablanca.json",
+"05_PRC_Casablanca_R.json"
+],
+"05_Catemu": [
+"05_PRC_Catemu.json"
+],
+"05_Concon": [
+"05_PRC_Concon.json"
+],
+"05_El_Quisco": [
+"05_PRC_El_Quisco.json",
+"05_PRC_El_Quisco_AP.json",
+"05_PRC_El_Quisco_R.json"
+],
+"05_El_Tabo": [
+"05_PRC_El_Tabo.json"
+],
+"05_Hijuelas": [
+"05_PRC_Hijuelas.json"
+],
+"05_Isla_de_Pascua": [
+"05_PRC_Isla_de_Pascua.json",
+"05_PRC_Isla_de_Pascua_R.json",
+"05_PRC_Isla_de_Pascua_ZNE.json"
+],
+"05_Juan_Fernandez": [
+"05_PRC_Juan_Fernandez.json",
+"05_PRC_Juan_Fernandez_R_Deslizamientos.json",
+"05_PRC_Juan_Fernandez_R_Quebradas.json",
+"05_PRC_Juan_Fernandez_R_Tsunami.json"
+],
+"05_La_Ligua": [
+"05_PRC_La_Ligua.json"
+],
+"05_Limache": [
+"05_PRC_Limache.json",
+"05_PRC_Limache_APC.json",
+"05_PRC_Limache_APN.json",
+"05_PRC_Limache_AR.json",
+"05_PRC_Limache_ICH.json"
+],
+"05_Llaillay": [
+"05_PRC_Llaillay.json"
+],
+"05_LosAndes_R": [
+"05_PRC_LosAndes_R.json"
+],
+"05_LosAndes_ZNE": [
+"05_PRC_LosAndes_ZNE.json"
+],
+"05_Los_Andes": [
+"05_PRC_Los_Andes.json"
+],
+"05_Nogales": [
+"05_PRC_Nogales.json"
+],
+"05_Olmue": [
+"05_PRC_Olmue.json"
+],
+"05_Panquehue": [
+"05_PRC_Panquehue.json"
+],
+"05_Papudo": [
+"05_PRC_Papudo.json",
+"05_PRC_Papudo_R.json",
+"05_PRC_Papudo_ZNE.json"
+],
+"05_Puchuncavi": [
+"05_PRC_Puchuncavi.json"
+],
+"05_Putaendo": [
+"05_PRC_Putaendo.json"
+],
+"05_Quillota": [
+"05_PRC_Quillota.json"
+],
+"05_Quilpue": [
+"05_PRC_Quilpue.json"
+],
+"05_Quintero": [
+"05_PRC_Quintero.json"
+],
+"05_R_Calle_Larga": [
+"05_PRC_R_Calle_Larga.json"
+],
+"05_Rinconada": [
+"05_PRC_Rinconada.json"
+],
+"05_San_Antonio": [
+"05_PRC_San_Antonio.json"
+],
+"05_San_Esteban": [
+"05_PRC_San_Esteban.json",
+"05_PRC_San_Esteban_R.json"
+],
+"05_San_Felipe": [
+"05_PRC_San_Felipe.json"
+],
+"05_Santa_Maria": [
+"05_PRC_Santa_Maria.json"
+],
+"05_Santo_Domingo": [
+"05_PRC_Santo_Domingo.json"
+],
+"05_Secc_El_Tabo": [
+"05_PRC_Secc_El_Tabo.json"
+],
+"05_Valparaíso": [
+"05_PRC_Valparaíso.json"
+],
+"05_Villa_Alemana": [
+"05_PRC_Villa_Alemana.json"
+],
+"05_VinadelMar": [
+"05_PRC_VinadelMar.json",
+"05_PRC_VinadelMar_AR.json"
+],
+"05_Zapallar": [
+"05_PRC_Zapallar.json"
+],
+"06_Chepica": [
+"06_PRC_Chepica.json"
+],
+"06_Chimbarongo": [
+"06_PRC_Chimbarongo.json"
+],
+"06_Codegua": [
+"06_PRC_Codegua.json",
+"06_PRC_Codegua_R_ZNE.json"
+],
+"06_Coinco": [
+"06_PRC_Coinco.json"
+],
+"06_Coltauco": [
+"06_PRC_Coltauco.json"
+],
+"06_Donihue": [
+"06_PRC_Donihue.json"
+],
+"06_Graneros": [
+"06_PRC_Graneros.json",
+"06_PRC_Graneros_R.json"
+],
+"06_La_Estrella": [
+"06_PRC_La_Estrella.json",
+"06_PRC_La_Estrella_R.json"
+],
+"06_Las_Cabras": [
+"06_PRC_Las_Cabras.json"
+],
+"06_Litueche": [
+"06_PRC_Litueche.json"
+],
+"06_Lolol": [
+"06_PRC_Lolol.json"
+],
+"06_Machali": [
+"06_PRC_Machali.json"
+],
+"06_Machalí_R_Rem": [
+"06_PRC_Machalí_R_Rem.json"
+],
+"06_Machalí_R_inund": [
+"06_PRC_Machalí_R_inund.json"
+],
+"06_Malloa": [
+"06_PRC_Malloa.json"
+],
+"06_Mostazal": [
+"06_PRC_Mostazal.json",
+"06_PRC_Mostazal_R.json",
+"06_PRC_Mostazal_ZNE.json"
+],
+"06_Navidad": [
+"06_PRC_Navidad.json"
+],
+"06_Olivar": [
+"06_PRC_Olivar.json"
+],
+"06_Palmilla": [
+"06_PRC_Palmilla.json"
+],
+"06_Paredones": [
+"06_PRC_Paredones.json",
+"06_PRC_Paredones_R.json"
+],
+"06_Peralillo": [
+"06_PRC_Peralillo.json"
+],
+"06_Peumo": [
+"06_PRC_Peumo.json"
+],
+"06_Pichidegua": [
+"06_PRC_Pichidegua.json"
+],
+"06_Pichilemu": [
+"06_PRC_Pichilemu.json",
+"06_PRC_Pichilemu_ZNE.json"
+],
+"06_Placilla": [
+"06_PRC_Placilla.json"
+],
+"06_Qta_Tilcoco": [
+"06_PRC_Qta_Tilcoco.json"
+],
+"06_Rancagua": [
+"06_PRC_Rancagua.json"
+],
+"06_Rengo": [
+"06_PRC_Rengo.json"
+],
+"06_Requinoa": [
+"06_PRC_Requinoa.json",
+"06_PRC_Requinoa_R.json"
+],
+"06_San_Fernando": [
+"06_PRC_San_Fernando.json"
+],
+"06_San_Jose_Palmilla_R": [
+"06_PRC_San_Jose_Palmilla_R.json"
+],
+"06_San_Vicente": [
+"06_PRC_San_Vicente.json",
+"06_PRC_San_Vicente_ZNE.json"
+],
+"06_Santa_Cruz": [
+"06_PRC_Santa_Cruz.json"
+],
+"07_Cauquenes": [
+"07_PRC_Cauquenes.json"
+],
+"07_Colbun": [
+"07_PRC_Colbun.json",
+"07_PRC_Colbun_R.json"
+],
+"07_Constitucion": [
+"07_PRC_Constitucion.json"
+],
+"07_Curepto": [
+"07_PRC_Curepto.json",
+"07_PRC_Curepto_R.json"
+],
+"07_Curico": [
+"07_PRC_Curico.json"
+],
+"07_Linares": [
+"07_PRC_Linares.json",
+"07_PRC_Linares_R.json",
+"07_PRC_Linares_ZNE.json"
+],
+"07_Maule": [
+"07_PRC_Maule.json"
+],
+"07_Molina": [
+"07_PRC_Molina.json",
+"07_PRC_Molina_R.json"
+],
+"07_Parral": [
+"07_PRC_Parral.json"
+],
+"07_Pelluhue": [
+"07_PRC_Pelluhue.json"
+],
+"07_Pencahue": [
+"07_PRC_Pencahue.json",
+"07_PRC_Pencahue_R.json"
+],
+"07_Rauco": [
+"07_PRC_Rauco.json"
+],
+"07_Romeral": [
+"07_PRC_Romeral.json",
+"07_PRC_Romeral_R.json",
+"07_PRC_Romeral_ZNE.json"
+],
+"07_San_Clemente": [
+"07_PRC_San_Clemente.json"
+],
+"07_San_Javier": [
+"07_PRC_San_Javier.json",
+"07_PRC_San_Javier_R.json"
+],
+"07_Talca": [
+"07_PRC_Talca.json"
+],
+"07_Teno": [
+"07_PRC_Teno.json"
+],
+"07_Vichuquen": [
+"07_PRC_Vichuquen.json"
+],
+"07_Villa_Alegre": [
+"07_PRC_Villa_Alegre.json",
+"07_PRC_Villa_Alegre_ZNE.json"
+],
+"07_YerbasBuenas": [
+"07_PRC_YerbasBuenas.json",
+"07_PRC_YerbasBuenas_R.json"
+],
+"08_Alto_Biobio": [
+"08_PRC_Alto_Biobio.json"
+],
+"08_Antuco": [
+"08_PRC_Antuco.json"
+],
+"08_Arauco": [
+"08_PRC_Arauco.json",
+"08_PRC_Arauco_ZNE.json"
+],
+"08_Cabrero": [
+"08_PRC_Cabrero.json"
+],
+"08_Canete": [
+"08_PRC_Canete.json"
+],
+"08_Chiguayante": [
+"08_PRC_Chiguayante.json"
+],
+"08_Concepción": [
+"08_PRC_Concepción.json"
+],
+"08_Contulmo": [
+"08_PRC_Contulmo.json",
+"08_PRC_Contulmo_R.json"
+],
+"08_Coronel": [
+"08_PRC_Coronel.json"
+],
+"08_Curanilahue": [
+"08_PRC_Curanilahue.json"
+],
+"08_Florida": [
+"08_PRC_Florida.json"
+],
+"08_H_R_Incendio": [
+"08_PRC_H_R_Incendio.json"
+],
+"08_H_R_Inundacion": [
+"08_PRC_H_R_Inundacion.json"
+],
+"08_H_R_Remocion": [
+"08_PRC_H_R_Remocion.json"
+],
+"08_Hualpen": [
+"08_PRC_Hualpen.json",
+"08_PRC_Hualpen_R.json",
+"08_PRC_Hualpen_ZNE_linea.json",
+"08_PRC_Hualpen_ZNE_poligono.json"
+],
+"08_Hualqui": [
+"08_PRC_Hualqui.json",
+"08_PRC_Hualqui_ZNE.json"
+],
+"08_Laja": [
+"08_PRC_Laja.json"
+],
+"08_Lebu": [
+"08_PRC_Lebu.json"
+],
+"08_Los_Alamos": [
+"08_PRC_Los_Alamos.json"
+],
+"08_Los_Angeles": [
+"08_PRC_Los_Angeles.json"
+],
+"08_Lota": [
+"08_PRC_Lota.json"
+],
+"08_Mulchen": [
+"08_PRC_Mulchen.json"
+],
+"08_Nacimiento": [
+"08_PRC_Nacimiento.json"
+],
+"08_Negrete": [
+"08_PRC_Negrete.json"
+],
+"08_Penco": [
+"08_PRC_Penco.json"
+],
+"08_R_Alto_Biobio": [
+"08_PRC_R_Alto_Biobio.json"
+],
+"08_R_Antuco": [
+"08_PRC_R_Antuco.json"
+],
+"08_R_Arauco": [
+"08_PRC_R_Arauco.json"
+],
+"08_R_Coronel_APARA": [
+"08_PRC_R_Coronel_APARA.json"
+],
+"08_R_Coronel_Aneg": [
+"08_PRC_R_Coronel_Aneg.json"
+],
+"08_R_Coronel_tsunami": [
+"08_PRC_R_Coronel_tsunami.json"
+],
+"08_R_Curanilahue": [
+"08_PRC_R_Curanilahue.json"
+],
+"08_R_Laja": [
+"08_PRC_R_Laja.json"
+],
+"08_R_Tirua": [
+"08_PRC_R_Tirua.json"
+],
+"08_San_Carlos": [
+"08_PRC_San_Carlos.json"
+],
+"08_San_Pedro_de_la_Paz": [
+"08_PRC_San_Pedro_de_la_Paz.json"
+],
+"08_Santa_Barbara": [
+"08_PRC_Santa_Barbara.json"
+],
+"08_Santa_Juana": [
+"08_PRC_Santa_Juana.json"
+],
+"08_Talcahuano": [
+"08_PRC_Talcahuano.json"
+],
+"08_Tirua": [
+"08_PRC_Tirua.json"
+],
+"08_Tome": [
+"08_PRC_Tome.json"
+],
+"08_Yumbel": [
+"08_PRC_Yumbel.json"
+],
+"09_APP_1_Temuco": [
+"09_PRC_APP_1_Temuco.json"
+],
+"09_APP_3_Temuco": [
+"09_PRC_APP_3_Temuco.json"
+],
+"09_ARC_Temuco": [
+"09_PRC_ARC_Temuco.json"
+],
+"09_ARI_2_Temuco": [
+"09_PRC_ARI_2_Temuco.json"
+],
+"09_ARI_3_Temuco": [
+"09_PRC_ARI_3_Temuco.json"
+],
+"09_ARI_4_Temuco": [
+"09_PRC_ARI_4_Temuco.json"
+],
+"09_ARP_Temuco": [
+"09_PRC_ARP_Temuco.json"
+],
+"09_ARRI_Temuco": [
+"09_PRC_ARRI_Temuco.json"
+],
+"09_Angol": [
+"09_PRC_Angol.json",
+"09_PRC_Angol_R.json"
+],
+"09_Carahue": [
+"09_PRC_Carahue.json"
+],
+"09_Collipulli": [
+"09_PRC_Collipulli.json"
+],
+"09_Curacautin": [
+"09_PRC_Curacautin.json"
+],
+"09_Freire": [
+"09_PRC_Freire.json"
+],
+"09_Gorbea": [
+"09_PRC_Gorbea.json"
+],
+"09_Lautaro": [
+"09_PRC_Lautaro.json"
+],
+"09_Loncoche": [
+"09_PRC_Loncoche.json"
+],
+"09_Lonquimay_Villa_Portales": [
+"09_PRC_Lonquimay_Villa_Portales.json"
+],
+"09_Nueva_Imperial": [
+"09_PRC_Nueva_Imperial.json",
+"09_PRC_Nueva_Imperial_AR.json"
+],
+"09_Padre_Las_Casas": [
+"09_PRC_Padre_Las_Casas.json"
+],
+"09_Pitrufquen": [
+"09_PRC_Pitrufquen.json"
+],
+"09_Pucon": [
+"09_PRC_Pucon.json"
+],
+"09_Puerto_Saavedra": [
+"09_PRC_Puerto_Saavedra.json"
+],
+"09_R_Carahue": [
+"09_PRC_R_Carahue.json"
+],
+"09_R_Collipulli": [
+"09_PRC_R_Collipulli.json"
+],
+"09_R_Renaico_Tijeral": [
+"09_PRC_R_Renaico_Tijeral.json"
+],
+"09_R_Tolten_Queule": [
+"09_PRC_R_Tolten_Queule.json"
+],
+"09_R_Tolten_Villa_OHiggins": [
+"09_PRC_R_Tolten_Villa_OHiggins.json"
+],
+"09_Renaico": [
+"09_PRC_Renaico.json",
+"09_PRC_Renaico_R.json",
+"09_PRC_Renaico_Tijeral.json",
+"09_PRC_Renaico_ZNE.json"
+],
+"09_Temuco": [
+"09_PRC_Temuco.json",
+"09_PRC_Temuco_Cajon.json"
+],
+"09_Tolten_Queule": [
+"09_PRC_Tolten_Queule.json"
+],
+"09_Tolten_Villa_OHiggins": [
+"09_PRC_Tolten_Villa_OHiggins.json"
+],
+"09_Traiguen": [
+"09_PRC_Traiguen.json"
+],
+"09_Victoria": [
+"09_PRC_Victoria.json"
+],
+"09_Villarrica": [
+"09_PRC_Villarrica.json"
+],
+"10_Ancud": [
+"10_PRC_Ancud.json"
+],
+"10_Calbuco": [
+"10_PRC_Calbuco.json"
+],
+"10_Castro": [
+"10_PRC_Castro.json"
+],
+"10_Chonchi": [
+"10_PRC_Chonchi.json"
+],
+"10_Fresia": [
+"10_PRC_Fresia.json"
+],
+"10_Frutillar": [
+"10_PRC_Frutillar.json"
+],
+"10_Llanquihue": [
+"10_PRC_Llanquihue.json"
+],
+"10_Maullin": [
+"10_PRC_Maullin.json",
+"10_PRC_Maullin_R.json"
+],
+"10_Osorno": [
+"10_PRC_Osorno.json",
+"10_PRC_Osorno_Mod_Barrio.json"
+],
+"10_Palena": [
+"10_PRC_Palena.json"
+],
+"10_Puerto_Montt": [
+"10_PRC_Puerto_Montt.json"
+],
+"10_Puerto_Octay": [
+"10_PRC_Puerto_Octay.json"
+],
+"10_Puerto_Varas": [
+"10_PRC_Puerto_Varas.json",
+"10_PRC_Puerto_Varas_ICH.json",
+"10_PRC_Puerto_Varas_PRO.json",
+"10_PRC_Puerto_Varas_R.json",
+"10_PRC_Puerto_Varas_ZNE.json"
+],
+"10_Purranque": [
+"10_PRC_Purranque.json"
+],
+"10_Puyehue": [
+"10_PRC_Puyehue.json",
+"10_PRC_Puyehue_Bahia_El_Encanto.json"
+],
+"10_Queilen": [
+"10_PRC_Queilen.json"
+],
+"10_Quellon": [
+"10_PRC_Quellon.json"
+],
+"10_Quinchao_Achao": [
+"10_PRC_Quinchao_Achao.json"
+],
+"10_Rio_Negro": [
+"10_PRC_Rio_Negro.json"
+],
+"10_San_Pablo": [
+"10_PRC_San_Pablo.json"
+],
+"11_Cisnes": [
+"11_PRC_Cisnes.json"
+],
+"11_Coyhaique": [
+"11_PRC_Coyhaique.json"
+],
+"11_La_Junta": [
+"11_PRC_La_Junta.json"
+],
+"11_Lago_Verde": [
+"11_PRC_Lago_Verde.json"
+],
+"11_PtoAysen": [
+"11_PRC_PtoAysen.json"
+],
+"11_PtoChacabuco": [
+"11_PRC_PtoChacabuco.json"
+],
+"11_Puyuhuapi": [
+"11_PRC_Puyuhuapi.json"
+],
+"12_Laguna_Blanca": [
+"12_PRC_Laguna_Blanca.json"
+],
+"12_Porvenir": [
+"12_PRC_Porvenir.json"
+],
+"12_Puerto_Natales": [
+"12_PRC_Puerto_Natales.json"
+],
+"12_Puerto_Williams_CaboHornos": [
+"12_PRC_Puerto_Williams_CaboHornos.json"
+],
+"12_Punta_Arenas": [
+"12_PRC_Punta_Arenas.json",
+"12_PRC_Punta_Arenas_R_ZNE.json"
+],
+"12_Punta_Delgada_San_Gregorio": [
+"12_PRC_Punta_Delgada_San_Gregorio.json"
+],
+"13_Cerrillos": [
+"13_PRC_Cerrillos.json"
+],
+"13_Cerro_Navia": [
+"13_PRC_Cerro_Navia.json",
+"13_PRC_Cerro_Navia_R.json"
+],
+"13_Colina": [
+"13_PRC_Colina.json",
+"13_PRC_Colina_R.json",
+"13_PRC_Colina_ZNE.json"
+],
+"13_Conchali": [
+"13_PRC_Conchali.json"
+],
+"13_Curacavi": [
+"13_PRC_Curacavi.json"
+],
+"13_El_Bosque": [
+"13_PRC_El_Bosque.json"
+],
+"13_Estacion_Central": [
+"13_PRC_Estacion_Central.json"
+],
+"13_Huechuraba": [
+"13_PRC_Huechuraba.json"
+],
+"13_Independencia": [
+"13_PRC_Independencia.json"
+],
+"13_Isla_de_Maipo": [
+"13_PRC_Isla_de_Maipo.json"
+],
+"13_La_Cisterna": [
+"13_PRC_La_Cisterna.json"
+],
+"13_La_Florida": [
+"13_PRC_La_Florida.json"
+],
+"13_La_Granja": [
+"13_PRC_La_Granja.json"
+],
+"13_La_Pintana": [
+"13_PRC_La_Pintana.json"
+],
+"13_La_Reina": [
+"13_PRC_La_Reina.json"
+],
+"13_Las_Condes": [
+"13_PRC_Las_Condes.json"
+],
+"13_Lo_Barnechea": [
+"13_PRC_Lo_Barnechea.json",
+"13_PRC_Lo_Barnechea_R.json"
+],
+"13_Lo_Espejo": [
+"13_PRC_Lo_Espejo.json"
+],
+"13_Lo_Prado": [
+"13_PRC_Lo_Prado.json",
+"13_PRC_Lo_Prado_ZNE.json"
+],
+"13_Macul": [
+"13_PRC_Macul.json",
+"13_PRC_Macul_R.json"
+],
+"13_Maipu": [
+"13_PRC_Maipu.json"
+],
+"13_Melipilla": [
+"13_PRC_Melipilla.json"
+],
+"13_Nunoa": [
+"13_PRC_Nunoa.json",
+"13_PRC_Nunoa_AP.json"
+],
+"13_PAC_Patrimonio": [
+"13_PRC_PAC_Patrimonio.json"
+],
+"13_Padre_Hurtado": [
+"13_PRC_Padre_Hurtado.json"
+],
+"13_Paine": [
+"13_PRC_Paine.json",
+"13_PRC_Paine_R.json"
+],
+"13_Pedro_Aguirre_Cerda": [
+"13_PRC_Pedro_Aguirre_Cerda.json"
+],
+"13_Penalolen": [
+"13_PRC_Penalolen.json"
+],
+"13_Peñaflor": [
+"13_PRC_Peñaflor.json"
+],
+"13_Peñalolen": [
+"13_PRC_Peñalolen.json"
+],
+"13_Pirque": [
+"13_PRC_Pirque.json"
+],
+"13_Providencia": [
+"13_PRC_Providencia.json",
+"13_PRC_Providencia_Patrimonio_ICH.json",
+"13_PRC_Providencia_Patrimonio_ZCH.json"
+],
+"13_Pudahuel": [
+"13_PRC_Pudahuel.json",
+"13_PRC_Pudahuel_R.json"
+],
+"13_Puente_Alto": [
+"13_PRC_Puente_Alto.json"
+],
+"13_Quilicura": [
+"13_PRC_Quilicura.json"
+],
+"13_Quinta_Normal": [
+"13_PRC_Quinta_Normal.json"
+],
+"13_Recoleta": [
+"13_PRC_Recoleta.json"
+],
+"13_Renca": [
+"13_PRC_Renca.json",
+"13_PRC_Renca_R.json",
+"13_PRC_Renca_R_poligono.json",
+"13_PRC_Renca_ZNE.json",
+"13_PRC_Renca_ZNE_poligono.json"
+],
+"13_San_Bernardo": [
+"13_PRC_San_Bernardo.json"
+],
+"13_San_Joaquin": [
+"13_PRC_San_Joaquin.json",
+"13_PRC_San_Joaquin_R.json",
+"13_PRC_San_Joaquin_ZNE.json"
+],
+"13_San_Miguel": [
+"13_PRC_San_Miguel.json",
+"13_PRC_San_Miguel_R.json"
+],
+"13_San_Ramon": [
+"13_PRC_San_Ramon.json"
+],
+"13_Santiago": [
+"13_PRC_Santiago.json"
+],
+"13_Talagante": [
+"13_PRC_Talagante.json"
+],
+"13_Vitacura": [
+"13_PRC_Vitacura.json",
+"13_PRC_Vitacura_R.json"
+],
+"14_Corral": [
+"14_PRC_Corral.json"
+],
+"14_Futrono": [
+"14_PRC_Futrono.json"
+],
+"14_La_Union": [
+"14_PRC_La_Union.json"
+],
+"14_Lago_Ranco": [
+"14_PRC_Lago_Ranco.json"
+],
+"14_Lanco": [
+"14_PRC_Lanco.json"
+],
+"14_Los_Lagos": [
+"14_PRC_Los_Lagos.json"
+],
+"14_Máfil": [
+"14_PRC_Máfil.json",
+"14_PRC_Máfil_AR.json",
+"14_PRC_Máfil_ZNE.json"
+],
+"14_Paillaco": [
+"14_PRC_Paillaco.json",
+"14_PRC_Paillaco_R.json",
+"14_PRC_Paillaco_ZNE.json"
+],
+"14_Panguipulli": [
+"14_PRC_Panguipulli.json"
+],
+"14_Rio_Bueno": [
+"14_PRC_Rio_Bueno.json"
+],
+"14_Valdivia": [
+"14_PRC_Valdivia.json"
+],
+"15_Arica": [
+"15_PRC_Arica.json",
+"15_PRC_Arica_SECC_SanMiguel.json"
+],
+"15_Putre": [
+"15_PRC_Putre.json"
+]
+}

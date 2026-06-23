@@ -32,12 +32,26 @@ const PAPEL = '#ffffff';
 const FUENTE = '"Segoe UI", Calibri, Arial, "Helvetica Neue", sans-serif';
 
 /* ── estilos HARD (sin tokens de tema) ─────────────────────────────────────── */
-/* Sin borde exterior: la lámina NO va enmarcada por una línea completa. */
+/* Sin borde exterior en la hoja: la lámina NO va enmarcada por una línea completa. */
 const sheet: CSSProperties = { background: PAPEL, color: TINTA, fontFamily: FUENTE, lineHeight: 1.45 };
-const fila: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr', borderBottom: `1px solid ${LINEA}` };
-const celda: CSSProperties = { padding: '7px 12px', fontSize: 12, borderRight: `1px solid ${LINEA}`, display: 'flex', alignItems: 'center' };
-const celdaUlt: CSSProperties = { ...celda, borderRight: 'none' };
+/* Membrete = UN SOLO grid (no una grilla por fila): así las 4 columnas comparten
+   ancho y la 3ª columna deja de desalinearse. El borde del contenedor dibuja el
+   perímetro; cada celda aporta sus líneas internas (derecha/abajo). */
+const membreteBox: CSSProperties = { display: 'grid', gridTemplateColumns: 'auto 1fr auto 1fr', border: `1px solid ${LINEA}` };
+const celdaBase: CSSProperties = { padding: '7px 12px', fontSize: 12, display: 'flex', alignItems: 'center', borderRight: `1px solid ${LINEA}`, borderBottom: `1px solid ${LINEA}` };
 const k: CSSProperties = { fontWeight: 700, textTransform: 'uppercase', fontSize: 10, color: '#444', background: '#f0f0f0', whiteSpace: 'nowrap' };
+
+/** Estilo de celda del membrete: aplica estilo de llave, y suprime borde derecho en
+ *  la última columna (col 4) y borde inferior en la última fila (row 3) para no
+ *  duplicar el perímetro del contenedor. */
+function celda(opts: { isKey?: boolean; col: number; row: number }): CSSProperties {
+  return {
+    ...celdaBase,
+    ...(opts.col === 4 ? { borderRight: 'none' } : null),
+    ...(opts.row === 3 ? { borderBottom: 'none' } : null),
+    ...(opts.isKey ? k : null),
+  } as CSSProperties;
+}
 
 /* ── helpers ───────────────────────────────────────────────────────────────── */
 function fechaHoy(): string {
@@ -96,20 +110,22 @@ export default function DocumentExportWrapper({ documentName, documentId, projec
   return (
     <div className="doc-export">
       <div className="doc-sheet" style={sheet}>
-        {/* MEMBRETE */}
-        <div className="doc-membrete">
-          <div style={fila}>
-            <span style={{ ...celda, ...k }}>Proyecto:</span><span style={celda}>{nombreProyecto}</span>
-            <span style={{ ...celda, ...k }}>Ciudad:</span><span style={celdaUlt}>{ciudad}</span>
-          </div>
-          <div style={fila}>
-            <span style={{ ...celda, ...k }}>Dirección:</span><span style={celda}>{direccionProyecto}</span>
-            <span style={{ ...celda, ...k }}>Fecha:</span><span style={celdaUlt}>{hoy}</span>
-          </div>
-          <div style={{ ...fila, borderBottom: 'none' }}>
-            <span style={{ ...celda, ...k }}>Producto:</span><span style={celda}>{documentName}</span>
-            <span style={{ ...celda, ...k }}>Cod.:</span><span style={celdaUlt}>{documentId}</span>
-          </div>
+        {/* MEMBRETE — grid único de 4 columnas (alineación) + borde perimetral. */}
+        <div className="doc-membrete" style={membreteBox}>
+          <span style={celda({ isKey: true, col: 1, row: 1 })}>Proyecto:</span>
+          <span style={celda({ col: 2, row: 1 })}>{nombreProyecto}</span>
+          <span style={celda({ isKey: true, col: 3, row: 1 })}>Ciudad:</span>
+          <span style={celda({ col: 4, row: 1 })}>{ciudad}</span>
+
+          <span style={celda({ isKey: true, col: 1, row: 2 })}>Dirección:</span>
+          <span style={celda({ col: 2, row: 2 })}>{direccionProyecto}</span>
+          <span style={celda({ isKey: true, col: 3, row: 2 })}>Fecha:</span>
+          <span style={celda({ col: 4, row: 2 })}>{hoy}</span>
+
+          <span style={celda({ isKey: true, col: 1, row: 3 })}>Producto:</span>
+          <span style={celda({ col: 2, row: 3 })}>{documentName}</span>
+          <span style={celda({ isKey: true, col: 3, row: 3 })}>Cod.:</span>
+          <span style={celda({ col: 4, row: 3 })}>{documentId}</span>
         </div>
 
         {/* CONTENIDO (solo lectura) */}

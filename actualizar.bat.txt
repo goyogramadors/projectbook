@@ -1,0 +1,14 @@
+@echo off
+chcp 65001 >nul
+echo ========================================
+echo   DESCARGANDO ACTUALIZACIONES
+echo ========================================
+
+:: Descargar los últimos cambios
+git pull
+
+echo.
+echo ========================================
+echo   ¡PROYECTO ACTUALIZADO CON EXITO!
+echo ========================================
+pause

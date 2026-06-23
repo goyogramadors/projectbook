@@ -1,19 +1,21 @@
 /* =============================================================================
    RutaAccesibleView.tsx — MEMORIA DE RUTA ACCESIBLE (mockup · Fase 0)
    -----------------------------------------------------------------------------
-   // MOCKUP — Estado SOLO en memoria (useState). NO persiste ni genera PDF real.
-   // El desarrollo real reemplazará el estado por useToolData('accesibilidad', …)
-   // y cargará las descripciones largas + factor OGUC oficial desde el glosario.
+   // PRODUCCIÓN — Persistencia gobernada useToolData('accesibilidad') hacia
+   // projects/{pid}/toolData/accesibilidad (Premium) / localStorage (Free), con
+   // botón [GUARDAR] y avance del expediente (toolStates[accesibilidad], S7).
+   // Reusa superficie/carga del proyecto; bloque 2.1 calcula ancho OGUC en vivo.
    // Ref UX/catálogo: DESARROLLO/files ruta accesible/ (GLOSARIO + index.html).
    // Base normativa: OGUC 4.1.7 y atingentes 4.2.5, 4.2.18, 4.5.8, 6.4.2.
    // tier: free · imágenes (hasta 4) reservadas a Premium (decisión HITL 2026-06-22).
    ============================================================================= */
-import { Fragment, useMemo, useState } from 'react';
+import { Fragment, useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { useProjects } from '../core/db/ProjectProvider';
+import { useToolData } from '../hooks/useToolData';
 import DocumentExportWrapper from '../components/DocumentExportWrapper';
-import type { ToolProps } from '../core/types';
+import type { ToolProps, MemoriaRutaAccesible } from '../core/types';
 
 /* ── catálogos (= glosario, literal abreviado) ───────────────────────────────── */
 type Estado3 = 'cumple' | 'no-cumple' | 'no-aplica';
@@ -91,6 +93,26 @@ const DUCHA = [
 const CONCLUSION_DEF =
   'La revisión no presenta incumplimientos para los ítems evaluados y mantiene una base favorable de accesibilidad universal. Se sugiere conservar respaldo técnico y evidencias de terreno para la tramitación.';
 
+/* Forma/valor por defecto persistido (constante estable de módulo · useToolData). */
+const FALLBACK_ACCESIBLE: MemoriaRutaAccesible = {
+  superficie: '0',
+  carga: '0',
+  estados: (() => {
+    const m: Record<string, Estado3> = {};
+    GRUPOS.forEach(g => g.items.forEach(it => { if (it.id !== '2.1' && it.id !== '3.1') m[it.id] = it.def; }));
+    return m;
+  })(),
+  est31: 'rampas',
+  vias: '1',
+  anchoDecl: '1.1',
+  shhGeneral: 'Aplica',
+  shhEst: Object.fromEntries(SHH.map((_, i) => [i, 'cumple'])) as Record<number, Estado3>,
+  duchaGeneral: 'No aplica',
+  duchaEst: Object.fromEntries(DUCHA.map((_, i) => [i, 'cumple'])) as Record<number, Estado3>,
+  conclusion: CONCLUSION_DEF,
+  generalidades: '',
+};
+
 const colorEstado = (e: string): string =>
   e === 'cumple' ? '#1f7a3d' : e === 'no-cumple' ? '#9b1c1c' : '#777';
 
@@ -99,8 +121,9 @@ const pvTd: React.CSSProperties = { padding: '5px 8px', borderBottom: '1px solid
 
 export default function RutaAccesibleView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
-  const { getProject } = useProjects();
+  const { getProject, setToolState } = useProjects();
   const project = getProject(projectId);
+  const [guardado, setGuardado] = useState(false);
 
   const [superficie, setSuperficie] = useState('0');
   const [carga, setCarga] = useState('0');
@@ -120,6 +143,22 @@ export default function RutaAccesibleView({ projectId, access = 'edit' }: ToolPr
   const [genOverride, setGenOverride] = useState<string | null>(null);
   const [abierto, setAbierto] = useState<Record<number, boolean>>({ 1: true, 2: true, 3: true });
 
+  // Persistencia gobernada (Premium→Firestore toolData/accesibilidad · Free→localStorage).
+  const { data: saved, save, loading } = useToolData<MemoriaRutaAccesible>('accesibilidad', projectId, FALLBACK_ACCESIBLE);
+  const hidratadoRef = useRef(false);
+  useEffect(() => {
+    if (loading || hidratadoRef.current) return;
+    hidratadoRef.current = true;
+    setSuperficie(saved.superficie); setCarga(saved.carga);
+    setEstados(saved.estados); setEst31(saved.est31);
+    setVias(saved.vias); setAnchoDecl(saved.anchoDecl);
+    setShhGeneral(saved.shhGeneral); setShhEst(saved.shhEst);
+    setDuchaGeneral(saved.duchaGeneral); setDuchaEst(saved.duchaEst);
+    setConclusion(saved.conclusion);
+    if (saved.generalidades) setGenOverride(saved.generalidades);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
+
   /* ── bloque asistido 2.1 (cálculo OGUC) ── */
   const calc21 = useMemo(() => {
     const q = parseFloat(carga) || 0;
@@ -138,6 +177,22 @@ export default function RutaAccesibleView({ projectId, access = 'edit' }: ToolPr
     `Se trata de una edificación de ${superficie || '0'} m² y carga de ocupación de ${carga || '0'} personas. ` +
     `A continuación se enumeran los requerimientos según el art. 4.1.7 de la OGUC y parte de los arts. 4.2.5, 4.2.18, 4.5.8 y 6.4.2, atingentes al proyecto.`
   );
+
+  const guardar = async () => {
+    const snapshot: MemoriaRutaAccesible = {
+      superficie, carga, estados, est31, vias, anchoDecl,
+      shhGeneral, shhEst, duchaGeneral, duchaEst, conclusion, generalidades,
+    };
+    const ok = await save(snapshot);
+    if (ok && projectId) {
+      await setToolState(projectId, 'accesibilidad', {
+        estado: 'Completado',
+        fecha: new Date().toLocaleDateString('es-CL'),
+      });
+    }
+    setGuardado(ok);
+    if (ok) window.setTimeout(() => setGuardado(false), 2000);
+  };
 
   const resumenGrupo = (g: Grupo) => {
     const c = { cumple: 0, 'no-cumple': 0, 'no-aplica': 0 } as Record<Estado3, number>;
@@ -165,7 +220,6 @@ export default function RutaAccesibleView({ projectId, access = 'edit' }: ToolPr
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 20, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 6 }}>
         <Icons.Accessibility size={22} strokeWidth={1.4} /> Memoria de Ruta Accesible
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: '#9a6700', color: '#fff' }}>MOCKUP</span>
       </h1>
       <p className="tech-quote" style={{ marginBottom: 20 }}>
         Proyecto: <strong>{project.name}</strong> · Revisión OGUC 4.1.7 de accesibilidad universal en edificación pública.
@@ -278,7 +332,14 @@ export default function RutaAccesibleView({ projectId, access = 'edit' }: ToolPr
         <div className="ab-split-right">
           <div className="ab-preview-head">
             <h2 className="ab-preview-title"><Icons.Accessibility size={14} /> Vista Previa de Exportación</h2>
-            <button type="button" className="technical-btn" onClick={() => window.print()}>[ EXPORTAR A PDF ]</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!readOnly && (
+                <button type="button" className="technical-btn" onClick={guardar} disabled={loading}>
+                  {guardado ? '✓ GUARDADO' : '[ GUARDAR ]'}
+                </button>
+              )}
+              <button type="button" className="technical-btn" onClick={() => window.print()}>[ EXPORTAR A PDF ]</button>
+            </div>
           </div>
           <DocumentExportWrapper documentName="Memoria de Ruta Accesible" documentId="accesibilidad" projectId={projectId}>
             <div>
@@ -301,7 +362,7 @@ export default function RutaAccesibleView({ projectId, access = 'edit' }: ToolPr
                           </tr>
                         );
                       })}
-                    </>
+                    </Fragment>
                   ))}
                   <tr><td colSpan={2} style={{ ...pvTd, fontWeight: 700, background: '#f0f0f0' }}>Servicios higiénicos accesibles — {shhGeneral}</td></tr>
                   <tr><td colSpan={2} style={{ ...pvTd, fontWeight: 700, background: '#f0f0f0' }}>Ducha — {duchaGeneral}</td></tr>

@@ -21,6 +21,8 @@ import type { ToolProps, NormativaPRC } from '../core/types';
 
 const DEFAULT_CENTER = { lat: -33.4569, lng: -70.6483 }; // Ñuñoa (capa de muestra)
 const MAPS_KEY = ((import.meta as { env?: Record<string, string> }).env?.VITE_GOOGLE_MAPS_API_KEY) ?? '';
+// Clave de disco COMPARTIDA con Ubicación/Mapa de Terreno: el polígono es el mismo.
+const TERRENO_KEY = (pid: string) => `ab-mapa-terreno-${pid}`;
 
 interface WorkerIntersect { id: number; ok: boolean; feature: { properties: Record<string, unknown> } | null; areaM2: number | null; error?: string; }
 interface WorkerArea { id: number; ok: boolean; areaM2: number; error?: string; }
@@ -28,6 +30,22 @@ interface WorkerArea { id: number; ok: boolean; areaM2: number; error?: string; 
 // Alias laxo para los objetos del SDK de Google Maps (sin @types/google.maps en el repo).
 /* eslint-disable @typescript-eslint/no-explicit-any */
 type MapsAny = any;
+
+/* Estilo SIMPLE en blanco y negro: oculta POIs, tránsito y relleno de fondo, y
+   conserva solo la geometría de calles con sus nombres en gris (Tintero #1). */
+const MAP_STYLE_BW: MapsAny = [
+  { elementType: 'geometry', stylers: [{ saturation: -100 }, { lightness: 18 }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
+  { featureType: 'landscape', stylers: [{ saturation: -100 }, { lightness: 30 }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ saturation: -100 }, { lightness: -10 }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ saturation: -100 }, { lightness: 0 }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#2b2b2b' }] },
+  { featureType: 'road', elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
+];
 
 const pick = (n: NormativaPRC | null, keys: string[]): string => {
   if (!n) return 'N/A';
@@ -45,7 +63,7 @@ function fichaEstimada(zona: string | null): NormativaPRC {
   return {
     zona_codigo: zona ?? '—',
     zona_nombre: 'Parámetros estimados (sin ficha oficial)',
-    zona_descripcion: 'La ficha de esta zona aún no está cargada en normativas_prc. Se muestran valores ESTIMADOS por defecto para previsualizar el expediente; no constituyen dato normativo oficial.',
+    zona_descripcion: 'La ficha de esta zona aún no está cargada en /norma-data para esta comuna. Se muestran valores ESTIMADOS por defecto para previsualizar el expediente; no constituyen dato normativo oficial.',
     plan_regulador_comunal: 'ESTIMACIÓN — verifique el PRC vigente',
     fuente: 'ESTIMACIÓN — verifique el PRC vigente',
     usosPermitidos: 'Residencial · Equipamiento · Comercio menor (estimado)',
@@ -105,6 +123,8 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
   const mapRef = useRef<MapsAny>(null);
   const markerRef = useRef<MapsAny>(null);
   const geocoderRef = useRef<MapsAny>(null);
+  const polygonRef = useRef<MapsAny>(null);
+  const ringRef = useRef<Array<[number, number]>>([]);
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
 
@@ -134,7 +154,10 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         const geoLib: MapsAny = await importLibrary('geocoding');
         if (cancelled || !mapDivRef.current) return;
 
-        const map: MapsAny = new mapsLib.Map(mapDivRef.current, { center: DEFAULT_CENTER, zoom: 16, mapTypeId: 'hybrid' });
+        const map: MapsAny = new mapsLib.Map(mapDivRef.current, {
+          center: DEFAULT_CENTER, zoom: 16, mapTypeId: 'roadmap', styles: MAP_STYLE_BW,
+          disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy',
+        });
         const marker: MapsAny = new markerLib.Marker({ position: DEFAULT_CENTER, map, draggable: !readOnly });
         marker.addListener('dragend', (e: MapsAny) => { if (e.latLng) setPoint(e.latLng.lat(), e.latLng.lng()); });
 
@@ -145,8 +168,9 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         const polygon: MapsAny = new mapsLib.Polygon({
           map,
           editable: !readOnly,
-          fillColor: '#D32F2F', fillOpacity: 0.15, strokeColor: '#D32F2F', strokeWeight: 2,
+          fillColor: '#111111', fillOpacity: 0.14, strokeColor: '#111111', strokeWeight: 2,
         });
+        polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
 
         map.addListener('click', (e: MapsAny) => {
@@ -160,9 +184,15 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
           const ring: Array<[number, number]> = [];
           const len: number = path.getLength();
           for (let i = 0; i < len; i++) { const p = path.getAt(i); ring.push([p.lng(), p.lat()]); }
+          ringRef.current = ring;
           if (len < 3) return;
           const r = await callWorker<WorkerArea>({ op: 'area', ring });
-          if (r.ok) { setAreaTerreno(r.areaM2); notify(`Polígono: ${r.areaM2.toLocaleString('es-CL')} m².`); }
+          if (r.ok) {
+            setAreaTerreno(r.areaM2);
+            notify(`Polígono: ${r.areaM2.toLocaleString('es-CL')} m².`);
+            // Persiste en la clave compartida; Ubicación lo redibuja al abrir.
+            if (projectId) { try { localStorage.setItem(TERRENO_KEY(projectId), JSON.stringify({ ring, areaM2: r.areaM2 })); } catch { /* ignore */ } }
+          }
         };
         const pPath: MapsAny = polygon.getPath();
         gmaps.maps.event.addListener(pPath, 'insert_at', recomputeArea);
@@ -170,6 +200,33 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         gmaps.maps.event.addListener(pPath, 'remove_at', recomputeArea);
 
         mapRef.current = map; markerRef.current = marker; geocoderRef.current = new geoLib.Geocoder();
+
+        // Polígono COMPARTIDO con Ubicación/Mapa de Terreno: si hay terreno guardado
+        // (misma clave de disco), se redibuja y encuadra; su área se recalcula.
+        let teniaPoligono = false;
+        try {
+          const raw = projectId ? localStorage.getItem(TERRENO_KEY(projectId)) : null;
+          const saved = raw ? ((JSON.parse(raw) as { ring?: Array<[number, number]> }).ring ?? []) : [];
+          if (saved.length >= 3) {
+            teniaPoligono = true;
+            ringRef.current = saved;
+            polygon.setPath(saved.map(([ln, la]) => ({ lat: la, lng: ln })));
+            const b = new gmaps.maps.LatLngBounds();
+            saved.forEach(([ln, la]) => b.extend({ lat: la, lng: ln }));
+            map.fitBounds(b);
+            const ra = await callWorker<WorkerArea>({ op: 'area', ring: saved });
+            if (ra.ok) setAreaTerreno(ra.areaM2);
+          }
+        } catch { /* terreno corrupto — ignorar */ }
+
+        // Centrado inicial por comuna/dirección (solo si NO había polígono guardado).
+        const q0 = [direccion, comuna].filter(Boolean).join(', ');
+        if (!teniaPoligono && q0.trim()) geocoderRef.current.geocode({ address: `${q0}, Chile` }, (res: MapsAny, status: MapsAny) => {
+          if (status === gmaps.maps.GeocoderStatus.OK && res?.[0]) {
+            const loc = res[0].geometry.location;
+            map.setCenter(loc); map.setZoom(17); setPoint(loc.lat(), loc.lng());
+          }
+        });
         setMapReady(true);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -212,13 +269,13 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
       // una ficha ESTIMADA por defecto para que el expediente renderice la tabla técnica.
       setFicha(resuelto?.normativa ?? fichaEstimada(zonaCod));
       setEstado('ok');
-      if (!resuelto?.normativa) setError(`Zona ${zonaCod ?? '—'} detectada SIN ficha oficial en normativas_prc — se muestran PARÁMETROS ESTIMADOS por defecto (verifique el PRC vigente antes de un expediente formal).`);
+      if (!resuelto?.normativa) setError(`Zona ${zonaCod ?? '—'} detectada SIN ficha local en /norma-data para esta comuna — se muestran PARÁMETROS ESTIMADOS por defecto (verifique el PRC vigente antes de un expediente formal).`);
     } catch (err) {
       setEstado('sinDato');
       setError(err instanceof Error ? err.message : 'Error de coreografía espacial.');
     }
   };
-  const limpiar = () => { setEstado('idle'); setError(null); setFicha(null); setZona(null); setAreaTerreno(null); };
+  const limpiar = () => { polygonRef.current?.getPath()?.clear(); setEstado('idle'); setError(null); setFicha(null); setZona(null); setAreaTerreno(null); };
 
   const guardarSuperficie = async () => {
     if (areaTerreno == null) return;
@@ -230,30 +287,25 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
     <div>
       <p className="tech-quote" style={{ marginBottom: 18 }}>
         Motor de inteligencia geoespacial. Punto o polígono del predio → intersección PRC con Turf.js en
-        Web Worker → ficha normativa desde <strong>coordenadasnormativas</strong>.
+        Web Worker → ficha normativa desde los archivos locales <strong>/norma-data</strong>.
       </p>
 
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'stretch' }}>
         {/* Parámetros */}
         <div className="tool-panel" style={{ flex: '1 1 320px', minWidth: 300, display: 'flex', flexDirection: 'column' }}>
           <div className="module-header">| PARÁMETROS DE UBICACIÓN</div>
-          <div className="panel-content" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 18 }}>
-            <div className="tech-input-group" style={{ marginBottom: 0 }}>
-              <label>COMUNA</label>
-              <input className="tech-input" value={comuna} disabled={readOnly} onChange={(e) => setComuna(e.target.value)} placeholder="Ej: Ñuñoa" />
-            </div>
-            <div className="tech-input-group" style={{ marginBottom: 0 }}>
-              <label>DIRECCIÓN</label>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <input className="tech-input" value={direccion} disabled={readOnly} onChange={(e) => setDireccion(e.target.value)} placeholder="Calle N, Comuna" />
-                <button className="technical-btn" style={{ padding: '0 15px' }} disabled={readOnly || !mapReady} onClick={buscarDireccion}>BUSCAR</button>
+          <div className="panel-content" style={{ flexGrow: 1, display: 'flex', flexDirection: 'column', gap: 14 }}>
+            <div style={{ display: 'grid', gridTemplateColumns: '1fr 1.4fr', gap: 12 }}>
+              <div className="tech-input-group" style={{ marginBottom: 0 }}>
+                <label>COMUNA</label>
+                <input className="tech-input" value={comuna} disabled={readOnly} onChange={(e) => setComuna(e.target.value)} placeholder="Ej: Ñuñoa" />
               </div>
-            </div>
-            <div className="tech-input-group" style={{ marginBottom: 0 }}>
-              <label>COORDENADAS (LAT / LNG)</label>
-              <div style={{ display: 'flex', gap: 10 }}>
-                <input className="tech-input" value={lat} disabled={readOnly} onChange={(e) => setLat(e.target.value)} placeholder="-33.45" />
-                <input className="tech-input" value={lng} disabled={readOnly} onChange={(e) => setLng(e.target.value)} placeholder="-70.64" />
+              <div className="tech-input-group" style={{ marginBottom: 0 }}>
+                <label>DIRECCIÓN</label>
+                <div style={{ display: 'flex', gap: 8 }}>
+                  <input className="tech-input" value={direccion} disabled={readOnly} onChange={(e) => setDireccion(e.target.value)} placeholder="Calle N°" />
+                  <button className="technical-btn" style={{ padding: '0 14px' }} disabled={readOnly || !mapReady} onClick={buscarDireccion}>BUSCAR</button>
+                </div>
               </div>
             </div>
 
@@ -286,10 +338,10 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         </div>
 
         {/* Visor */}
-        <div className="tool-panel" style={{ flex: '2 1 560px', minWidth: 380, minHeight: 500, display: 'flex', flexDirection: 'column' }}>
+        <div className="tool-panel" style={{ flex: '2 1 520px', minWidth: 360, minHeight: 340, display: 'flex', flexDirection: 'column' }}>
           <div className="module-header">| VISOR CARTOGRÁFICO (dibuja el polígono del predio)</div>
-          <div className="panel-content" style={{ padding: 0, position: 'relative', flexGrow: 1, minHeight: 500 }}>
-            <div ref={mapDivRef} style={{ width: '100%', height: '100%', minHeight: 500, display: mapsError ? 'none' : 'block' }} />
+          <div className="panel-content" style={{ padding: 0, position: 'relative', flexGrow: 1, minHeight: 340 }}>
+            <div ref={mapDivRef} style={{ width: '100%', height: '100%', minHeight: 340, display: mapsError ? 'none' : 'block' }} />
             {mapsError && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30, textAlign: 'center', background: 'var(--muted)' }}>
                 <Icons.MapPinOff size={32} style={{ opacity: 0.5 }} />

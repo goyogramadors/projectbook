@@ -1,13 +1,23 @@
+/* =============================================================================
+   useCerebroNormativo.ts — Hook "Dos Cerebros" (v3 · Tintero #9)
+   -----------------------------------------------------------------------------
+   Cruza un punto (lat,lng) con la capa PRC BASE de la comuna y resuelve su ficha
+   normativa. SIN Firestore ni Storage: la capa GeoJSON se carga vía GeoJsonService
+   (Hosting /geo-data + caché IndexedDB) y la ficha desde los archivos locales
+   (NormativaService → /norma-data). API estable: { isLoading, error, data }.
+   Tolerancia: si el punto cae en un hueco de topología (borde de calle, sliver
+   entre polígonos), se asigna la zona base MÁS CERCANA dentro de TOL_METROS.
+   No se usan capas overlay (_AP/_R/seccionales): son restricciones, no zonas.
+   ============================================================================= */
 import { useState, useEffect } from 'react';
-import { doc, getDoc } from 'firebase/firestore';
-import { ref, getDownloadURL } from 'firebase/storage';
-import { db, storage } from '../core/firebase';
-import { NormativaPRC } from '../core/types';
-import { generarLlaveMaestra } from '../utils/geoUtils';
-import { booleanPointInPolygon, point } from '@turf/turf';
+import { booleanPointInPolygon } from '@turf/boolean-point-in-polygon';
+import { pointToPolygonDistance } from '@turf/point-to-polygon-distance';
+import { point } from '@turf/helpers';
+import type { NormativaPRC } from './types';
+import { loadComunaGeoJSON } from './GeoJsonService';
+import { getNormativa, codigoZonaDeProperties } from './NormativaService';
 
-// Caché en memoria para evitar volver a descargar el GeoJSON de una comuna en la misma sesión
-const geoJsonCache: Record<string, any> = {};
+const TOL_METROS = 30; // tolerancia de snap a la zona base más cercana (huecos de borde)
 
 export function useCerebroNormativo(lat: number | null, lng: number | null, comuna: string | null) {
   const [isLoading, setIsLoading] = useState(false);
@@ -15,67 +25,47 @@ export function useCerebroNormativo(lat: number | null, lng: number | null, comu
   const [data, setData] = useState<NormativaPRC | null>(null);
 
   useEffect(() => {
-    // Si faltan parámetros clave, no hacemos nada aún
     if (lat === null || lng === null || !comuna) return;
-
     let isMounted = true;
 
-    const descargarYCruzarGeoJSON = async () => {
+    (async () => {
       setIsLoading(true);
       setError(null);
       setData(null);
-
       try {
-        // 1. Manejo de Caché & Descarga de Storage
-        let geojson = geoJsonCache[comuna];
-        if (!geojson) {
-          const fileRef = ref(storage, `geojson/${comuna.toLowerCase()}.json`);
-          const url = await getDownloadURL(fileRef);
-          const response = await fetch(url);
-          if (!response.ok) throw new Error(`Error al descargar el archivo de ${comuna}`);
-          
-          geojson = await response.json();
-          geoJsonCache[comuna] = geojson; // Guardamos en memoria
-        }
-
-        // 2. Cerebro Espacial: Cruzar coordenadas con polígonos
-        const pt = point([lng, lat]); // turf usa formato [lng, lat]
-        let codigoZonaCrudo: string | null = null;
-
+        // 1) Cerebro Espacial: capa PRC BASE (Hosting + IndexedDB) e intersección punto↔polígono.
+        const geojson = await loadComunaGeoJSON(comuna);
+        const pt = point([lng, lat]); // GeoJSON usa orden [lng, lat]
+        let zona: string | null = null;
+        let mejorDist = Infinity;
+        let zonaCercana: string | null = null;
         for (const feature of geojson.features) {
-          if (feature.geometry?.type === 'Polygon' || feature.geometry?.type === 'MultiPolygon') {
-            if (booleanPointInPolygon(pt, feature)) {
-              // Nota: Ajusta 'codigoZona' si la propiedad en tu GeoJSON se llama distinto (ej. 'ZONA', 'ID_ZONA')
-              codigoZonaCrudo = feature.properties?.codigoZona || feature.properties?.ZONA;
-              break;
-            }
+          const t = feature.geometry?.type;
+          if (t !== 'Polygon' && t !== 'MultiPolygon') continue;
+          // Match exacto: punto dentro del polígono.
+          if (booleanPointInPolygon(pt as never, feature as never)) {
+            zona = codigoZonaDeProperties(feature.properties);
+            break;
           }
+          // Fallback: distancia a la zona base más cercana (para huecos de borde).
+          const d = Math.abs(pointToPolygonDistance(pt as never, feature as never, { units: 'meters' }));
+          if (d < mejorDist) { mejorDist = d; zonaCercana = codigoZonaDeProperties(feature.properties); }
         }
+        // Si no hubo match exacto pero hay una zona base a < TOL_METROS, se usa (snap).
+        if (!zona && zonaCercana && mejorDist <= TOL_METROS) zona = zonaCercana;
+        if (!zona) throw new Error('El punto cae fuera de toda zona PRC de la comuna.');
 
-        if (!codigoZonaCrudo) {
-          throw new Error('Punto fuera de polígono');
-        }
+        // 2) Cerebro Normativo: ficha desde archivos locales (/norma-data).
+        const normativa = await getNormativa(comuna, zona);
+        if (!normativa) throw new Error(`Zona ${zona} detectada, pero sin ficha local en /norma-data para ${comuna}.`);
 
-        // 3. Middleware Traductor
-        const llaveMaestra = generarLlaveMaestra(comuna, codigoZonaCrudo);
-
-        // 4. Búsqueda de Normativa en Firestore
-        const docRef = doc(db, 'normativas_prc', llaveMaestra);
-        const docSnap = await getDoc(docRef);
-
-        if (!docSnap.exists()) {
-          throw new Error('Normativa no encontrada');
-        }
-
-        if (isMounted) setData(docSnap.data() as NormativaPRC);
-      } catch (err: any) {
-        if (isMounted) setError(err.message || 'Error al procesar la normativa espacial');
+        if (isMounted) setData(normativa);
+      } catch (err) {
+        if (isMounted) setError(err instanceof Error ? err.message : 'Error al procesar la normativa espacial.');
       } finally {
         if (isMounted) setIsLoading(false);
       }
-    };
-
-    descargarYCruzarGeoJSON();
+    })();
 
     return () => { isMounted = false; };
   }, [lat, lng, comuna]);

@@ -36,7 +36,7 @@ export function makeDefaultProject(): ProjectMaster {
     name:                    'Mi Primer Proyecto',
     anio:                    String(new Date().getFullYear()),
     propietario:             'Invitado',
-    rol:                     'Arquitecto',
+    rol:                     '000-00',
     direccion:               '',
     comuna:                  '',
     destino:                 'Habitacional',

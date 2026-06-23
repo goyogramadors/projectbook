@@ -111,8 +111,8 @@ export default function CalculadoraArquitectonica({ access }: ToolProps) {
     <div>
       <p className="tech-quote" style={{ marginBottom: 18 }}>
         Motor de inteligencia geoespacial. Elige el punto del predio (mapa o coordenadas) para
-        intersectar el poligono PRC con Turf.js y cargar la ficha normativa desde la base
-        {' '}<strong>normativas_prc</strong>.
+        intersectar el poligono PRC con Turf.js y cargar la ficha normativa desde los archivos locales
+        {' '}<strong>/norma-data</strong>.
       </p>
 
       <div className="ab-split">

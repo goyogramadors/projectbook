@@ -1,0 +1,24 @@
+@echo off
+chcp 65001 >nul
+echo ========================================
+echo   PREPARANDO CAMBIOS PARA GITHUB
+echo ========================================
+
+:: Agregar todos los archivos
+git add -A
+
+:: Pedir el mensaje del commit
+set /p mensaje="Escribe el mensaje del commit (o presiona Enter para usar 'Actualizacion automatica'): "
+if "%mensaje%"=="" set mensaje=Actualizacion automatica
+
+:: Crear el commit y subir
+git commit -m "%mensaje%"
+echo.
+echo Subiendo a internet...
+git push
+
+echo.
+echo ========================================
+echo   ¡PROYECTO SUBIDO CON EXITO!
+echo ========================================
+pause

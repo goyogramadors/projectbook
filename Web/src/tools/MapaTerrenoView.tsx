@@ -6,6 +6,12 @@
    en localStorage (ab-mapa-terreno-${projectId}); la superficie puede sincronizarse
    al ProjectMaster vía useDimensionadorSync (superficieCalculada, CONST §6). Si no
    hay API Key de Maps, degrada a ingreso manual de la superficie.
+
+   v2.3 (Tintero #1/#2):
+     · Mapa SIMPLE en blanco y negro, sin POIs ni ruido — solo nombres de calles.
+     · Auto-centrado por comuna/dirección del proyecto (geocoder).
+     · El polígono guardado se REDIBUJA al abrir y se encuadra (fitBounds).
+     · Botón [ LIMPIAR ] que vacía el trazo del mapa y el área.
    ============================================================================= */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
@@ -24,6 +30,22 @@ type MapsAny = any;
 interface WorkerArea { id: number; ok: boolean; areaM2: number; error?: string; }
 interface TerrenoGuardado { ring: Array<[number, number]>; areaM2: number; }
 
+/* Estilo SIMPLE en blanco y negro: oculta POIs, tránsito y relleno de fondo,
+   y conserva únicamente la geometría de calles con sus nombres en gris. */
+const MAP_STYLE_BW: MapsAny = [
+  { elementType: 'geometry', stylers: [{ saturation: -100 }, { lightness: 18 }] },
+  { elementType: 'labels.icon', stylers: [{ visibility: 'off' }] },
+  { featureType: 'poi', stylers: [{ visibility: 'off' }] },
+  { featureType: 'transit', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative', elementType: 'geometry', stylers: [{ visibility: 'off' }] },
+  { featureType: 'administrative.land_parcel', stylers: [{ visibility: 'off' }] },
+  { featureType: 'landscape', stylers: [{ saturation: -100 }, { lightness: 30 }] },
+  { featureType: 'water', elementType: 'geometry', stylers: [{ saturation: -100 }, { lightness: -10 }] },
+  { featureType: 'road', elementType: 'geometry', stylers: [{ saturation: -100 }, { lightness: 0 }] },
+  { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#2b2b2b' }] },
+  { featureType: 'road', elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
+];
+
 export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
   const { getProject } = useProjects();
@@ -34,6 +56,12 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
   const [areaM2, setAreaM2] = useState<number | null>(null);
   const [areaManual, setAreaManual] = useState('');
   const ringRef = useRef<Array<[number, number]>>([]);
+
+  /* ── refs del mapa (para limpiar/centrar fuera del efecto de init) ── */
+  const mapRef = useRef<MapsAny>(null);
+  const polygonRef = useRef<MapsAny>(null);
+  const geocoderRef = useRef<MapsAny>(null);
+  const [mapReady, setMapReady] = useState(false);
 
   /* ── Web Worker (cálculo de área) ── */
   const workerRef = useRef<Worker | null>(null);
@@ -74,6 +102,17 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const [mapsError, setMapsError] = useState<string | null>(null);
 
+  /** Centra el mapa según la dirección/comuna del proyecto (geocoder). */
+  const centrarEnDireccion = useCallback(() => {
+    const g = geocoderRef.current; const map = mapRef.current;
+    if (!g || !map) return;
+    const q = [project?.direccion, project?.comuna, 'Chile'].filter(Boolean).join(', ');
+    if (!q.replace(/Chile|,|\s/g, '')) return;
+    g.geocode({ address: q }, (res: MapsAny, status: string) => {
+      if (status === 'OK' && res?.[0]) { map.setCenter(res[0].geometry.location); map.setZoom(18); }
+    });
+  }, [project?.direccion, project?.comuna]);
+
   useEffect(() => {
     let cancelled = false;
     if (!MAPS_KEY) { setMapsError('Falta la API Key de Google Maps (VITE_GOOGLE_MAPS_API_KEY en .env.local). Mientras tanto, ingresa la superficie manualmente.'); return; }
@@ -87,9 +126,16 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
         const { setOptions, importLibrary } = await import('@googlemaps/js-api-loader');
         setOptions({ key: MAPS_KEY, v: 'weekly' });
         const mapsLib: MapsAny = await importLibrary('maps');
+        const geoLib: MapsAny = await importLibrary('geocoding');
         if (cancelled || !mapDivRef.current) return;
 
-        const map: MapsAny = new mapsLib.Map(mapDivRef.current, { center: DEFAULT_CENTER, zoom: 17, mapTypeId: 'hybrid' });
+        // Mapa SIMPLE blanco y negro (roadmap + estilo B/N), sin controles de ruido.
+        const map: MapsAny = new mapsLib.Map(mapDivRef.current, {
+          center: DEFAULT_CENTER, zoom: 17, mapTypeId: 'roadmap', styles: MAP_STYLE_BW,
+          disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy',
+        });
+        mapRef.current = map;
+        geocoderRef.current = new geoLib.Geocoder();
 
         // DrawingManager fue ELIMINADO de la Maps JS API (v3.65). Se reemplaza por un
         // Polygon editable estandar: cada click en el mapa agrega un vertice (push al
@@ -97,8 +143,9 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
         const polygon: MapsAny = new mapsLib.Polygon({
           map,
           editable: !readOnly,
-          fillColor: '#D32F2F', fillOpacity: 0.18, strokeColor: '#D32F2F', strokeWeight: 2,
+          fillColor: '#111111', fillOpacity: 0.14, strokeColor: '#111111', strokeWeight: 2,
         });
+        polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
 
         if (!readOnly) {
@@ -119,6 +166,17 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
         gmaps.maps.event.addListener(pPath, 'insert_at', recomputeArea);
         gmaps.maps.event.addListener(pPath, 'set_at', recomputeArea);
         gmaps.maps.event.addListener(pPath, 'remove_at', recomputeArea);
+
+        // Redibuja el polígono guardado (si lo hay) y lo encuadra; el centrado por
+        // dirección lo resuelve el efecto dependiente de mapReady (abajo).
+        const saved = ringRef.current;
+        if (saved.length >= 3) {
+          polygon.setPath(saved.map(([ln, la]) => ({ lat: la, lng: ln })));
+          const bounds = new gmaps.maps.LatLngBounds();
+          saved.forEach(([ln, la]) => bounds.extend({ lat: la, lng: ln }));
+          map.fitBounds(bounds);
+        }
+        setMapReady(true);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
         setMapsError(`No se pudo iniciar Google Maps (${msg}). Revisa en Google Cloud que "Maps JavaScript API" esté habilitada y la facturación activa. Ingresa la superficie manualmente.`);
@@ -126,6 +184,12 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
     })();
     return () => { cancelled = true; };
   }, [readOnly, callWorker, triggerToast]);
+
+  /* Centrado por comuna/dirección: solo si NO hay polígono guardado (ese se encuadra
+     por fitBounds). Se re-centra si cambia la dirección/comuna del proyecto. */
+  useEffect(() => {
+    if (mapReady && ringRef.current.length < 3) centrarEnDireccion();
+  }, [mapReady, centrarEnDireccion]);
 
   if (!project) return (
     <div><p className="tech-quote">Selecciona un proyecto para dibujar el terreno.</p></div>
@@ -138,6 +202,17 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
     localStorage.setItem(STORAGE_KEY(project.id), JSON.stringify({ ring: ringRef.current, areaM2: area } satisfies TerrenoGuardado));
     setAreaM2(area);
     triggerToast('Polígono y superficie guardados localmente.');
+  };
+
+  /* Limpia el trazo del mapa y el área (no borra lo ya guardado en disco). */
+  const limpiar = () => {
+    if (readOnly) return;
+    polygonRef.current?.getPath()?.clear();
+    ringRef.current = [];
+    setAreaM2(null);
+    setAreaManual('');
+    centrarEnDireccion();
+    triggerToast('Polígono limpiado. Vuelve a dibujar sobre el mapa.');
   };
 
   const sincronizarMaster = async () => {
@@ -176,6 +251,9 @@ export default function MapaTerrenoView({ projectId, access = 'edit' }: ToolProp
             )}
 
             <button className="technical-btn secondary" disabled={readOnly} onClick={guardarLocal}>[ GUARDAR POLÍGONO ]</button>
+            <button className="technical-btn secondary" disabled={readOnly || !mapReady} onClick={limpiar}>
+              <Icons.Eraser size={14} style={{ marginRight: 6 }} /> [ LIMPIAR ]
+            </button>
             <button className="technical-btn" disabled={readOnly} onClick={sincronizarMaster}>
               <Icons.Save size={14} style={{ marginRight: 6 }} /> [ SINCRONIZAR SUPERFICIE AL PROYECTO ]
             </button>

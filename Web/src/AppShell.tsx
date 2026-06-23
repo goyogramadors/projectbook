@@ -30,7 +30,9 @@ export default function AppShell() {
   const { toast } = useToast();
   const [shareOpen, setShareOpen] = useState(false);
 
-  const outlet = useOutlet();
+  // S7 · onShare se expone al árbol de rutas vía contexto de Outlet, para que la
+  // ficha (BinderFicha) pueda disparar el modal de compartir sin prop-drilling.
+  const outlet = useOutlet({ onShare: () => setShareOpen(true) });
   const location = useLocation();
   const reduce = useReducedMotion();
   const activeProject = getProject(projectId);

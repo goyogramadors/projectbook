@@ -12,7 +12,8 @@ import { useAuth } from '../core/auth/AuthProvider';
 import { useToast } from '../core/ui/ToastProvider';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../core/firebase';
-import { listUsers, setUserState, setCompPremium, setUserPlan, promoteByEmail, type AdminUserRow } from '../core/AdminService';
+import { listUsers, setUserState, setCompPremium, setUserPlan, promoteByEmail, getTopTools, setTopTools, type AdminUserRow } from '../core/AdminService';
+import { CATALOG, TOP_TOOLS_DEFAULT } from '../core/catalog';
 
 /** Fila local: extiende AdminUserRow con la marca de "invitado" (alta desde panel). */
 type Row = AdminUserRow & { invitado?: boolean };
@@ -48,6 +49,19 @@ export default function AdminDashboard() {
 
   /* ── Auto-ascenso del admin a Premium ── */
   const [ascending, setAscending] = useState(false);
+
+  /* ── Editor de Top Tools (barra inferior anclada · config/topTools) ── */
+  const [topIds, setTopIds] = useState<string[]>(TOP_TOOLS_DEFAULT);
+  const [savingTop, setSavingTop] = useState(false);
+  useEffect(() => { (async () => { const ids = await getTopTools(); if (ids && ids.length) setTopIds(ids); })(); }, []);
+  const toggleTop = (id: string) =>
+    setTopIds((prev) => prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]);
+  const guardarTopTools = async () => {
+    setSavingTop(true);
+    try { await setTopTools(topIds); triggerToast('Top Tools actualizadas. Se reflejan al recargar la barra.'); }
+    catch { triggerToast('No se pudo guardar (revisa reglas Firestore: escritura admin en config/topTools).'); }
+    finally { setSavingTop(false); }
+  };
 
   const handleInvite = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -175,6 +189,42 @@ export default function AdminDashboard() {
           )}
         </div>
       </form>
+
+      {/* ── EDITOR DE TOP TOOLS (barra inferior anclada) ── */}
+      <div className="tool-panel" style={{ marginBottom: 16 }}>
+        <div className="module-header" style={{ justifyContent: 'space-between' }}>
+          <span><Icon name="Star" size={14} /> &nbsp;| TOP TOOLS (BARRA INFERIOR ANCLADA)</span>
+          <span style={{ fontSize: 10, opacity: 0.6 }}>{topIds.length} seleccionadas</span>
+        </div>
+        <div className="panel-content" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+          <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
+            {topIds.map((id) => {
+              const t = CATALOG.find((c) => c.id === id);
+              return (
+                <span key={id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 11, fontWeight: 700, background: 'var(--muted)', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', padding: '3px 8px' }}>
+                  <Icon name={t?.icon ?? 'Wrench'} size={12} /> {t?.label ?? id}
+                  <button type="button" onClick={() => toggleTop(id)} title="Quitar" style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--destructive)', display: 'inline-flex' }}><Icon name="X" size={12} /></button>
+                </span>
+              );
+            })}
+            {topIds.length === 0 && <span style={{ fontSize: 11, opacity: 0.6 }}>Sin herramientas ancladas — la barra usará el default.</span>}
+          </div>
+          <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))', gap: '4px 14px', maxHeight: 260, overflowY: 'auto', border: '1.5px solid var(--border)', borderRadius: 'var(--radius)', padding: 10 }}>
+            {CATALOG.filter((t) => t.estado === 'active').map((t) => (
+              <label key={t.id} style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, cursor: 'pointer' }}>
+                <input type="checkbox" checked={topIds.includes(t.id)} onChange={() => toggleTop(t.id)} />
+                <Icon name={t.icon} size={13} /> <span style={{ flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{t.label}</span>
+                {t.tier === 'premium' && <Icon name="Lock" size={10} />}
+              </label>
+            ))}
+          </div>
+          <div>
+            <button type="button" className="technical-btn" disabled={savingTop} onClick={guardarTopTools}>
+              <Icon name="Save" size={14} /> {savingTop ? 'GUARDANDO…' : '[ GUARDAR TOP TOOLS ]'}
+            </button>
+          </div>
+        </div>
+      </div>
 
       {loading ? (
         <div className="ab-empty">Cargando usuarios…</div>

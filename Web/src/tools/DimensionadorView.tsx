@@ -129,7 +129,7 @@ export default function DimensionadorView({ projectId, access = 'edit' }: ToolPr
       <div className="ab-split-left">
       <div style={{ display: 'flex', flexWrap: 'wrap', gap: 20, alignItems: 'flex-start' }}>
         {/* COLUMNA 1: CATÁLOGO */}
-        <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ flex: '2 1 380px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div className="tool-panel">
             <div className="module-header" style={{ justifyContent: 'space-between' }}>
               <span>◧ | CATÁLOGO DE RECINTOS</span>
@@ -141,22 +141,16 @@ export default function DimensionadorView({ projectId, access = 'edit' }: ToolPr
               {RECINTOS_POR_DEFECTO[destino]?.map(rec => {
                 const qty = getCatalogQuantity(rec.id); const area = getCatalogArea(rec.id, rec.areaBase);
                 return (
-                  <div key={rec.id} style={{ padding: '12px 15px', borderBottom: '1.5px solid var(--border)' }}>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: 8 }}>
-                      <span style={{ fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase' }}>{rec.nombre}</span>
-                      <span style={{ fontSize: 9, opacity: 0.6, fontFamily: 'monospace' }}>SUP. {rec.areaBase} M²</span>
+                  <div key={rec.id} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '6px 12px', borderBottom: '1.5px solid var(--border)' }}>
+                    <span style={{ fontWeight: 'bold', fontSize: 11, textTransform: 'uppercase', flex: 1, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{rec.nombre}</span>
+                    <span style={{ fontSize: 9, opacity: 0.55, fontFamily: 'monospace', whiteSpace: 'nowrap' }}>SUP. {rec.areaBase} M²</span>
+                    <div className="counter-box" style={{ height: 24 }}>
+                      <button type="button" className="counter-btn" disabled={readOnly} onClick={() => setCatalogQuantity(rec.id, qty - 1)} style={{ width: 20 }}>-</button>
+                      <span style={{ width: 22, textAlign: 'center', fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace' }}>{qty}</span>
+                      <button type="button" className="counter-btn" disabled={readOnly} onClick={() => setCatalogQuantity(rec.id, qty + 1)} style={{ width: 20 }}>+</button>
                     </div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-                        <div className="counter-box" style={{ height: 24 }}>
-                          <button type="button" className="counter-btn" disabled={readOnly} onClick={() => setCatalogQuantity(rec.id, qty - 1)} style={{ width: 20 }}>-</button>
-                          <span style={{ width: 24, textAlign: 'center', fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace' }}>{qty}</span>
-                          <button type="button" className="counter-btn" disabled={readOnly} onClick={() => setCatalogQuantity(rec.id, qty + 1)} style={{ width: 20 }}>+</button>
-                        </div>
-                        <input type="number" step="0.5" min="0.1" value={area} disabled={readOnly} onChange={e => setCatalogArea(rec.id, Number(e.target.value))} style={{ width: 48, height: 24, border: '1px solid var(--border)', textAlign: 'right', fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace', padding: '0 4px', background: 'var(--card)', color: 'var(--foreground)' }} />
-                      </div>
-                      <button type="button" onClick={() => handleAddFromCatalog(rec)} disabled={readOnly} className="technical-btn secondary" style={{ fontSize: 9, padding: '4px 8px' }}>[ AGREGAR ]</button>
-                    </div>
+                    <input type="number" step="0.5" min="0.1" value={area} disabled={readOnly} onChange={e => setCatalogArea(rec.id, Number(e.target.value))} style={{ width: 46, height: 24, border: '1px solid var(--border)', textAlign: 'right', fontSize: 10, fontWeight: 'bold', fontFamily: 'monospace', padding: '0 4px', background: 'var(--card)', color: 'var(--foreground)' }} />
+                    <button type="button" onClick={() => handleAddFromCatalog(rec)} disabled={readOnly} className="technical-btn secondary" style={{ fontSize: 9, padding: '4px 8px', whiteSpace: 'nowrap' }}>[ AGREGAR ]</button>
                   </div>
                 );
               })}
@@ -169,7 +163,7 @@ export default function DimensionadorView({ projectId, access = 'edit' }: ToolPr
         </div>
 
         {/* COLUMNA 2: MANUAL */}
-        <div style={{ flex: '1 1 280px', display: 'flex', flexDirection: 'column', gap: 20 }}>
+        <div style={{ flex: '1 1 210px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <form onSubmit={handleAddManual} className="tool-panel">
             <div className="module-header"><span>§ | AGREGAR RECINTO MANUAL</span></div>
             <div className="panel-content" style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>

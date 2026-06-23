@@ -1,7 +1,7 @@
 # 🐙 Guía: subir el proyecto a GitHub + desplegar backend/frontend
 
 > **Para Andrés.** Guía operativa para versionar **Project_Book / Archibots** en GitHub
-> (repositorio nuevo, desde cero) y para actualizar **backend (Cloud Functions)** y **frontend (Firebase Hosting)**.
+> (repositorio nuevo, desde cero) y para actualizar **backend (Cloud Functions, en Firebase)** y **frontend (en Cloudflare Pages)**.
 >
 > **Sistema operativo asumido:** Windows · terminal **PowerShell** o **Git Bash**.
 
@@ -150,18 +150,44 @@ firebase deploy --only firestore:indexes
 
 ---
 
-## PARTE 4 — Desplegar el FRONTEND (Firebase Hosting)
+## PARTE 4 — Desplegar el FRONTEND (Cloudflare Pages)
 
-> Aclaración: el frontend **no** está en "Firestore pages"; está en **Firebase Hosting** (carpeta `Web/dist/` publicada). El sitio es una SPA: Hosting reescribe todas las rutas a `/index.html`.
+> **El frontend se sirve desde Cloudflare Pages, NO desde Firebase Hosting.**
+> - Proyecto Cloudflare Pages: **`projectbook`**
+> - URL de deploy actual: **https://36a80668.projectbook-8qt.pages.dev**
+> - Dashboard: https://dash.cloudflare.com/584ec419f999a1acb82537630b6c3ea2/pages/view/projectbook
+> - `firebase deploy --only hosting` sube a `archibots-497423.web.app` (Firebase Hosting), que está **SIN USO**. **No** publica el sitio real. No lo uses para el frontend.
+
+El sitio es una SPA; `Web/public/_redirects` (`/*  /index.html  200`) hace que Cloudflare reescriba todas las rutas a `/index.html`.
+
+### 4.A — Estado ACTUAL: publicación MANUAL (Direct Upload)
+El proyecto se creó arrastrando `dist/` al dashboard. Por eso `git push` **NO** publica el sitio (solo versiona en GitHub). Para publicar hoy:
 
 ```powershell
 cd E:\2CLAUDE\ProjectBook\Web
 npm install              # solo si cambiaron dependencias
 npm run build            # genera dist/  (tsc -b && vite build)
-firebase deploy --only hosting
 ```
+Luego, en el dashboard de Cloudflare Pages (proyecto `projectbook`) → **Create deployment** → arrastrar la carpeta **`Web\dist`**.
 
-Si el build falla por TypeScript, **corrígelo antes** de desplegar (no se sube un `dist/` roto).
+Si el build falla por TypeScript, **corrígelo antes** de subir (no se sube un `dist/` roto).
+
+### 4.B — MIGRACIÓN a GitHub-sync (auto-build con cada `git push`)
+Cloudflare **no permite convertir** un proyecto Direct Upload a Git. Hay que **crear un proyecto Pages nuevo conectado al repo** y mover el dominio. Se hace **una sola vez**:
+
+1. **Conecta el repo.** Cloudflare Dashboard → **Workers & Pages** → **Create application** → pestaña **Pages** → **Connect to Git** → autoriza GitHub y elige el repo **`goyogramadors/projectbook`**. Rama de producción: **`main`**.
+2. **Build settings** (clave, porque la SPA vive en `Web/`, no en la raíz):
+   - **Framework preset:** `Vite` (o `None`).
+   - **Root directory (advanced):** `Web`
+   - **Build command:** `npm run build`
+   - **Build output directory:** `dist`
+3. **Variables de entorno.** En *Settings → Environment variables* del proyecto, agrega todas las `VITE_*` (no se versionan, ver `Iniciar Aquí.md` §5). Cópialas desde `Web/.env.local`: las `VITE_FIREBASE_*` y `VITE_GOOGLE_MAPS_API_KEY`. Sin esto el build sale sin Firebase ni mapa.
+4. **Primer deploy.** Guarda → Cloudflare clona, corre `npm run build` en `Web/` y publica. Verifica en la URL `*.pages.dev` del proyecto nuevo que carga login, mapa y las herramientas.
+5. **Mueve el dominio.** Cuando el proyecto nuevo funcione: en el proyecto **viejo** (Direct Upload) quita el dominio personalizado (*Custom domains*) y agrégalo en el proyecto **nuevo**. Si no usas dominio propio y solo te sirve la URL `.pages.dev`, basta con empezar a usar la del proyecto nuevo.
+6. **Limpia.** Borra el proyecto Direct Upload viejo para no confundirte de URL.
+7. **Desde entonces:** `git push` (o `/Basepro Terminar`) reconstruye y publica solo. Ya no arrastras `dist/` nunca más.
+
+> Tras la migración, este documento debe actualizarse para que 4.A quede como histórico y 4.B como el flujo vigente.
 
 ---
 
@@ -186,7 +212,8 @@ firebase deploy          # hosting + functions + firestore rules/indexes
 | Pide usuario/clave y falla | GitHub exige token | Usa un **Personal Access Token** como contraseña |
 | Se subió `Web/.env.local` por error | Estaba fuera del `.gitignore` | Bórralo del historial y **rota todas las claves** expuestas |
 | `firebase deploy` apunta al proyecto equivocado | Falta `firebase use` | `firebase use prod` antes de desplegar |
-| Hosting muestra versión vieja | No recompilaste | `npm run build` (en `Web\`) antes de `firebase deploy --only hosting` |
+| El sitio muestra versión vieja | No recompilaste o no resubiste a Cloudflare | `npm run build` (en `Web\`) y resube `dist/` a Cloudflare Pages (o `git push` si ya migraste a GitHub-sync) |
+| Publiqué pero los usuarios no ven cambios | Subiste a Firebase Hosting (`.web.app`), no a Cloudflare | El frontend va a **Cloudflare Pages** (ver PARTE 4), no a Firebase |
 | El mapa no carga en `npm run dev` | Falta `VITE_GOOGLE_MAPS_API_KEY` en `Web/.env.local` | Recrear `Web/.env.local` desde `Web/.env.local.example` |
 
 ---
@@ -204,10 +231,11 @@ firebase use prod
 cd functions; npm run build; cd ..
 firebase deploy --only functions
 
-# 3) Desplegar frontend  (DESDE Web)
+# 3) Publicar frontend → Cloudflare Pages (NO Firebase)
 cd E:\2CLAUDE\ProjectBook\Web
 npm run build
-firebase deploy --only hosting
+#   HOY (Direct Upload): arrastrar Web\dist al dashboard del proyecto `projectbook`
+#   TRAS migrar a GitHub-sync (PARTE 4.B): basta `git push`, publica solo
 ```
 
 > **Proyectos Firebase:** `prod` = `archibots-497423` · `dev` = `archibots-dev`.

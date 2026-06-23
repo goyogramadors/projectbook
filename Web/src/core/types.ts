@@ -174,3 +174,103 @@ export interface ToastApi {
   toast: string | null;
   triggerToast: (msg: string) => void;
 }
+
+/* =============================================================================
+   DOMINIO · 5 HERRAMIENTAS NUEVAS (Tarea Especial · mockups DESARROLLO/)
+   -----------------------------------------------------------------------------
+   Contratos centralizados (Restricción §3 — única fuente de tipos). Persistencia:
+   · informe-suelo · accesibilidad · informe-termico → useToolData (toolData/{id})
+   · libro-obras    → projects/{pid}/libroObras/state   (subcolección propia)
+   · carpeta-digital→ projects/{pid}/carpetaDigital/state (subcolección propia)
+   Datos comunes reutilizados: ProjectMaster (name/comuna/dirección), toolStates (S7).
+   ============================================================================= */
+
+/* Informe de Subsuelo (informe-suelo · free) */
+export interface Horizonte { tipo: string; espesor: string; }
+export interface InformeSubsuelo {
+  profCalicata: string;
+  horizontes: Horizonte[];
+  agua: string;
+  apto: string;
+  observaciones: string;
+  mitigacion: string;
+}
+
+/* Memoria de Ruta Accesible (accesibilidad · free) */
+export type RutaEstado3 = 'cumple' | 'no-cumple' | 'no-aplica';
+export interface MemoriaRutaAccesible {
+  superficie: string;
+  carga: string;
+  estados: Record<string, RutaEstado3>;
+  est31: string;
+  vias: string;
+  anchoDecl: string;
+  shhGeneral: 'Aplica' | 'No aplica';
+  shhEst: Record<number, RutaEstado3>;
+  duchaGeneral: 'Aplica' | 'No aplica';
+  duchaEst: Record<number, RutaEstado3>;
+  conclusion: string;
+  generalidades: string;
+}
+
+/* Informe Norma Térmica (informe-termico · premium · acreditación diferida) */
+export type TermicoElemento = 'techo' | 'muro' | 'piso';
+export interface TermicoCapa { matId: string; espMm: string; }
+export interface TermicoComplejo {
+  capas: TermicoCapa[];
+  capaReemplazada: number;
+  estructuraId: string;
+  fraccion: string;
+}
+/** Inputs de acreditación adicionales (opcionales: estado previo no los traía). */
+export interface TermicoSobrecimiento { aplica: boolean; matId: string; espMm: string; }
+export interface InformeTermico {
+  comuna: string;
+  zonaManual: string;
+  complejos: Record<TermicoElemento, TermicoComplejo>;
+  /** Sobrecimiento (R100). Opcional para compatibilidad con datos persistidos antes. */
+  sobrecim?: TermicoSobrecimiento;
+  /** U de la puerta opaca (ficha DITEC), W/m²K, como texto editable. Opcional. */
+  puertaU?: string;
+}
+
+/* Obra Digital · adjunto real en Storage (UUID) — compartido Libro/Carpeta */
+export interface ObraAdjunto {
+  uuid: string; name: string; size: number; type: string; url: string; path: string;
+}
+
+/* Obra Digital · Libro de Obras (libro-obras · premium · subcolección libroObras) */
+export type LibroNivel = 'sin' | 'lectura' | 'escritura' | 'edicion';
+export type LibroFormatoId = 'comunicacion' | 'incidente' | 'ejecutivo' | 'libre';
+export type LibroEstadoFolio = 'activo' | 'archivado';
+export interface LibroFolio {
+  folio: string; fecha: string; libroId: string; formato: LibroFormatoId; incid: boolean;
+  tema: string; subtema: string; texto: string;
+  vinc: string[]; participantes: string[];
+  /** Adjuntos reales (Storage UUID). Legado: pudo ser string[] de nombres → se migra. */
+  adjuntos: ObraAdjunto[];
+  estado: LibroEstadoFolio; apertura: boolean;
+}
+export interface LibroObra { id: string; nombre: string; tipo: string; abierto: boolean; aperturaFecha?: string; }
+export interface LibroObrasState {
+  libros: LibroObra[];
+  folios: LibroFolio[];
+  seq: number;
+  perms: Record<string, LibroNivel>;
+}
+
+/* Obra Digital · Carpeta Digital (carpeta-digital · premium · subcolección carpetaDigital) */
+export type CarpetaEstadoArch = 'activo' | 'archivado';
+export interface CarpetaArchivo {
+  id: number; folderN: string; tipoDoc: string; version: number; fecha: string; estado: CarpetaEstadoArch;
+  /** Adjunto real (Storage UUID). Opcional: el metadato puede registrarse sin binario. */
+  adjunto?: ObraAdjunto;
+}
+export interface CarpetaDigitalState {
+  iniciado: boolean;
+  contratoKey: string;
+  archivos: CarpetaArchivo[];
+  seq: number;
+  perms: Record<string, LibroNivel>;
+}
+/* fin contratos Obra Digital */

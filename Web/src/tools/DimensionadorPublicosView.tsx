@@ -179,11 +179,11 @@ export default function DimensionadorPublicosView({ projectId, access = 'edit' }
         <div style={{ flex: '2 1 420px', display: 'flex', flexDirection: 'column', gap: 20 }}>
           <div className="tool-panel">
             <div className="module-header"><span><Users size={14} style={{ verticalAlign: 'middle', marginRight: 6 }} />| 1. ESTAMENTOS Y DOTACIÓN</span></div>
-            <div className="panel-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))', gap: 12 }}>
+            <div className="panel-content" style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(190px, 1fr))', gap: '6px 14px' }}>
               {STAFF_CATEGORIES.map(cat => (
                 <div key={cat.id} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8 }}>
                   <label style={{ fontSize: 12, color: 'var(--muted-foreground)', flex: 1 }} title={`${cat.min}–${cat.max} m²/persona`}>{cat.label}</label>
-                  <input type="number" min="0" className="tech-input" value={staffCounts[cat.id] ?? 0} disabled={readOnly} onChange={(e) => setStaff(cat.id, e.target.value)} style={{ width: 80, textAlign: 'right' }} />
+                  <input type="number" min="0" className="tech-input" value={staffCounts[cat.id] ?? 0} disabled={readOnly} onChange={(e) => setStaff(cat.id, e.target.value)} style={{ width: 68, textAlign: 'right' }} />
                 </div>
               ))}
             </div>

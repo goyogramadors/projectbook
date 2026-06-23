@@ -1,10 +1,13 @@
 /* =============================================================================
    _ARCHIBOTS · GEOJSON SERVICE (Cerebro Espacial — capa de datos) · CONST §8
    -----------------------------------------------------------------------------
-   Descarga la capa PRC de una comuna desde Firebase Hosting (CDN), NUNCA desde
-   Storage ni Firestore: fetch('/geo-data/13_PRC_{Comuna}.json'). Cachea en dos
-   niveles: (1) memoria por sesión, (2) IndexedDB persistente entre sesiones. Solo
-   la comuna activa vive en memoria. Sin dependencias externas (IndexedDB nativo).
+   Descarga la capa PRC BASE de una comuna desde Firebase Hosting (CDN), NUNCA
+   desde Storage ni Firestore: fetch('/geo-data/13_PRC_{Comuna}.json'). Cachea en
+   dos niveles: (1) memoria por sesión, (2) IndexedDB persistente entre sesiones.
+   Solo la comuna activa vive en memoria. Sin dependencias externas (IndexedDB).
+   NOTA: las capas overlay (_AP área de protección/restricción, _R, _SECC_…) son
+   restricciones superpuestas, NO zonas base; por eso NO se fusionan aquí (fusionar
+   _AP hacía que un terreno residencial se reportara como "Área de restricción").
    ============================================================================= */
 
 export interface FeatureCollectionLike {
@@ -19,13 +22,20 @@ const memoryCache: Record<string, FeatureCollectionLike> = {};
 
 /** Normaliza el nombre de comuna al token del archivo (sin tildes ni espacios). Ej: "Ñuñoa" → "Nunoa". */
 export function normalizarComuna(comuna: string): string {
-  const limpio = comuna
-    .normalize('NFD').replace(/[̀-ͯ]/g, '') // quita diacríticos (Ñ→N, á→a)
-    .replace(/[^a-zA-Z0-9]/g, '');                     // quita espacios y signos
-  return limpio.charAt(0).toUpperCase() + limpio.slice(1);
+  // Los archivos usan Title_Case con GUION BAJO entre palabras: "Las Condes" → "Las_Condes",
+  // "Lo Barnechea" → "Lo_Barnechea", "Ñuñoa" → "Nunoa". NO se eliminan los espacios: se
+  // reemplazan por '_' (bug Tintero: antes "LasCondes" → 404 al cargar la capa).
+  return comuna
+    .normalize('NFD').replace(/[̀-ͯ]/g, '')   // quita diacríticos (Ñ→N, á→a)
+    .trim()
+    .split(/\s+/)                                        // separa por palabras
+    .map((w) => w.replace(/[^a-zA-Z0-9]/g, ''))           // limpia signos dentro de cada palabra
+    .filter(Boolean)
+    .map((w) => w.charAt(0).toUpperCase() + w.slice(1).toLowerCase()) // Title_Case por palabra
+    .join('_');                                           // une con guion bajo
 }
 
-/** Ruta CDN del GeoJSON de una comuna. */
+/** Ruta CDN del GeoJSON base de una comuna. */
 export function rutaGeoJSON(comuna: string, region: string = REGION_DEFECTO): string {
   return `/geo-data/${region}_PRC_${normalizarComuna(comuna)}.json`;
 }
@@ -59,11 +69,12 @@ function idbSet(key: string, value: FeatureCollectionLike): Promise<void> {
 }
 
 /**
- * Carga la capa PRC de una comuna. Orden: memoria → IndexedDB → CDN (y rellena
+ * Carga la capa PRC BASE de una comuna. Orden: memoria → IndexedDB → CDN (y rellena
  * ambas cachés). Lanza si la comuna no tiene capa publicada (404) o el JSON es inválido.
  */
 export async function loadComunaGeoJSON(comuna: string, region: string = REGION_DEFECTO): Promise<FeatureCollectionLike> {
-  const key = `${region}_${normalizarComuna(comuna)}`;
+  // `#base` versiona la clave: invalida cachés de la fusión de overlays (que devolvía AP).
+  const key = `${region}_${normalizarComuna(comuna)}#base`;
   if (memoryCache[key]) return memoryCache[key];
 
   const cached = await idbGet(key);

@@ -76,11 +76,11 @@
 .free-text-section{ padding:10px 0; max-width:1000px; text-align:left; }
 .page-main-title{ font-size:2.4rem; font-weight:700; text-transform:uppercase; letter-spacing:-1px; margin-bottom:6px; line-height:1; color:var(--foreground); font-family:var(--font-heading); }
 .page-intro{ font-size:.9rem; opacity:.8; max-width:760px; }
-.tech-quote{ border-left:3px solid var(--foreground); padding-left:15px; margin-bottom:20px; font-style:italic; font-size:.82rem; opacity:.7; }
+.tech-quote{ border-left:3px solid var(--foreground); padding-left:12px; margin-bottom:12px; font-style:italic; font-size:.74rem; opacity:.7; }
 @keyframes techPulse{0%,100%{opacity:1}50%{opacity:.25}}
 .tech-pulse{ animation:techPulse 1.4s ease-in-out infinite; display:inline-block; }
 
-.technical-btn{ padding:8px 16px; border:var(--border-thickness) solid var(--border); background:var(--primary); color:var(--primary-foreground); font-weight:700; text-transform:uppercase; cursor:pointer; font-size:.82rem; display:inline-flex; align-items:center; justify-content:center; gap:6px; border-radius:var(--radius); transition:all .12s; font-family:inherit; }
+.technical-btn{ padding:5px 11px; border:var(--border-thickness) solid var(--border); background:var(--primary); color:var(--primary-foreground); font-weight:700; text-transform:uppercase; cursor:pointer; font-size:.72rem; display:inline-flex; align-items:center; justify-content:center; gap:5px; border-radius:var(--radius); transition:all .12s; font-family:inherit; }
 .technical-btn:hover{ background:var(--destructive); border-color:var(--destructive); color:var(--destructive-foreground); }
 .technical-btn:disabled{ opacity:.45; cursor:not-allowed; }
 .technical-btn.secondary{ background:var(--accent); color:var(--accent-foreground); }
@@ -89,12 +89,13 @@
 .btn-tech-gray:hover{ background:var(--primary); color:var(--primary-foreground); }
 
 .tool-panel{ border:var(--border-thickness) solid var(--border); background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow-hard); }
-.module-header{ min-height:48px; padding:0 15px; border-bottom:var(--border-thickness) solid var(--border); background:var(--muted); color:var(--card-foreground); font-weight:700; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; font-size:.82rem; text-align:left; }
-.panel-content{ padding:20px; text-align:left; }
+.module-header{ min-height:34px; padding:0 12px; border-bottom:var(--border-thickness) solid var(--border); background:var(--muted); color:var(--card-foreground); font-weight:700; text-transform:uppercase; display:flex; align-items:center; justify-content:space-between; font-size:.74rem; text-align:left; }
+.panel-content{ padding:13px; text-align:left; }
 
-.tech-input-group{ display:flex; flex-direction:column; margin-bottom:15px; text-align:left; }
-.tech-input-group label{ font-size:.72rem; font-weight:700; margin-bottom:5px; text-transform:uppercase; opacity:.7; }
-.tech-input,.tech-select{ background:var(--card); border:var(--border-thickness) solid var(--border); color:var(--foreground); padding:10px 12px; font-size:.88rem; width:100%; border-radius:var(--radius); font-family:inherit; }
+.tech-input-group{ display:flex; flex-direction:column; margin-bottom:9px; text-align:left; }
+.tech-input-group label{ font-size:.66rem; font-weight:700; margin-bottom:3px; text-transform:uppercase; opacity:.7; }
+.tech-input,.tech-select{ background:var(--card); border:var(--border-thickness) solid var(--border); color:var(--foreground); padding:6px 9px; font-size:.78rem; width:100%; border-radius:var(--radius); font-family:inherit; }
+.tech-input[type="number"], .tool-panel input[type="number"], .panel-content input[type="number"]{ text-align:right; } /* todo número a la derecha (global, todas las tools) */
 .tech-input:focus,.tech-select:focus{ outline:none; border-color:var(--destructive); }
 
 .tool-panel input[type="range"], .panel-content input[type="range"]{ -webkit-appearance:none; appearance:none; background:transparent; cursor:pointer; }
@@ -104,11 +105,11 @@ input[type="range"]::-moz-range-track{ background:var(--muted); border:var(--bor
 input[type="range"]::-moz-range-thumb{ background:var(--primary); border:var(--border-thickness) solid var(--border); height:16px; width:16px; border-radius:0; }
 
 .tech-table{ width:100%; border-collapse:collapse; font-size:.82rem; }
-.tech-table th,.tech-table td{ border:var(--border-thickness) solid var(--border); padding:10px 12px; text-align:left; }
+.tech-table th,.tech-table td{ border:var(--border-thickness) solid var(--border); padding:6px 9px; text-align:left; }
 .tech-table th{ background:var(--muted); text-transform:uppercase; font-weight:700; }
 .tech-table tbody tr:hover{ background:var(--hover-bg); }
 
-.counter-box{ display:inline-flex; align-items:center; border:var(--border-thickness) solid var(--border); background:var(--card); height:32px; }
+.counter-box{ display:inline-flex; align-items:center; border:var(--border-thickness) solid var(--border); background:var(--card); height:28px; }
 .counter-btn{ width:28px; height:100%; background:none; border:none; font-weight:700; cursor:pointer; font-size:14px; color:var(--foreground); }
 .counter-btn:hover{ background:var(--muted); }
 
@@ -602,22 +603,44 @@ input[type="range"]::-moz-range-thumb{ background:var(--primary); border:var(--b
 /* 4 · BOTONES ESTILO "COMANDO" — sin fondo pesado; texto de consola con corchetes
       [ TEXTO ] vía ::before/::after; hover = colores invertidos (fondo oscuro). */
 :root[data-theme="cad"] .ab-btn {
-  background:transparent !important; color:var(--foreground) !important;
+  /* PRIMARIO pintado (relleno) para distinguir selección/acción. Antes todos los
+     botones iban transparentes y en CAD no se "pintaba" ninguno. */
+  background:var(--foreground) !important; color:var(--background) !important;
   border:1px solid var(--foreground) !important; font-weight:700;
 }
 :root[data-theme="cad"] .ab-btn::before { content:"[ "; }
 :root[data-theme="cad"] .ab-btn::after  { content:" ]"; }
 :root[data-theme="cad"] .ab-btn:hover {
+  background:var(--destructive) !important; color:#fff !important; border-color:var(--destructive) !important;
+}
+/* Secundarios / Explorar / Agregar(no añadido): CONTORNO (invierten en hover). */
+:root[data-theme="cad"] .ab-btn.sec,
+:root[data-theme="cad"] .ab-btn.add:not(.added) {
+  background:transparent !important; color:var(--foreground) !important;
+}
+:root[data-theme="cad"] .ab-btn.sec:hover,
+:root[data-theme="cad"] .ab-btn.add:not(.added):hover {
   background:var(--foreground) !important; color:var(--background) !important;
 }
-/* Botones de herramienta / grises: planos con borde 1px e inversión en hover
-   (sus etiquetas ya incluyen corchetes, por eso NO se les inyectan pseudo-corchetes). */
-:root[data-theme="cad"] .technical-btn,
+/* "EN PROYECTO" (ya añadido): verde de estado. */
+:root[data-theme="cad"] .ab-btn.add.added {
+  background:var(--success) !important; color:#fff !important; border-color:var(--success) !important;
+}
+/* Botones de herramienta: PRIMARIO pintado, SECUNDARIO en contorno
+   (etiquetas ya con corchetes → sin pseudo-corchetes). */
+:root[data-theme="cad"] .technical-btn {
+  background:var(--foreground) !important; color:var(--background) !important;
+  border:1px solid var(--foreground) !important;
+}
+:root[data-theme="cad"] .technical-btn:hover {
+  background:var(--destructive) !important; color:#fff !important; border-color:var(--destructive) !important;
+}
+:root[data-theme="cad"] .technical-btn.secondary,
 :root[data-theme="cad"] .btn-tech-gray {
   background:transparent !important; color:var(--foreground) !important;
   border:1px solid var(--foreground) !important;
 }
-:root[data-theme="cad"] .technical-btn:hover,
+:root[data-theme="cad"] .technical-btn.secondary:hover,
 :root[data-theme="cad"] .btn-tech-gray:hover {
   background:var(--foreground) !important; color:var(--background) !important;
 }
@@ -675,19 +698,27 @@ input[type="range"]::-moz-range-thumb{ background:var(--primary); border:var(--b
 
 /* — TOP UNIFICADO — */
 .ab-top{ display:flex; align-items:stretch; gap:12px; background:var(--bar); color:var(--bar-foreground); border-bottom:var(--bw) solid var(--bar-border); }
-.ab-topbar{ flex:1; display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; padding:10px 14px 12px; }
-.ab-brand{ display:flex; align-items:center; gap:16px; padding:4px 9px 4px 0; text-align:right; flex:0 0 auto; }
-.ab-brand-title{ font-family:var(--font-heading); font-size:2.7rem; font-weight:800; letter-spacing:-1.5px; line-height:1; color:var(--bar-foreground); cursor:pointer; }
+.ab-topbar{ flex:1; display:flex; align-items:flex-end; gap:10px; flex-wrap:wrap; padding:0 14px 12px; }
+.ab-top-tagline{ flex:0 0 100%; order:-1; font-size:.7rem; font-weight:700; text-transform:uppercase; letter-spacing:.04em; opacity:.6; line-height:1; margin:2px 0 4px; }
+.ab-brand{ display:flex; align-items:stretch; gap:16px; padding:4px 9px 4px 0; text-align:right; flex:0 0 auto; }
+.ab-brand-title{ font-family:var(--font-heading); font-size:2.7rem; font-weight:800; letter-spacing:.16em; line-height:1; color:var(--bar-foreground); cursor:pointer; padding-left:.16em; }
 .ab-brand-title .pulse{ color:var(--destructive); }
+.ab-brand-title .pro{ color:var(--destructive); }
+.ab-brand-text{ display:flex; flex-direction:column; align-items:flex-end; justify-content:flex-end; padding-bottom:6px; }
 .ab-brand-sub{ font-size:.78rem; font-weight:700; opacity:.6; text-transform:uppercase; margin-top:5px; letter-spacing:.04em; max-width:560px; }
+/* Dos eslóganes en la misma fila, a cada lado. */
+.ab-brand-sub-row{ display:flex; gap:26px; justify-content:space-between; align-items:center; max-width:none; width:100%; text-align:left; }
+.ab-brand-sub-row > span{ flex:1 1 0; min-width:0; }
+.ab-brand-sub-row > span:last-child{ text-align:right; }
 .ab-brand-logo{ height:140px; width:auto; object-fit:contain; }
+.ab-brand-logo-new{ height:120px; }
 .ab-topbtn{ display:inline-flex; align-items:center; gap:6px; padding:7px 12px; font-size:11px; font-weight:800; text-transform:uppercase; background:transparent; color:var(--bar-foreground); border:var(--bw) solid var(--bar-border); cursor:pointer; }
 .ab-topbtn:hover{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
 .ab-topsel{ display:flex; align-items:center; gap:8px; padding:7px 10px; border:var(--bw) solid var(--bar-border); background:var(--bar-accent); min-width:300px; flex:0 0 330px; }
 .ab-topsel select{ flex:1; background:transparent; color:var(--bar-foreground); border:none; font-size:11px; font-weight:700; outline:none; }
 .ab-topsel select option{ color:#111; }
 .ab-topsysok{ display:inline-flex; align-items:center; gap:5px; font-size:12.5px; font-weight:700; }
-@media(max-width:760px){ .ab-brand-logo{ height:96px; } .ab-brand-title{ font-size:2rem; } .ab-brand-sub{ display:none; } }
+@media(max-width:760px){ .ab-brand-logo{ height:84px; } .ab-brand-logo-new{ height:72px; } .ab-brand-title{ font-size:2rem; } .ab-brand-sub{ display:none; } }
 
 /* Pestañas del binder más compactas para encajar las 8 etiquetas. */
 .ab-shell .ab-binder-tabs{ gap:2px; }
@@ -710,6 +741,12 @@ input[type="range"]::-moz-range-thumb{ background:var(--primary); border:var(--b
 .ab-wc2 .ab-catalog{ max-height:none; }
 .ab-wc3 .ab-toolhost{ border:0; box-shadow:none; display:flex; flex-direction:column; flex:1; min-height:0; }
 .ab-wc3 .ab-toolhost-body{ flex:1; overflow-y:auto; }
+/* ── Separadores móviles de columnas (Overleaf-style, solo desktop >1040px) ── */
+.ab-gutter{ position:relative; display:flex; flex-direction:column; align-items:center; min-width:10px; }
+.ab-gutter-toggle{ margin-top:4px; width:16px; height:34px; border:var(--bw) solid var(--border); background:var(--muted); color:var(--foreground); cursor:pointer; display:flex; align-items:center; justify-content:center; border-radius:var(--radius); padding:0; }
+.ab-gutter-toggle:hover{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.ab-gutter-grip{ flex:1; width:6px; margin-top:6px; cursor:col-resize; border-radius:var(--radius); }
+.ab-gutter-grip:hover{ background:var(--border); }
 
 /* Fila "Mis Proyectos" compacta (col1, pegada abajo). */
 .ab-myrow{ display:flex; gap:8px; overflow-x:auto; padding-bottom:2px; }

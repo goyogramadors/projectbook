@@ -1,19 +1,20 @@
 /* =============================================================================
    InformeSubsueloView.tsx — INFORME DE SUBSUELO (mockup · Fase 0)
    -----------------------------------------------------------------------------
-   // MOCKUP — Estado SOLO en memoria (useState). NO persiste en Firestore/Storage
-   // ni genera PDF real (usa window.print() + DocumentExportWrapper para la vista).
-   // El desarrollo real reemplazará el estado por useToolData('informe-suelo', …)
-   // hacia projects/{pid}/toolData/informe-suelo, sin tocar otras tools.
+   // PRODUCCIÓN — Persistencia gobernada useToolData('informe-suelo') hacia
+   // projects/{pid}/toolData/informe-suelo (Premium) / localStorage (Free), con
+   // botón [GUARDAR] y avance del expediente (toolStates[informe-suelo], S7).
+   // Exporta vía window.print() + DocumentExportWrapper (membrete + firma).
    // Ref UX: DESARROLLO/files subsuelo/ (MEMORIA_Subsuelo.md · index_subsuelo.html).
    // tier: free · adjuntos (fotos) reservados a Premium (decisión HITL 2026-06-22).
    ============================================================================= */
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { useProjects } from '../core/db/ProjectProvider';
+import { useToolData } from '../hooks/useToolData';
 import DocumentExportWrapper from '../components/DocumentExportWrapper';
-import type { ToolProps } from '../core/types';
+import type { ToolProps, Horizonte, InformeSubsuelo } from '../core/types';
 
 /* ── catálogo fijo (7 tipos, idénticos en H-1/H-2/H-3) ───────────────────────── */
 const TIPOS_SUELO = [
@@ -27,9 +28,17 @@ const OBS_SUGERIDA =
 const MIT_SUGERIDA =
   'Se recomienda verificar capacidad de soporte mediante ensayo y considerar mejoramiento/compactación del sello de fundación según el horizonte de apoyo.';
 
-/* ── tipos locales (mockup; en real irían a types.ts) ────────────────────────── */
-interface Horizonte { tipo: string; espesor: string; }
 const H_VACIO: Horizonte = { tipo: '', espesor: '' };
+
+/* Forma/valor por defecto persistido (constante estable de módulo · useToolData). */
+const FALLBACK_SUBSUELO: InformeSubsuelo = {
+  profCalicata: '1.50',
+  horizontes: [{ ...H_VACIO }, { ...H_VACIO }, { ...H_VACIO }],
+  agua: 'No',
+  apto: 'Sí',
+  observaciones: OBS_SUGERIDA,
+  mitigacion: MIT_SUGERIDA,
+};
 
 const pill = (apto: string): React.CSSProperties => ({
   display: 'inline-block', padding: '2px 10px', borderRadius: 999, fontSize: 11, fontWeight: 700,
@@ -42,7 +51,7 @@ const pvK: React.CSSProperties = { ...pvTd, fontWeight: 700, color: '#444' };
 
 export default function InformeSubsueloView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
-  const { getProject } = useProjects();
+  const { getProject, setToolState } = useProjects();
   const project = getProject(projectId);
 
   const [profCalicata, setProfCalicata] = useState('1.50');
@@ -51,9 +60,37 @@ export default function InformeSubsueloView({ projectId, access = 'edit' }: Tool
   const [observaciones, setObservaciones] = useState(OBS_SUGERIDA);
   const [apto, setApto] = useState<string>('Sí');
   const [mitigacion, setMitigacion] = useState(MIT_SUGERIDA);
+  const [guardado, setGuardado] = useState(false);
+
+  // Persistencia gobernada (Premium→Firestore toolData/informe-suelo · Free→localStorage).
+  const { data: saved, save, loading } = useToolData<InformeSubsuelo>('informe-suelo', projectId, FALLBACK_SUBSUELO);
+  const hidratadoRef = useRef(false);
+  useEffect(() => {
+    if (loading || hidratadoRef.current) return;
+    hidratadoRef.current = true;
+    setProfCalicata(saved.profCalicata);
+    setHorizontes(saved.horizontes.length ? saved.horizontes : [{ ...H_VACIO }, { ...H_VACIO }, { ...H_VACIO }]);
+    setAgua(saved.agua); setApto(saved.apto);
+    setObservaciones(saved.observaciones); setMitigacion(saved.mitigacion);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading]);
 
   const setHz = (i: number, patch: Partial<Horizonte>) =>
     setHorizontes(prev => prev.map((h, j) => (j === i ? { ...h, ...patch } : h)));
+
+  const guardar = async () => {
+    const snapshot: InformeSubsuelo = { profCalicata, horizontes, agua, apto, observaciones, mitigacion };
+    const ok = await save(snapshot);
+    if (ok && projectId) {
+      const hayDatos = horizontes.some(h => h.tipo && parseFloat(h.espesor) > 0);
+      await setToolState(projectId, 'informe-suelo', {
+        estado: hayDatos ? 'Completado' : 'En proceso',
+        fecha: new Date().toLocaleDateString('es-CL'),
+      });
+    }
+    setGuardado(ok);
+    if (ok) window.setTimeout(() => setGuardado(false), 2000);
+  };
 
   /* estratigrafía válida: tipo seleccionado y espesor > 0; prof. acumulada en orden */
   const estrato = useMemo(() => {
@@ -73,7 +110,6 @@ export default function InformeSubsueloView({ projectId, access = 'edit' }: Tool
     <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }}>
       <h1 style={{ display: 'flex', alignItems: 'center', gap: 10, fontSize: 20, fontWeight: 'bold', textTransform: 'uppercase', marginBottom: 6 }}>
         <Icons.Mountain size={22} strokeWidth={1.4} /> Informe de Subsuelo
-        <span style={{ fontSize: 10, fontWeight: 700, padding: '2px 8px', borderRadius: 4, background: '#9a6700', color: '#fff' }}>MOCKUP</span>
       </h1>
       <p className="tech-quote" style={{ marginBottom: 20 }}>
         Proyecto: <strong>{project.name}</strong> · Calicata, estratigrafía referencial (hasta 3 horizontes) y aptitud para edificación.
@@ -148,7 +184,14 @@ export default function InformeSubsueloView({ projectId, access = 'edit' }: Tool
         <div className="ab-split-right">
           <div className="ab-preview-head">
             <h2 className="ab-preview-title"><Icons.Mountain size={14} /> Vista Previa de Exportación</h2>
-            <button type="button" className="technical-btn" onClick={() => window.print()}>[ EXPORTAR A PDF ]</button>
+            <div style={{ display: 'flex', gap: 8 }}>
+              {!readOnly && (
+                <button type="button" className="technical-btn" onClick={guardar} disabled={loading}>
+                  {guardado ? '✓ GUARDADO' : '[ GUARDAR ]'}
+                </button>
+              )}
+              <button type="button" className="technical-btn" onClick={() => window.print()}>[ EXPORTAR A PDF ]</button>
+            </div>
           </div>
           <DocumentExportWrapper documentName="Informe de Subsuelo" documentId="informe-suelo" projectId={projectId}>
             <div>

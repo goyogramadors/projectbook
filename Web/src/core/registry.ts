@@ -32,8 +32,8 @@ export const LAZY_COMPONENTS: Record<string, LazyTool> = {
   // F4 · Geolocalizador Normativo (T-07) → "Dos Cerebros" (Maps + Web Worker Turf
   // + CDN GeoJSON + DB nombrada coordenadasnormativas). Reemplaza la versión F3.
   geolocalizador: lazy(() => import('../tools/GeolocalizadorView')),
-  // F4 · Mapa de Terreno (T-08) → dibujo de polígono + área (Web Worker) + sync §6.
-  'mapa-terreno': lazy(() => import('../tools/MapaTerrenoView')),
+  // F4 · Mapa de Terreno (T-08) integrado dentro de Ubicación del Proyecto (T-04b);
+  // ya no es herramienta separada del catálogo. Su lógica vive en UbicacionView.
   // F5 · Asistente de Usos BIM (T-17) → PREMIUM (gating vía useAccess/ToolHost).
   'bim-wizard': lazy(() => import('../tools/BimWizardView')),
   // Calculadora de Costos de Construcción MINVU (T-41).

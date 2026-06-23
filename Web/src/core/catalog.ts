@@ -47,7 +47,6 @@ export const CATALOG: CatalogTool[] = [
   /* ── CARPETA 2 · TERRENO (herramientas sueltas) ───────────────────────────── */
   { id: 'ubicacion', code: '', label: 'Ubicación del Proyecto', folder: 2, sub: '', icon: 'Navigation', estado: 'active', tier: 'free', fases: ['PERFIL'], desc: 'Ubicación administrativa básica (región, comuna, dirección, rol SII). Se complementa con el Geolocalizador.' },
   { id: 'geolocalizador', code: '', label: 'Geolocalizador Normativo', folder: 2, sub: '', icon: 'MapPin', estado: 'active', tier: 'free', fases: ['PERFIL', 'ANTEPROY'], desc: 'Dirección → polígono → zona PRC → ficha normativa. Modos [ASUMIR FICHA] / [INGRESO MANUAL CIP].' },
-  { id: 'mapa-terreno', code: '', label: 'Mapa de Terreno', folder: 2, sub: '', icon: 'Map', estado: 'active', tier: 'free', fases: ['PERFIL'], desc: 'Polígono guardado + superficie turf.js (dato interno, no va a la Ficha).' },
   { id: 'volumen', code: '', label: 'Cabida', folder: 2, sub: '', icon: 'Boxes', estado: 'active', tier: 'free', fases: ['PERFIL', 'ANTEPROY'], desc: 'Estudio de cabida: retiros, adosamientos (OGUC 40%), rasantes, constructibilidad y envolvente máxima edificable con esquema 3D.' },
 
   /* ── CARPETA 3 · PROYECTO (DISEÑO) ────────────────────────────────────────── */
