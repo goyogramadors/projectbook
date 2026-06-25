@@ -1,7 +1,7 @@
 # 🧩 Reporte — Mockups de las 5 herramientas nuevas (Fase 0)
 
 > Resumen para **retomar este trabajo desde otra instancia de Claude**.
-> Contexto general del proyecto: leer primero `E:\2CLAUDE\ProjectBook\Iniciar Aquí.md`.
+> Contexto general del proyecto: leer primero `C:\G\ProjectBook\Iniciar Aquí.md`.
 > Plan completo y decisiones: `DESARROLLO\Tintero - Pendientes.md` → secciones **"Tarea Especial"**, **H** y **I**.
 > **Fecha:** 2026-06-22 · **Estado:** mockups integrados construidos; **falta validar build local y desarrollo real**.
 
@@ -9,7 +9,7 @@
 
 ## 1. Qué se pidió
 
-Incorporar a Archibots las **5 herramientas nuevas** cuyos prototipos están en `E:\2CLAUDE\ProjectBook\DESARROLLO`. Antes del desarrollo productivo, generar **mockups funcionales integrados en la web real** (no standalone), con el código **separado por archivo** para que cada uno sea luego una tool independiente (mismo patrón que las 20 actuales en `src/tools`).
+Incorporar a Archibots las **5 herramientas nuevas** cuyos prototipos están en `C:\G\ProjectBook\DESARROLLO`. Antes del desarrollo productivo, generar **mockups funcionales integrados en la web real** (no standalone), con el código **separado por archivo** para que cada uno sea luego una tool independiente (mismo patrón que las 20 actuales en `src/tools`).
 
 ---
 
@@ -18,12 +18,12 @@ Incorporar a Archibots las **5 herramientas nuevas** cuyos prototipos están en 
 La app se movió a la subcarpeta **`Web/`**. El root del código React/Vite es ahora:
 
 ```
-E:\2CLAUDE\ProjectBook\Web\        ← src/, firebase.json, firestore.*, functions/, public/, package.json, dist/
-E:\2CLAUDE\ProjectBook\Iniciar Aquí.md
-E:\2CLAUDE\ProjectBook\DESARROLLO\ ← mockups origen + Tintero + este reporte
+C:\G\ProjectBook\Web\        ← src/, firebase.json, firestore.*, functions/, public/, package.json, dist/
+C:\G\ProjectBook\Iniciar Aquí.md
+C:\G\ProjectBook\DESARROLLO\ ← mockups origen + Tintero + este reporte
 ```
 
-Editar tools en `E:\2CLAUDE\ProjectBook\Web\src\...`. (El mount de bash a veces devuelve listados vacíos: preferir lectura/escritura de archivos concretos por ruta, no `ls` masivos.)
+Editar tools en `C:\G\ProjectBook\Web\src\...`. (El mount de bash a veces devuelve listados vacíos: preferir lectura/escritura de archivos concretos por ruta, no `ls` masivos.)
 
 ---
 
@@ -89,7 +89,7 @@ Todas en `Web/src/tools/`, cableadas en `Web/src/core/registry.ts` (lazy) y `Web
 ## 7. Cómo revisar (resumen)
 
 1. **Código:** abrir los 5 archivos en `Web/src/tools/`.
-2. **App:** `cd E:\2CLAUDE\ProjectBook\Web && npm run dev` → entrar a un proyecto → catálogo carpetas 4 y 5.
+2. **App:** `cd C:\G\ProjectBook\Web && npm run dev` → entrar a un proyecto → catálogo carpetas 4 y 5.
 3. **Prototipos origen (referencia UX):** abrir los `index.html` en `DESARROLLO/…` con doble clic.
 
 ---

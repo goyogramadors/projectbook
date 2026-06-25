@@ -6,20 +6,66 @@
    sola imagen de contornos; en barra clara (matrix) se invierte por CSS para que
    el perímetro del documento contraste en ambos temas.
    ============================================================================= */
-import { useState } from 'react';
-import { useNavigate, useParams } from 'react-router-dom';
+import { useEffect, useState } from 'react';
+import { useNavigate, useParams, useLocation } from 'react-router-dom';
 import Icon from './Icon';
+import ArchiblocksNav from './ArchiblocksNav';
 import { useAuth } from '../core/auth/AuthProvider';
 import { useTheme } from '../core/theme/ThemeProvider';
 import { useProjects } from '../core/db/ProjectProvider';
+import { useActiveSection } from '../core/ui/ActiveSection';
+
+/* Slogans que rota la marca (debajo de "Archiblocks"). Las mayúsculas van en rojo. */
+const PHRASES = [
+  'Gestión Documental y digital de proyectos',
+  'Generación de Expedientes técnicos',
+  'Arquitectura, Permisos y Construcción',
+  'La infraestructura digital de tu proyecto',
+  'Proyecta. Cumple. Construye.',
+];
+
+function BrandTagline() {
+  const [i, setI] = useState(0);
+  useEffect(() => {
+    const t = setInterval(() => setI((p) => (p + 1) % PHRASES.length), 4200);
+    return () => clearInterval(t);
+  }, []);
+  const txt = PHRASES[i] ?? '';
+  return (
+    <span key={i} className="ab-brand-rot">
+      {Array.from(txt).map((ch, idx) =>
+        /[A-ZÁÉÍÓÚÑ]/.test(ch)
+          ? <span key={idx} style={{ color: 'var(--destructive)' }}>{ch}</span>
+          : ch,
+      )}
+    </span>
+  );
+}
 
 export default function ShellTop({ onShare }: { onShare?: () => void }) {
   const navigate = useNavigate();
+  const location = useLocation();
   const { projectId } = useParams();
   const { user, openAuthModal, signOut } = useAuth();
   const { theme, cycleTheme } = useTheme();
   const { projects } = useProjects();
+  const { navNode, selectNode, setNavNode } = useActiveSection();
   const [menuOpen, setMenuOpen] = useState(false);
+
+  // Inicio es ruta: sincroniza el nodo marcado del navegador.
+  useEffect(() => {
+    if (location.pathname === '/') setNavNode('edificio');
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [location.pathname]);
+
+  // Clic en un nodo del navegador → navega + marca. (galvano = carpeta 6 Administrativos.)
+  const onNav = (node: string) => {
+    if (node === 'edificio') { setNavNode('edificio'); navigate('/'); return; }
+    const pid = projectId ?? projects[0]?.id;
+    if (!pid) { navigate('/'); return; }
+    selectNode(node);
+    navigate(`/p/${pid}`);
+  };
 
   const plan = user?.plan ?? 'Free';
   const nombre = user?.nombre ?? 'Invitado';
@@ -35,13 +81,12 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
 
   return (
     <div className="ab-top">
-      <div className="ab-topbar">
-        {/* 0 · Slogans arriba a la izquierda (fila propia, no se topa con la marca) */}
-        <div className="ab-top-tagline">
-          <div>Gestión Documental - <strong style={{ color: 'var(--destructive)' }}>Expedientes técnicos</strong> - Arquitectura - Permisos</div>
-          <div className="ab-top-slogan">La infraestructura digital de tu proyecto. <strong style={{ color: 'var(--destructive)' }}>Proyecta. Cumple. Construye.</strong></div>
-        </div>
+      {/* Navegador interactivo (logo Archiblocks) — alto completo, a la izquierda */}
+      <div className="ab-nav-host">
+        <ArchiblocksNav active={navNode} dark={barIsDark} onSelect={onNav} />
+      </div>
 
+      <div className="ab-topbar">
         {/* 1 · Inicio */}
         <button className="ab-topbtn" onClick={() => navigate('/')}><Icon name="Home" size={13} /> Inicio</button>
 
@@ -108,13 +153,12 @@ export default function ShellTop({ onShare }: { onShare?: () => void }) {
         <span className="ab-topsysok"><span className="ab-blink" style={{ color: 'var(--success)' }}>●</span> SYSTEM_OK</span>
       </div>
 
-      {/* Marca + logos a la derecha (alto completo) */}
+      {/* Marca a la derecha (alto completo): Archiblocks + slogan rotativo */}
       <div className="ab-brand">
-        <img className="ab-brand-logo" src="/Logo-Archibots.png" alt="Archibots" />
         <div className="ab-brand-text">
-          <div className="ab-brand-title" onClick={() => navigate('/')} title="Ir al inicio">BASE<span className="pro">PRO</span></div>
+          <div className="ab-brand-title" onClick={() => navigate('/')} title="Ir al inicio">Archi<span className="pro">blocks</span></div>
+          <div className="ab-brand-sub"><BrandTagline /></div>
         </div>
-        <img className={`ab-brand-logo ab-brand-logo-new${barIsDark ? '' : ' ab-logo-invert'}`} src="/Basepro-N-t.png" alt="Basepro" />
       </div>
     </div>
   );

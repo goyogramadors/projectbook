@@ -407,7 +407,7 @@ QA 4 temas + 4 rutas; tests de montaje de las 9 herramientas; pen-test básico d
 | H-F1.1 | ✅ Proyecto único `archibots-497423` confirmado. `.firebaserc` creado (2026-06-14). | Firebase Console | ✅ COMPLETADO |
 | H-F1.2 | ✅ Auth Email/Password + Google ya habilitados en `archibots-497423`. | Auth → Sign-in method | ✅ COMPLETADO |
 | H-F1.3 | ✅ DB `(default)` + DB `coordenadasnormativas` confirmadas como existentes. | Firestore → Bases de datos | ✅ COMPLETADO |
-| H-F1.4 | 🟡 `.env.local` con todas las variables. **REABIERTO 2026-06-16:** en el equipo de trabajo nuevo (`E:\2CLAUDE\ProjectBook\Web`) NO existe `.env.local`; falta en particular `VITE_GOOGLE_MAPS_API_KEY` (por eso el mapa no carga en `npm run dev`). Recrearlo a partir de `.env.local.example`. | Local / repo | 🟡 PENDIENTE (equipo nuevo) |
+| H-F1.4 | 🟡 `.env.local` con todas las variables. **REABIERTO 2026-06-16:** en el equipo de trabajo nuevo (`C:\G\ProjectBook\Web`) NO existe `.env.local`; falta en particular `VITE_GOOGLE_MAPS_API_KEY` (por eso el mapa no carga en `npm run dev`). Recrearlo a partir de `.env.local.example`. | Local / repo | 🟡 PENDIENTE (equipo nuevo) |
 | H-F1.5 | ✅ Custom Claim `admin:true` verificado y confirmado (goyogramador@gmail.com, 2026-06-14). | Cloud Shell / Admin SDK | ✅ COMPLETADO |
 
 ### 3.2 — Acciones HITL requeridas · Fin de F2 (Theming & UI Base) — `H-F2`
@@ -517,7 +517,7 @@ Las acciones HITL de F4 (540 GeoJSON, API Key Maps) y F5 (extensión Stripe, ín
 Antes de escribir una sola línea más de código, ejecutar los despliegues de infraestructura que están listos pero sin correr:
 
 ```bash
-# Desde E:\2CLAUDE\ProjectBook\Web
+# Desde C:\G\ProjectBook\Web
 
 # 1. Reglas de Firestore (zero-trust)
 firebase deploy --only firestore:rules
@@ -537,7 +537,7 @@ firebase deploy --only hosting
 
 ### 6.2 PRIMER SPRINT DE CÓDIGO — F3: Migración de herramientas a `Archibots/Archibots/`
 
-**Carpeta objetivo:** `E:\2CLAUDE\ProjectBook\Web\src\tools\`
+**Carpeta objetivo:** `C:\G\ProjectBook\Web\src\tools\`
 
 El `registry.ts` actual sólo tiene 4 herramientas registradas: `geolocalizador`, `propuesta`, `hsa`, `contratos`. Las siguientes herramientas están `active` en el catálogo pero no tienen implementación en el proyecto correcto:
 

@@ -82,6 +82,13 @@ export const LAZY_COMPONENTS: Record<string, LazyTool> = {
   'libro-obras': lazy(() => import('../tools/LibroObrasDigitalView')),
   // Fase 0 · MOCKUP Premium — Carpeta Digital (árbol por contrato, versiones, archivado).
   'carpeta-digital': lazy(() => import('../tools/CarpetaDigitalView')),
+  // DOM-Formularios · 5 trámites (data-driven, pdf-lib lazy). UNA vista; el slot
+  // (toolId) define el trámite y el 'Tipo de proyecto' resuelve el PDF.
+  'solicitud-permiso': lazy(() => import('../tools/FormulariosDOMView')),
+  'permiso-edificacion': lazy(() => import('../tools/FormulariosDOMView')),
+  'modificacion-proyecto': lazy(() => import('../tools/FormulariosDOMView')),
+  'recepcion-final': lazy(() => import('../tools/FormulariosDOMView')),
+  'dj-termino': lazy(() => import('../tools/FormulariosDOMView')),
   // …resto de herramientas se completan progresivamente en F3/F4.
 };
 

@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import Icon from './Icon';
 import { CATALOG, FOLDERS, ALL_PHASES, TOP_TOOLS_DEFAULT, subsOf, looseToolsOf } from '../core/catalog';
 import { useAuth } from '../core/auth/AuthProvider';
+import { useProjects } from '../core/db/ProjectProvider';
 import type { CatalogTool } from '../core/types';
 
 export default function ToolCatalog({
@@ -30,7 +31,14 @@ export default function ToolCatalog({
   const navigate = useNavigate();
   const { projectId, toolId } = useParams();
   const { user } = useAuth();
+  const { getProject } = useProjects();
   const plan = user?.plan ?? 'Free';
+
+  // Visibilidad por 'Tipo de proyecto' (OGUC): si la tool restringe tiposProyecto y el
+  // proyecto tiene un tipo definido que no está en la lista, se oculta. Sin tipo ⇒ se muestra.
+  const tipoProyecto = projectId ? getProject(projectId)?.tipoProyecto : undefined;
+  const allowed = (t: CatalogTool) =>
+    !t.tiposProyecto || !tipoProyecto || t.tiposProyecto.includes(tipoProyecto);
 
   const [filter, setFilter] = useState<'Carpeta' | 'Fase' | 'Top'>('Carpeta');
   const [openFolders, setOpenFolders] = useState<number[]>([3]);
@@ -108,15 +116,15 @@ export default function ToolCatalog({
             <motion.div initial={{ height: 0 }} animate={{ height: 'auto' }} exit={{ height: 0 }} style={{ overflow: 'hidden' }}>
               <div className="ab-folder-body">
                 {/* Herramientas SUELTAS (sin subsección) — se listan directamente. */}
-                {looseToolsOf(folder.id).length > 0 && (
+                {looseToolsOf(folder.id).filter(allowed).length > 0 && (
                   <div className="ab-sub-body" style={{ paddingTop: 4 }}>
-                    {looseToolsOf(folder.id).map((t) => <ToolCard key={t.id} tool={t} />)}
+                    {looseToolsOf(folder.id).filter(allowed).map((t) => <ToolCard key={t.id} tool={t} />)}
                   </div>
                 )}
                 {subsOf(folder.id).map((sub) => {
                   const subKey = `${folder.id}::${sub}`;
                   const subOpen = openSubs.includes(subKey);
-                  const subTools = tools.filter((t) => t.sub === sub);
+                  const subTools = tools.filter((t) => t.sub === sub && allowed(t));
                   return (
                     <div key={subKey} className="ab-sub">
                       <button className="ab-sub-head" onClick={() => toggle(openSubs, subKey, setOpenSubs)}>
@@ -143,7 +151,7 @@ export default function ToolCatalog({
 
   const byPhase = () => ALL_PHASES.map((phase) => {
     const isOpen = openPhases.includes(phase);
-    const tools = CATALOG.filter((t) => t.folder !== 7 && t.fases.includes(phase));
+    const tools = CATALOG.filter((t) => t.folder !== 7 && t.fases.includes(phase) && allowed(t));
     return (
       <div key={phase} className="ab-folder">
         <button className="ab-folder-head" onClick={() => setOpenPhases(isOpen ? [] : [phase])}>
@@ -166,7 +174,7 @@ export default function ToolCatalog({
   const byTop = () => (
     <div className="ab-folder-body" style={{ padding: '10px 12px' }}>
       <div style={{ fontSize: 9, fontWeight: 800, opacity: 0.5, textTransform: 'uppercase', margin: '2px 4px 8px' }}>Accesos rápidos · herramientas muy usadas</div>
-      {topToolIds.map((id) => CATALOG.find((t) => t.id === id)).filter((t): t is CatalogTool => !!t).map((t) => <ToolCard key={t.id} tool={t} />)}
+      {topToolIds.map((id) => CATALOG.find((t) => t.id === id)).filter((t): t is CatalogTool => !!t && allowed(t)).map((t) => <ToolCard key={t.id} tool={t} />)}
     </div>
   );
 

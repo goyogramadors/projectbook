@@ -10,7 +10,7 @@ metadata:
 
 ## Raíz del proyecto productivo
 
-**Carpeta correcta:** `E:\2CLAUDE\ProjectBook\Web\`
+**Carpeta correcta:** `C:\G\ProjectBook\Web\`
 **En bash (sandbox):** `/sessions/.../mnt/ProjectBook/Web/`
 
 Todos los comandos de terminal (`npm run dev`, `firebase deploy`, etc.) se ejecutan desde aquí.

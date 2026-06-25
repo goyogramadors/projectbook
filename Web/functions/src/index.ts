@@ -83,7 +83,7 @@ export const sendInviteEmail = functions.https.onCall(
 
     const body = {
       personalizations: [{ to: [{ email: invitedEmail }] }],
-      from:    { email: 'crearco@gmail.com', name: 'ArchiBots' },
+      from:    { email: 'contacto@archibots.cl', name: 'Archiblocks' },
       subject: `Te invitaron a colaborar en "${projectName}"`,
       content: [{
         type:  'text/html',
@@ -146,7 +146,7 @@ export const sendPremiumInviteEmail = functions.https.onCall(
     const appUrl = 'https://archibots-497423.web.app/';
     const body = {
       personalizations: [{ to: [{ email }] }],
-      from:    { email: 'crearco@gmail.com', name: 'ArchiBots' },
+      from:    { email: 'contacto@archibots.cl', name: 'Archiblocks' },
       subject: 'Tu acceso Premium a ArchiBots está activo',
       content: [{
         type:  'text/html',

@@ -64,7 +64,7 @@
 
 ## Tarea Especial — Incorporación de 5 herramientas nuevas (mockups `DESARROLLO/`)
 
-> Enunciada en `Iniciar Aquí.md` §6; los mockups ya están en `E:\2CLAUDE\ProjectBook\DESARROLLO`.
+> Enunciada en `Iniciar Aquí.md` §6; los mockups ya están en `C:\G\ProjectBook\DESARROLLO`.
 > Objetivo: incorporar las 5 herramientas a la web, **compatibles a nivel de interfaz y de base de datos**, respetando la arquitectura productiva (lazy en `registry.ts`, metadata en `catalog.ts`, tipos en `types.ts`, persistencia por subcolección en `(default)` / `localStorage`) y las reglas de `Iniciar Aquí.md` §8.
 > **Fecha de plan:** 2026-06-22.
 
@@ -151,6 +151,6 @@ Las memorias de los mockups asumen patrones **incompatibles con producción**; d
 Antes del desarrollo productivo se generan **mockups funcionales integrados en la web** (no standalone): un componente nuevo por tool en `src/tools/`, cableado en `catalog.ts` + `registry.ts`, montable y clicable dentro de la app real para validar UX y flujo.
 - **Estado mockup:** solo `useState` en memoria; **sin** Firestore/Storage/Web Worker/PDF real (se usa `window.print()` + `DocumentExportWrapper` para la vista). Cabecera rotulada `// MOCKUP`.
 - **Separación de código:** cada tool es archivo independiente (patrón de las 20 actuales); el desarrollo real luego sustituye internamente persistencia/motor sin tocar a las demás.
-- **Tools (5):** `informe-suelo` (Subsuelo), `accesibilidad` (Ruta Accesible), `informe-termico` (Térmico), `libro-obras` (LDO), `carpeta-digital` (**nueva entrada** de catálogo). **Ruta del código:** `E:\2CLAUDE\ProjectBook\Web\src\...`.
+- **Tools (5):** `informe-suelo` (Subsuelo), `accesibilidad` (Ruta Accesible), `informe-termico` (Térmico), `libro-obras` (LDO), `carpeta-digital` (**nueva entrada** de catálogo). **Ruta del código:** `C:\G\ProjectBook\Web\src\...`.
 
 *Archivos a tocar:* `src/core/types.ts`, `src/core/registry.ts`, `src/core/catalog.ts`, `src/tools/*View.tsx` (5 nuevos), `firestore.rules`, `firestore.indexes.json`, reglas de Storage; referencia de UX/catálogos en `DESARROLLO/**` (memorias + glosarios + `index.html`).

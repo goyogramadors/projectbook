@@ -1,7 +1,7 @@
 # 🗺️ MAPA DE ARQUITECTURA — Archibots SPA
 
 > **Índice estructural definitivo del proyecto.** Generado el 2026-06-16 para servir de mapa de referencia en futuras sesiones y evitar re-explorar el árbol a ciegas.
-> **Raíz productiva (equipo actual):** `E:\2CLAUDE\ProjectBook\Web`  _(renombrada desde `E:\2CLAUDE\Archibots` el 2026-06-22)_
+> **Raíz productiva (equipo actual):** `C:\G\ProjectBook\Web`  _(renombrada desde `E:\2CLAUDE\Archibots` el 2026-06-22)_
 > Cualquier referencia antigua a `E:\2CLAUDE\Archibots\` o `C:\Users\...\Desktop\Archibots\` está **obsoleta**.
 
 > **⟲ ACTUALIZACIÓN 2026-06-17 — Nuevos archivos / rutas (no romper este índice).**

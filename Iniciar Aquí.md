@@ -9,16 +9,16 @@
 > **`Last Update.md`** (raíz del repo): fecha, hora, detalle de lo hecho, archivos tocados y
 > pendientes generados/resueltos. Es el reporte de estado que se entrega a la siguiente instancia.
 >
-> **Última actualización:** 2026-06-23 · **Repositorio:** `E:\2CLAUDE\ProjectBook` · **Raíz de la SPA:** `E:\2CLAUDE\ProjectBook\Web`
+> **Última actualización:** 2026-06-23 · **Repositorio:** `C:\G\ProjectBook` · **Raíz de la SPA:** `C:\G\ProjectBook\Web`
 
 ---
 
 ## 0. Estructura del repositorio (dos ramas)
 
-El proyecto se divide en dos carpetas, **ambas versionadas en un único repositorio Git** cuya raíz es `E:\2CLAUDE\ProjectBook` (ahí viven `.git` y `.gitignore`):
+El proyecto se divide en dos carpetas, **ambas versionadas en un único repositorio Git** cuya raíz es `C:\G\ProjectBook` (ahí viven `.git` y `.gitignore`):
 
 ```
-E:\2CLAUDE\ProjectBook\          ← raíz del repo (.git, .gitignore, Iniciar Aquí.md)
+C:\G\ProjectBook\          ← raíz del repo (.git, .gitignore, Iniciar Aquí.md)
 ├── DESARROLLO\                  ← documentación y material de diseño (todos los .md)
 │   ├── GUIA_GITHUB_Y_DEPLOY.md  · MAPA_ARQUITECTURA_PROYECTO.md
 │   ├── INFORME_AUDITORIA_ARQUITECTURA.md · PLAN_ACCION_MAESTRO_PRODUCCION.md
@@ -36,8 +36,8 @@ E:\2CLAUDE\ProjectBook\          ← raíz del repo (.git, .gitignore, Iniciar A
 ```
 
 **Regla de oro de rutas:**
-- Comandos **Git** → desde la **raíz** `E:\2CLAUDE\ProjectBook` (versiona DESARROLLO + Web juntas).
-- Comandos **`npm` y `firebase`** → desde **`E:\2CLAUDE\ProjectBook\Web`** (ahí está `package.json` y `firebase.json`).
+- Comandos **Git** → desde la **raíz** `C:\G\ProjectBook` (versiona DESARROLLO + Web juntas).
+- Comandos **`npm` y `firebase`** → desde **`C:\G\ProjectBook\Web`** (ahí está `package.json` y `firebase.json`).
 - Las rutas de código de este documento (`src/...`, `functions/...`) son **relativas a `Web\`**.
 
 ---
@@ -116,7 +116,7 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 > - **Backend** (reglas Firestore, reglas Storage, Cloud Functions) → **Firebase** (`archibots-497423`).
 > - ⚠️ **Firebase Hosting NO se usa.** Existe `hosting` en `firebase.json` y la URL `archibots-497423.web.app`, pero es **secundaria/sin uso**. Un `firebase deploy --only hosting` sube a esa URL Firebase, **no** actualiza el sitio real (Cloudflare). No lo uses para publicar el frontend.
 >
-> ⚠️ Los comandos `npm` se ejecutan desde `E:\2CLAUDE\ProjectBook\Web`; los `git` desde la raíz `E:\2CLAUDE\ProjectBook`. El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
+> ⚠️ Los comandos `npm` se ejecutan desde `C:\G\ProjectBook\Web`; los `git` desde la raíz `C:\G\ProjectBook`. El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
 
 ### Frontend (Cloudflare Pages) — proyecto `projectbook`, conectado a GitHub
 El proyecto `projectbook` está **conectado al repo `goyogramadors/projectbook`** (rama `main`, *Automatic deployments: Enabled*). Dominios: **`archibots.cl`** + `projectbook-8qt.pages.dev`. `Web/public/_redirects` (`/*  /index.html  200`) hace la reescritura SPA.

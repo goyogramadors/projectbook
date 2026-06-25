@@ -2,7 +2,7 @@
 
 > **Auditor:** Revisión experta de arquitectura, infraestructura y seguridad.
 > **Fecha:** 2026-06-17
-> **Alcance:** Lectura exhaustiva del repositorio `E:\2CLAUDE\ProjectBook\Web` (código `src/`, `functions/`, reglas Firestore, configuración de build/hosting, scripts y documentación), tomando como mapa de entrada `MAPA_ARQUITECTURA_PROYECTO.md`.
+> **Alcance:** Lectura exhaustiva del repositorio `C:\G\ProjectBook\Web` (código `src/`, `functions/`, reglas Firestore, configuración de build/hosting, scripts y documentación), tomando como mapa de entrada `MAPA_ARQUITECTURA_PROYECTO.md`.
 > **Naturaleza:** Solo diagnóstico y propuesta. No se modificó ninguna línea de código.
 
 ---

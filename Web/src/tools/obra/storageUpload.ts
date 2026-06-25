@@ -26,7 +26,7 @@ export class AdjuntoDemasiadoGrande extends Error {}
 
 /** Sube un archivo y devuelve su metadato persistible. Lanza si excede el límite. */
 export async function subirAdjunto(
-  projectId: string, scope: 'libro' | 'carpeta', file: File,
+  projectId: string, scope: 'libro' | 'carpeta' | 'formularios', file: File,
 ): Promise<ObraAdjunto> {
   if (file.size > MAX_BYTES) throw new AdjuntoDemasiadoGrande(file.name);
   const id = uuid();

@@ -16,6 +16,7 @@ import { AuthProvider, useAuth } from './core/auth/AuthProvider';
 import { ThemeProvider } from './core/theme/ThemeProvider';
 import { ProjectProvider } from './core/db/ProjectProvider';
 import { ToastProvider } from './core/ui/ToastProvider';
+import { ActiveSectionProvider } from './core/ui/ActiveSection';
 import { router } from './core/router';
 import './archibots.css';
 
@@ -50,10 +51,12 @@ function ThemedApp() {
     <ThemeProvider remoteTheme={user?.theme}>
       <ProjectProvider>
         <ToastProvider>
-          <RouterProvider router={router} />
-          <Suspense fallback={null}>
-            <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} />
-          </Suspense>
+          <ActiveSectionProvider>
+            <RouterProvider router={router} />
+            <Suspense fallback={null}>
+              <AuthModal isOpen={authModalOpen} onClose={closeAuthModal} />
+            </Suspense>
+          </ActiveSectionProvider>
         </ToastProvider>
       </ProjectProvider>
     </ThemeProvider>

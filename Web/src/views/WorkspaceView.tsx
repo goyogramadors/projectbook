@@ -16,6 +16,7 @@ import ToolCatalog from '../components/ToolCatalog';
 import ToolHost from '../components/ToolHost';
 import { useProjects } from '../core/db/ProjectProvider';
 import { useToast } from '../core/ui/ToastProvider';
+import { useActiveSection } from '../core/ui/ActiveSection';
 import { getManifest } from '../core/registry';
 import type { CarpetaId, CatalogTool, ToolEstado } from '../core/types';
 
@@ -37,7 +38,7 @@ export default function WorkspaceView() {
   const { projectId, toolId } = useParams();
   const { projects, getProject, addTool, removeTool, setToolState } = useProjects();
   const { triggerToast } = useToast();
-  const [binderTab, setBinderTab] = useState<CarpetaId>(0);
+  const { section: binderTab, setSection: setBinderTab } = useActiveSection();
   const { onShare } = useOutletContext<{ onShare: () => void }>();
 
   /* ── columnas redimensionables/colapsables ── */
@@ -54,7 +55,7 @@ export default function WorkspaceView() {
   const dragRef = useRef<{ which: 'cat' | 'bind'; startX: number; startVal: number } | null>(null);
   const onMove = useCallback((e: PointerEvent) => {
     const d = dragRef.current; if (!d) return;
-    const delta = d.startX - e.clientX; // arrastrar a la izquierda ensancha la columna derecha
+    const delta = e.clientX - d.startX; // gutters a la derecha de su columna: arrastrar a la derecha la ensancha
     const val = Math.min(760, Math.max(180, d.startVal + delta));
     setCols((c) => ({ ...c, [d.which]: val }));
   }, []);
@@ -108,12 +109,12 @@ export default function WorkspaceView() {
   const catW = cols.catOpen ? `${cols.cat}px` : '0px';
   const bindW = cols.bindOpen ? `${cols.bind}px` : '0px';
   const mainStyle: React.CSSProperties = wide
-    ? { gridTemplateColumns: `minmax(280px,1fr) 10px ${catW} 10px ${bindW}`, gridTemplateRows: 'auto 1fr' }
+    ? { gridTemplateColumns: `${bindW} 10px ${catW} 10px minmax(280px,1fr)`, gridTemplateRows: 'auto 1fr' }
     : {};
   const colStyle = (gc: string, gr: string): React.CSSProperties => wide ? { gridColumn: gc, gridRow: gr } : {};
   const Gutter = ({ which, open }: { which: 'cat' | 'bind'; open: boolean }) => {
     if (!wide) return null;
-    const gc = which === 'cat' ? '2' : '4';
+    const gc = which === 'cat' ? '4' : '2';
     return (
       <div className="ab-gutter" style={{ gridColumn: gc, gridRow: '1' }}>
         <button
@@ -130,8 +131,8 @@ export default function WorkspaceView() {
 
   return (
     <main className="ab-main3" style={mainStyle}>
-      {/* COLUMNA IZQUIERDA · ÁREA DINÁMICA + BARRA DE ACCIONES */}
-      <section className="ab-wc3" style={colStyle('1', '1 / 3')}>
+      {/* COLUMNA DERECHA · ÁREA DINÁMICA + BARRA DE ACCIONES */}
+      <section className="ab-wc3" style={colStyle('5', '1 / 3')}>
         <ToolHost />
         {activeTool && (
           <div className="ab-workbar">
@@ -183,8 +184,8 @@ export default function WorkspaceView() {
 
       <Gutter which="bind" open={cols.bindOpen} />
 
-      {/* COLUMNA DERECHA · CARPETA DEL PROYECTO */}
-      <section className="ab-wc1" style={colStyle('5', '1')}>
+      {/* COLUMNA IZQUIERDA · CARPETA DEL PROYECTO + MIS PROYECTOS */}
+      <section className="ab-wc1" style={colStyle('1', '1')}>
         {(!wide || cols.bindOpen) ? (
           <>
             <BinderFicha
@@ -217,7 +218,7 @@ export default function WorkspaceView() {
       </section>
 
       {/* AVANCE DEL EXPEDIENTE — bajo catálogo + carpeta */}
-      <section className="ab-wavance" style={wide ? { gridColumn: '3 / 6', gridRow: '2', alignSelf: 'end' } : {}}>
+      <section className="ab-wavance" style={wide ? { gridColumn: '1', gridRow: '2', alignSelf: 'end' } : {}}>
         <div style={{ display: 'flex', alignItems: 'baseline', gap: 10, marginBottom: 8, flexWrap: 'wrap' }}>
           <span style={{ fontSize: 11, fontWeight: 800, textTransform: 'uppercase', opacity: 0.7, display: 'inline-flex', alignItems: 'center', gap: 6 }}>
             <Icon name="ListChecks" size={13} /> Avance del Expediente

@@ -97,6 +97,18 @@ export interface ToolState {
   fecha?: string;
 }
 
+/** Tipo de proyecto (OGUC) — decide qué formularios municipales corresponden. */
+export type TipoProyecto =
+  | 'Obra nueva'
+  | 'Ampliación mayor a 100 m²'
+  | 'Alteración'
+  | 'Reconstrucción'
+  | 'Reparación';
+
+export const TIPOS_PROYECTO: TipoProyecto[] = [
+  'Obra nueva', 'Ampliación mayor a 100 m²', 'Alteración', 'Reconstrucción', 'Reparación',
+];
+
 /** Master liviano (< 5 KB). Sin arrays de historial (van en subcolecciones). */
 export interface ProjectMaster extends SuperficieModel {
   id: string;
@@ -107,6 +119,8 @@ export interface ProjectMaster extends SuperficieModel {
   direccion: string;
   comuna: string;
   destino: string;
+  /** Tipo de proyecto (OGUC). Determina los formularios DOM visibles. */
+  tipoProyecto?: TipoProyecto;
   etapa: Etapa | string;
   presupuestoUF: string;
   fotoUrl?: string;
@@ -151,6 +165,8 @@ export interface CatalogTool {
   tier: Tier;
   fases: Fase[];
   desc: string;
+  /** Si está definido, la tool solo se muestra para estos tipos de proyecto (OGUC). */
+  tiposProyecto?: TipoProyecto[];
 }
 
 /** Contrato del registro de herramientas (PLAN §1.3 / §5.5). */
@@ -274,3 +290,43 @@ export interface CarpetaDigitalState {
   perms: Record<string, LibroNivel>;
 }
 /* fin contratos Obra Digital */
+
+/* ── DOM-Formularios (formularios municipales llenables, data-driven) ───────── */
+export type FormFieldType = 'text' | 'check' | 'choice' | 'radioGroup';
+
+export interface FormFieldOption {
+  label: string;
+  acro: string;
+  value: string;
+}
+
+export interface FormField {
+  id: string;
+  acro: string | null;
+  page: number;
+  rectPt: [number, number, number, number];
+  type: FormFieldType;
+  bind: string | null;
+  default: string;
+  transform: string | null;
+  options?: FormFieldOption[];
+}
+
+export interface FormFieldMap {
+  formId: string;
+  titulo: string;
+  pdf: string;
+  pageSizePt: { w: number; h: number };
+  pages: number;
+  images: string[];
+  hasAcroForm: boolean;
+  fields: FormField[];
+}
+
+export type FormValues = Record<string, string>;
+
+export interface FormulariosDOMState {
+  forms: Record<string, { values: FormValues; updatedAt: number }>;
+  adjuntos?: Array<{ uuid: string; formId: string; nombre: string; url: string; fecha: string }>;
+}
+/* fin DOM-Formularios */

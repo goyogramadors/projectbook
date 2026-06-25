@@ -13,7 +13,8 @@ import { useProjects } from '../core/db/ProjectProvider';
 import { useToast } from '../core/ui/ToastProvider';
 import { useToolData } from '../hooks/useToolData';
 import DocumentExportWrapper from '../components/DocumentExportWrapper';
-import type { ToolProps, ProjectMaster, Etapa, SuperficieOrigen } from '../core/types';
+import { TIPOS_PROYECTO } from '../core/types';
+import type { ToolProps, ProjectMaster, Etapa, SuperficieOrigen, TipoProyecto } from '../core/types';
 
 /* ── estilos de la lámina de SOLO LECTURA (neutros, papel blanco) ─────────────── */
 const pvH3: React.CSSProperties = { fontSize: 14, fontWeight: 700, margin: '0 0 10px', borderBottom: '2px solid #1a1a1a', paddingBottom: 6, textTransform: 'uppercase' };
@@ -28,7 +29,8 @@ interface DatosExtra { tipoProyecto: string; notas: string; }
    con la clave canónica `ab-datos-proyecto-${projectId}` (retro-compatible). */
 const TOOL_ID = 'datos-proyecto';
 const ETAPAS: Etapa[] = ['Perfil', 'Anteproyecto', 'Proyecto', 'Licitación', 'Obra', 'Recepción'];
-const TIPOS_PROYECTO = ['Habitacional', 'Comercial', 'Industrial', 'Equipamiento', 'Mixto'];
+/* Categoría del proyecto (clasificación de destino/uso, dato propio de la herramienta). */
+const CATEGORIAS_PROYECTO = ['Habitacional', 'Comercial', 'Industrial', 'Equipamiento', 'Mixto'];
 const DESTINOS = ['Vivienda', 'Comercio', 'Oficina', 'Bodega', 'Salud', 'Educación', 'Espacio Público'];
 const DATOS_VACIOS: DatosExtra = { tipoProyecto: 'Habitacional', notas: '' };
 
@@ -42,6 +44,7 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
   const [nombre, setNombre] = useState('');
   const [etapa, setEtapa] = useState<string>('Perfil');
   const [destino, setDestino] = useState('Vivienda');
+  const [tipoProyecto, setTipoProyecto] = useState<TipoProyecto | ''>('');
   const [supTerreno, setSupTerreno] = useState('');
   const [supProyecto, setSupProyecto] = useState('');
   const [origen, setOrigen] = useState<SuperficieOrigen>('MANUAL');
@@ -58,6 +61,7 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
     setNombre(project.name || '');
     setEtapa(project.etapa || 'Perfil');
     setDestino(project.destino || 'Vivienda');
+    setTipoProyecto(project.tipoProyecto || '');
     setSupTerreno(project.superficieTerrenoLegal || '');
     setSupProyecto(project.superficieManual || '');
     setOrigen(project.superficieOrigen || 'MANUAL');
@@ -78,6 +82,7 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
         name: nombre.trim() || project.name,
         etapa,
         destino,
+        tipoProyecto: tipoProyecto || undefined,
         superficieTerrenoLegal: supTerreno,
         superficieManual: supProyecto,
         superficieOrigen: origen,
@@ -117,8 +122,15 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
               </select>
             </div>
             <div className="tech-input-group">
-              <label>Tipo de Proyecto</label>
+              <label>Categoría del Proyecto</label>
               <select className="tech-select" value={extra.tipoProyecto} disabled={readOnly} onChange={e => setExtra(prev => ({ ...prev, tipoProyecto: e.target.value }))}>
+                {CATEGORIAS_PROYECTO.map(t => <option key={t} value={t}>{t}</option>)}
+              </select>
+            </div>
+            <div className="tech-input-group">
+              <label>Tipo de Proyecto</label>
+              <select className="tech-select" value={tipoProyecto} disabled={readOnly} onChange={e => setTipoProyecto(e.target.value as TipoProyecto)}>
+                <option value="">— Seleccionar —</option>
                 {TIPOS_PROYECTO.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -169,7 +181,8 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
             <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
               <tr><td style={pvK}>Nombre</td><td style={pvTd}>{nombre || '—'}</td></tr>
               <tr><td style={pvK}>Etapa</td><td style={pvTd}>{etapa}</td></tr>
-              <tr><td style={pvK}>Tipo de Proyecto</td><td style={pvTd}>{extra.tipoProyecto}</td></tr>
+              <tr><td style={pvK}>Categoría del Proyecto</td><td style={pvTd}>{extra.tipoProyecto}</td></tr>
+              <tr><td style={pvK}>Tipo de Proyecto</td><td style={pvTd}>{tipoProyecto || '—'}</td></tr>
               <tr><td style={pvK}>Destino</td><td style={pvTd}>{destino}</td></tr>
               <tr><td style={pvK}>Superficie Terreno Legal</td><td style={pvTd}>{supTerreno || '—'} m²</td></tr>
               <tr><td style={pvK}>Superficie a Edificar</td><td style={pvTd}>{supProyecto || '—'} m²</td></tr>

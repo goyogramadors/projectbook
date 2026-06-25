@@ -10,6 +10,271 @@
 
 ---
 
+## 2026-06-24 23:30 (Chile) — Ajustes del "Block" (navegador), layout central y remitente de correos
+
+### Block (navegador del header) — afinamientos visuales
+- Tamaño/medidas finales en `.ab-nav-host` (`src/archibots.css`): el elemento (`#ab-nav-root`)
+  quedó en **175px** de alto, host `flex-basis 625px`, **anclado a la base** (`align-items:flex-end`)
+  con `min-height:215px` (el aire extra del header va arriba). Padding inferior 16px para
+  despegarlo del borde inferior. Padding izquierdo reducido a 7.5px (–25% al borde izq).
+- En `src/components/archiblocks-scene.html`:
+  - Ícono de **Permisos** movido de abajo a **arriba a la derecha** (`translate 636,150`),
+    con su línea conectora y pin re-ruteados; esto permitió bajar el header.
+  - `viewBox` final `150 66 900 336` (recorte inferior + aire arriba para el texto grande).
+  - Etiqueta de sección: **una sola línea siempre** (lógica en `ArchiblocksNav.tsx`),
+    fuente **58px**, **justificada a la derecha** (`text-anchor:end`, anclas de `lab-line1/2`
+    en `translate 460,…`, regla naranja `x=160 width=300`). Ángulo isométrico original `-0.5`.
+  - Paleta **responsiva** a todos los temas: hereda `currentColor` (=`--bar-foreground`) y
+    `--bar`; el acento usa `--destructive`.
+- `src/components/ArchiblocksNav.tsx`: la escena se **inyecta una sola vez** (no por
+  `dangerouslySetInnerHTML`) para que el `.active` y los textos no se borren en re-render;
+  clics por **delegación de eventos**. Marca/“des-marca” en ambos sentidos (Block ↔ pestañas
+  del Binder) vía contexto `ActiveSection`. Nodo **galvano = carpeta 6 Administrativos**.
+- Marca: separación de "Archiblocks" + slogan al borde derecho **triplicada**
+  (`.ab-brand` padding-right 9→27px).
+
+### Layout central (`src/views/WorkspaceView.tsx`)
+- Columnas reordenadas: **izquierda** = Carpeta del proyecto + "Mis Proyectos";
+  **centro** = Catálogo (sin cambios); **derecha** = Área dinámica de trabajo.
+  "Avance del Expediente" quedó **debajo de "Mis Proyectos"** (col 1, fila 2).
+- Se reasignaron columnas del grid e invirtió el signo del arrastre de los separadores.
+
+### Remitente de invitaciones (anti-SPAM)
+- `functions/src/index.ts`: `from` de `sendInviteEmail` y `sendPremiumInviteEmail` cambiado de
+  `crearco@gmail.com` → **`contacto@archibots.cl`** (nombre **Archiblocks**). Falta el deploy de
+  functions (`firebase deploy --only functions`) y autenticar el dominio en SendGrid (CNAME DKIM)
+  + verificar el sender. Casilla `contacto@archibots.cl` se crea con **Cloudflare Email Routing**
+  (reenvío a `crearco@gmail.com`); pendiente habilitar el servicio y aplicar MX/TXT.
+
+### Pendientes
+- `npm run build` local + `firebase deploy --only functions` para que el nuevo remitente quede vivo.
+- Completar Cloudflare Email Routing (enable + DNS) y SendGrid Domain Authentication (anti-SPAM).
+- Curaduría fina de `bind` en los field-maps DOM (sesiones previas).
+
+---
+
+## 2026-06-24 21:15 (Chile) — Refactor del Header: navegador interactivo Archiblocks + rebrand
+
+### Contexto
+Se rediseña SOLO la parte superior (header). La marca pasa de **BASEPRO → Archiblocks**
+(«blocks» en rojo). Se reemplazan las 2 imágenes del header por el nuevo **logo/navegador
+interactivo** (SVG isométrico, 9 nodos de acceso directo) que marca la sección activa.
+
+### Nuevo layout del header (izq→der)
+1. Navegador interactivo (alto completo, fondo transparente → se funde con la barra).
+2. Botones actuales (Inicio · Usuario · Tema · Proyecto · SYSTEM_OK).
+3. Marca **Archiblocks** (arriba-der, «blocks» en rojo, mismo letter-spacing que BASEPRO)
+   con slogan rotativo debajo (5 frases, mayúsculas en rojo).
+
+### Mapa de los 9 nodos → sección
+edificio=Inicio (/) · botonera=Datos Proyecto (carpeta 1) · terreno=Terreno (2) ·
+archivador=Proyecto (3) · permisos=Permisos (4) · carpeta=Carpeta Digital (5) ·
+ductos=Obra (5) · libro=Libro de Obra (5) · galvano=Admin (/admin).
+(Carpeta Digital, Obra y Libro de Obra abren la sección **5. Construcción**.)
+
+### Archivos nuevos
+- **`src/components/archiblocks-scene.html`** — escena SVG + estilos, fondo transparente,
+  paleta por `[data-theme]` (oscuro/claro). **Editable por separado** (es el «elemento aparte»).
+- **`src/components/ArchiblocksNav.tsx`** — inyecta la escena (`?raw`) y conecta el
+  comportamiento a React (etiqueta, líneas, hover, clic). Props `active`/`dark`/`onSelect`.
+- **`src/core/ui/ActiveSection.tsx`** — contexto que une el navegador del header con la
+  carpeta del Binder (`section` ↔ `navNode`, con mapas NODE_SECTION/SECTION_NODE).
+
+### Archivos tocados
+- **`src/components/ShellTop.tsx`** — quita las 2 `<img>` y «BASEPRO»; agrega el navegador,
+  la marca Archiblocks y el slogan rotativo (`BrandTagline`); `onNav` enruta + marca; efecto
+  que sincroniza Inicio/Admin con el nodo marcado.
+- **`src/views/WorkspaceView.tsx`** — el `binderTab` ahora viene del contexto `useActiveSection`
+  (antes era estado local), para que el navegador del header controle la carpeta.
+- **`src/main.tsx`** — envuelve la app en `<ActiveSectionProvider>`.
+- **`src/archibots.css`** — `.ab-nav-host` (alto completo, blend), `.ab-brand-rot` (fade),
+  ocultar navegador en <760px.
+
+### Verificación
+- `ArchiblocksNav.tsx` y `ActiveSection.tsx` pasan esbuild (sintaxis OK). El resto se revisó
+  manualmente. ⚠️ Igual que antes, falta `npm run build`/`npm run dev` local para confirmar
+  0 errores TS (el montaje del sandbox no refleja ediciones sobre archivos existentes).
+- Imágenes viejas (`Logo-Archibots.png`, `Basepro-*.png`) quedan en `public/` sin uso; se
+  pueden borrar luego. `archiblocks.html` original en `public/` queda como referencia; el
+  componente usa la copia en `src/components/`.
+
+---
+
+## 2026-06-24 17:00 (Chile) — Tipo de proyecto + 5 formularios DOM (Obra Nueva) llenables
+
+### Contexto
+Se introduce el dato "Tipo de proyecto" (OGUC) que gobierna qué formularios municipales
+aparecen en Expedientes de Permisos → Expediente DOM, y se suben los 5 formularios de
+**Obra Nueva** como herramientas llenables data-driven (skill `dom-formularios`, 5 trámites).
+
+### Cambios (archivos tocados)
+- **`src/core/types.ts`** — nuevo `TipoProyecto` (5 valores OGUC: Obra nueva, Ampliación
+  mayor a 100 m², Alteración, Reconstrucción, Reparación) + const `TIPOS_PROYECTO`;
+  `ProjectMaster.tipoProyecto?` (opcional); `CatalogTool.tiposProyecto?` (visibilidad).
+- **`src/tools/DatosProyectoView.tsx`** — el antiguo "Tipo de Proyecto" (Habitacional/…)
+  se renombra a **"Categoría del Proyecto"** (constante local `CATEGORIAS_PROYECTO`, misma
+  persistencia `ab-datos-proyecto`); se agrega el nuevo selector **"Tipo de Proyecto"** (OGUC)
+  guardado en el ProjectMaster (`repo.save`). Preview actualizada con ambas filas.
+- **`src/core/catalog.ts`** — 5 slots en Expediente DOM con `tiposProyecto`:
+  `solicitud-permiso` → "Solicitud de Anteproyecto"; nuevos `permiso-edificacion`,
+  `modificacion-proyecto`, `dj-termino`; `recepcion-final` repurposed → "Solicitud de
+  Recepción Definitiva" (active). Visibilidad por tipo según distribución de la Biblioteca.
+- **`src/core/registry.ts`** — los 5 slots montan la MISMA vista `FormulariosDOMView` (lazy).
+- **`src/tools/FormulariosDOMView.tsx`** — resuelve el field-map por **slot (toolId)+Tipo de
+  proyecto** (`SLOT_TRAMITE` + `FORM_BY_TIPO`); `useToolData` por slot; oculta el selector
+  cuando el formulario queda fijado por el tipo. Retro-compatible con `solicitud-permiso`.
+- **`src/components/ToolCatalog.tsx`** — filtra el catálogo por `ProjectMaster.tipoProyecto`
+  (helper `allowed`): si la tool restringe `tiposProyecto` y el proyecto tiene un tipo no
+  incluido, se oculta; sin tipo definido se muestran todas.
+- **`src/forms/index.ts`** — registra los field-maps `2-3.1`, `2-5.1`, `2-7.1`, `dj-termino-on`
+  (además de `2-1.1`).
+- **NUEVOS field-maps + imágenes** (skill `dom-formularios`, build_form.py):
+  `src/forms/{2-3.1,2-5.1,2-7.1,dj-termino-on}.fieldmap.json` (450/678/255/299 campos) y
+  `public/forms/{…}/page-N.png`. Títulos curados por formulario.
+
+### Distribución por Tipo de proyecto (de BibliotecaView)
+- Obra nueva: Anteproyecto · Permiso · Modificación · Recepción · DJ Término (5)
+- Ampliación >100 m²: Anteproyecto · Permiso · Modificación · Recepción (sin DJ)
+- Alteración: Anteproyecto · Permiso · Recepción · DJ (sin Modificación)
+- Reconstrucción: las 5 · Reparación: Permiso · Modificación · Recepción · DJ (sin Anteproyecto)
+
+### Actualización (misma sesión) — field-maps de TODOS los tipos
+Se generaron los 17 formularios restantes (skill `dom-formularios`), completando los 5 tipos:
+- Ampliación > 100 m²: `2-1.2`, `2-3.2`, `2-5.2`, `2-7.2` (sin DJ).
+- Alteración: `2-1.3`, `2-3.3`, `2-7.3`, `dj-termino-alt` (sin Modificación).
+- Reconstrucción: `2-1.4`, `2-3.4`, `2-5.4`, `2-7.4`, `dj-termino-rec`.
+- Reparación: `2-3.5`, `2-5.5`, `2-7.5`, `dj-termino-rep` (sin Anteproyecto).
+Total: **22 field-maps** en `src/forms/` + 22 carpetas de PNG en `public/forms/`. Títulos
+curados. `src/forms/index.ts` reescrito con los 22 imports; `FORM_BY_TIPO` (FormulariosDOMView)
+extendido con los 5 tipos. Los slots ahora resuelven el PDF exacto por tipo+trámite.
+
+### PENDIENTE / verificación
+- ⚠️ **Falta `npm run build` local.** El sandbox no reflejó las ediciones en el montaje
+  bash, así que no se pudo compilar aquí; los archivos en disco están correctos. Ejecutar
+  `npm run build` (o `npm run dev`) en `Web/` para confirmar 0 errores TS y los chunks.
+- Curaduría fina de `bind` en los 21 field-maps nuevos (auto-bind cubrió 11–37 campos c/u);
+  el resto de campos se llenan a mano o se curan después contra `reference/fieldmap-spec.md`.
+
+---
+
+## 2026-06-24 12:13 (Chile) — Cambio de raíz del repositorio: E:\2CLAUDE\ProjectBook → C:\G\ProjectBook
+
+### Contexto
+Andrés movió el repositorio a `C:\G\ProjectBook`. El resto de carpetas/subcarpetas (`Web/`,
+`DESARROLLO/`, etc.) permanece igual. Se actualizan todas las referencias documentales a la raíz.
+
+### Cambios
+- Reemplazo global `E:\2CLAUDE\ProjectBook` → `C:\G\ProjectBook` (41 ocurrencias en 10 archivos):
+  `Iniciar Aquí.md`, `.gitignore`, `Web/archibots-project-root-memory.md` y en `DESARROLLO/`:
+  `GUIA_GITHUB_Y_DEPLOY.md`, `MAPA_ARQUITECTURA_PROYECTO.md`, `PLAN_ACCION_MAESTRO_PRODUCCION.md`,
+  `PLAN_REFACTORIZACION_SPA.md`, `INFORME_AUDITORIA_ARQUITECTURA.md`, `Mockup nuevas herramientas.md`,
+  `Tintero - Pendientes.md`.
+- Las referencias **históricas** a `E:\2CLAUDE\Archibots` (obsoletas, conservadas para trazabilidad)
+  NO se tocaron.
+
+### Verificado
+0 referencias restantes a la raíz anterior; 41 ya con `C:\G\ProjectBook`. Subrutas (`\Web`, `\DESARROLLO`)
+intactas.
+
+### Nota
+El skill instalado `dom-formularios` (SKILL.md + reference) aún cita la raíz anterior en su texto;
+es un paquete aparte (caché de skills) y se actualizará al reinstalarlo, no afecta al código del repo.
+
+---
+
+## 2026-06-24 09:46 (Chile) — DOM-Formularios: primer formulario llenable (F 2-1.1) integrado y compilando
+
+### Contexto
+Primera prueba del skill `dom-formularios`. Se integra el FORMULARIO-2-1.1 (Solicitud de Aprobación
+de Anteproyecto — Obra Nueva) como herramienta llenable data-driven, en Carpeta 4 (Expedientes de
+Permisos) → "Expediente DOM" → "Formulario de Solicitud de Permiso".
+
+### Decisión de integración
+La entrada `solicitud-permiso` YA existía en `catalog.ts` (folder 4, sub "Expediente DOM", `soon`) —
+es exactamente el slot pedido. Se **activó esa entrada** apuntando a la herramienta nueva en vez de
+duplicar id. La tool es ÚNICA y data-driven (sirve a todos los formularios vía field-map).
+
+### Cambios (archivos tocados)
+- **`src/core/types.ts`** — contratos DOM-Formularios: `FormFieldType`, `FormField`, `FormFieldMap`,
+  `FormValues`, `FormulariosDOMState`, `FormFieldOption`.
+- **`src/tools/forms/fillForm.ts`** (nuevo) — motor híbrido pdf-lib (import dinámico): rellena AcroForm
+  por `field.acro` (texto/casilla/choice/radio); fallback `drawText` en `rectPt`; `transform`
+  (uppercase/date/uf/number/split); `downloadPdf`.
+- **`src/tools/FormulariosDOMView.tsx`** (nuevo) — UNA tool data-driven: imágenes de página de fondo +
+  inputs HTML superpuestos por coordenadas (pt→px, flip Y), prefill desde `ProjectMaster` + Arquitecto
+  (lee `toolData/participantes`), `useToolData('solicitud-permiso')`, `setToolState`, descarga y
+  **guardado en expediente** vía `subirAdjunto(pid,'formularios',file)`.
+- **`src/forms/2-1.1.fieldmap.json`** (nuevo) — field-map real (262 campos: 188 texto, 73 casillas,
+  1 lista; 15 auto-bind). Generado con `extract_fields.py`.
+- **`src/forms/index.ts`** (nuevo) — registro `FORM_MAPS` de field-maps.
+- **`public/forms/2-1.1/page-1..5.png`** (nuevos) — fondos del editor (pdftoppm 150 dpi).
+- **`src/tools/obra/storageUpload.ts`** — `scope` ampliado a `'libro'|'carpeta'|'formularios'`
+  (las `storage.rules` ya cubren `obra/**`; sin reglas nuevas).
+- **`src/core/registry.ts`** — `solicitud-permiso` → lazy `FormulariosDOMView`.
+- **`src/core/catalog.ts`** — `solicitud-permiso` `soon`→`active` + desc.
+- **`package.json`** — nueva dependencia **`pdf-lib ^1.17.1`** (única lib nueva; carga lazy).
+
+### Incidencia §8 (mount) — manejada
+El montaje sirvió vistas stale/truncadas de los archivos editados (bash/tsc veían cola cortada;
+las file-tools/Windows estaban íntegras). La verificación se hizo reconstruyendo el contenido
+autoritativo en dir nativo del sandbox (`/tmp`).
+
+### Verificado
+`tsc --noEmit` → **0 errores**. `vite build` (outDir temporal) → **exit 0**, con chunk
+**`FormulariosDOMView`** (~39.6 kB) y **pdf-lib en chunk lazy aparte** (no entra al bundle base).
+Pendiente de prueba E2E en vivo (prefill real, descarga, subida a Storage) tras `git push`.
+
+### Pendientes
+- [x] Activar/cablear "Formulario de Solicitud de Permiso" (F 2-1.1) en Expediente DOM.
+- [ ] **Publicar**: `git push` (Cloudflare reconstruye) — requerirá `npm install` para `pdf-lib`.
+- [ ] Curaduría fina del field-map 2-1.1: completar `bind` (hoy 15/262), agrupar radios SÍ/NO,
+  `transform` (uppercase/fechas), verificar visualmente que cada input cae en su casilla.
+- [ ] Verificar E2E subida a Storage (`obra/formularios/`) contra el bucket.
+
+---
+
+## 2026-06-23 17:56 (Chile) — Fix logo header: re-vectorización del alfa por luminancia (contraste roto en barra clara)
+
+### Síntoma reportado (Andrés, con capturas)
+El logo del perímetro se veía como **líneas finas** y "lo que debería ser contraste quedó transparente", sobre todo al invertirse en barra clara (tema matrix). La última captura mostraba el ícono reducido a contornos.
+
+### Causa raíz
+`public/Basepro-N-t.png` se había generado del **JPG chico de 548 px** (`Basepro N.jpg`) mediante *flood-fill* desde el borde: (a) baja resolución → trazo fino; (b) el flood-fill solo vacía el blanco **exterior** y deja líneas internas como blanco opaco, de modo que al aplicar `filter:invert(1)` en matrix el documento perdía cuerpo y quedaba como contorno débil.
+
+### Fix (re-vectorización del canal alfa — sin tocar código)
+- Alfa generado por **luminancia global** (no flood-fill) desde el máster de alta resolución **`Basepro B.png` (1481×1536, trazo negro sólido)**: trazo (lum≤100) → opaco; fondo (lum≥175) → transparente; rampa lineal intermedia (anti-alias). Resultado two-tone limpio: TODO el blanco (exterior e interior) queda transparente, TODO el trazo queda sólido. Downscale LANCZOS a 760 px.
+- Regenerados **`public/Basepro-N-t.png`** (tinta blanca, 61 KB — el que usa producción) y **`public/Basepro-B-t.png`** (tinta oscura limpia, 74 KB — pareja consistente, hoy no referenciada).
+- **Cero cambios de código:** `ShellTop.tsx` sigue usando `src="/Basepro-N-t.png"` + `.ab-logo-invert{filter:invert(1)}` en matrix. Solo se reemplazó el asset (edición quirúrgica §8).
+
+### Verificado
+Composición sobre barra oscura (#2a2a2a, tinta blanca) y barra clara (#e5e5e5, invertida a negro): ambos renders muestran ícono **sólido y a pleno trazo** (borde de documento grueso, caras del cubo y check macizos). Bug de "contraste transparente" resuelto en los 4 temas.
+
+### Pendiente cerrado
+- [x] Revisar en vivo el contraste del logo en los 4 temas — **resuelto a nivel de asset** (queda confirmar en vivo tras `git push`).
+
+### Pendiente que sigue abierto
+- [ ] Verificar E2E la subida real de adjuntos contra el bucket (no testeable desde sandbox).
+- [ ] **Publicar**: `git push` para que Cloudflare reconstruya y se vea el logo corregido.
+
+---
+
+## 2026-06-23 17:10 (Chile) — Deploy backend a Firebase: reglas Storage + Firestore (HECHO)
+
+### Acción (HITL Andrés, desde `Web/`)
+- `firebase use prod` → alias `prod` = **archibots-497423**.
+- `firebase deploy --only storage` → `storage.rules` compiló OK; **released** a `firebase.storage`. (API `firebasestorage.googleapis.com` habilitada.)
+- `firebase deploy --only firestore:rules` → `firestore.rules` y `firestore.coordenadasnormativas.rules` compilaron OK; **released** a `cloud.firestore`.
+- Ambos "Deploy complete". Las reglas ya estaban al día en el servidor (skipping upload), pero quedaron **released/confirmadas**.
+
+### Pendientes cerrados
+- [x] Deploy backend: `firebase deploy --only storage` + `--only firestore:rules`. ✅ (cubre adjuntos de Obra Digital en Storage + reglas zero-trust Firestore).
+
+### Pendiente que sigue abierto
+- [ ] Revisar en vivo el contraste del logo en los 4 temas (cad/washi/matrix/white).
+- [ ] Verificar E2E la subida real de adjuntos contra el bucket (no testeable desde sandbox).
+
+---
+
 ## 2026-06-23 16:40 (Chile) — UX: Carpeta Digital (2/3-1/3 + ver/agregar) · Libro de Obras (índice colapsable por mes + columna folios) · header BASEPRO + logo
 
 ### Contexto
