@@ -75,7 +75,7 @@ export const sendInviteEmail = functions.https.onCall(
     const { projectId, projectName, invitedEmail, rol, token } =
       request.data as InvitePayload;
 
-    const inviteUrl = `https://archibots-497423.web.app/invite/${token}`;
+    const inviteUrl = `https://archibots.cl/invite/${token}`;
     const rolLabel  = rol === 'editor' ? 'Editor' : 'Lector';
 
     const sgApiKey = process.env.SENDGRID_API_KEY;
@@ -143,7 +143,7 @@ export const sendPremiumInviteEmail = functions.https.onCall(
     const sgApiKey = process.env.SENDGRID_API_KEY;
     if (!sgApiKey) throw new functions.https.HttpsError('failed-precondition', 'SENDGRID_API_KEY no configurado.');
 
-    const appUrl = 'https://archibots-497423.web.app/';
+    const appUrl = 'https://archibots.cl/';
     const body = {
       personalizations: [{ to: [{ email }] }],
       from:    { email: 'contacto@archibots.cl', name: 'Archiblocks' },
