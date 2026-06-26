@@ -1,5 +1,5 @@
 # PROMPT TÉCNICO MAESTRO — DESARROLLO DE HERRAMIENTAS ARCHIBOTS
-> **Versión 1.0 · Junio 2026**
+> **Versión 1.1 · Junio 2026** (actualizado a la arquitectura vigente: rutas `Web/`, hook `useToolData`, registro en catálogo, catálogos de datos desde .md)
 > Copia este archivo completo, rellena los marcadores `[ASÍ]` y pégalo en cualquier LLM.
 > El asistente debe generar UN único archivo `.tsx` listo para copiar sin modificaciones.
 
@@ -28,7 +28,7 @@ Genera el archivo completo de la herramienta **[NOMBRE DE LA HERRAMIENTA]** (id 
 ## 3. RUTA DE SALIDA Y CONVENCIÓN DE NOMBRE
 
 ```
-Archibots/Archibots/src/tools/[NombreEnPascalCase]View.tsx
+Web/src/tools/[NombreEnPascalCase]View.tsx
 ```
 
 - **Un solo archivo** `.tsx`. Sin archivos CSS separados, sin archivos de test.
@@ -123,6 +123,30 @@ import { superficieProyecto } from '../core/types';
 // superficieProyecto(project) → devuelve superficieManual o superficieCalculada
 // según superficieOrigen === 'MANUAL' | 'DIMENSIONADOR'
 ```
+
+### 6.5 `useToolData()` — persistencia GOBERNADA de datos de herramienta (preferida)
+
+Es la forma **canónica** de guardar el estado propio de una herramienta (no superficies ni
+campos del master). Sincroniza Cloud (Premium → `projects/{pid}/toolData/{toolId}`) con
+degradación a `localStorage` (`ab-{toolId}-{pid}`). Reemplaza el manejo manual de localStorage.
+
+```typescript
+import { useToolData } from '../hooks/useToolData';
+
+interface MiEstado { campo: string; lista: string[]; }
+const FALLBACK: MiEstado = { campo: '', lista: [] }; // CONSTANTE estable del módulo (no recrear)
+
+const { data, setData, save, loading } = useToolData<MiEstado>('[ID-KEBAB-CASE]', projectId, FALLBACK);
+
+// Editar + persistir:
+const commit = (patch: Partial<MiEstado>) => { const next = { ...data, ...patch }; setData(next); void save(next); };
+```
+
+- `projectId === undefined` ⇒ hook inerte (`data = fallback`, `save` devuelve `false`).
+- El `toolId` DEBE coincidir con el id del catálogo. Reglas Firestore: `toolData/{document=**}` ya cubierto.
+- Una herramienta puede leer el estado de OTRA instanciando `useToolData('otro-tool', projectId, OTRO_FALLBACK)` (p. ej. Presupuesto reusa la selección del Generador de EETT).
+
+---
 
 ---
 
@@ -488,7 +512,7 @@ export default function [NombreEnPascalCase]View({ projectId, access = 'edit' }:
 
 ## 15. CONTRATO DE REGISTRO EN `registry.ts`
 
-Una vez que tengas el archivo, añade esta entrada en `Archibots/Archibots/src/core/registry.ts` dentro de `LAZY_COMPONENTS`:
+Una vez que tengas el archivo, añade esta entrada en `Web/src/core/registry.ts` dentro de `LAZY_COMPONENTS`:
 
 ```typescript
 [ID-KEBAB-CASE]: React.lazy(() => import('../tools/[NombreEnPascalCase]View')),
@@ -514,3 +538,32 @@ Y en el array `CATALOG` (o `TOOLS`), el objeto `CatalogTool` correspondiente:
 ---
 
 *Fin del Prompt Maestro. Rellena §2, ajusta §15 y pega todo en el LLM generador.*
+
+
+---
+
+## 16. REGISTRO EN `catalog.ts` (metadata) y catálogos de datos desde `.md`
+
+Registrar en `registry.ts` (§15) **no basta**: la herramienta también debe tener su entrada de
+presentación en `Web/src/core/catalog.ts` (`CATALOG[]`):
+
+```typescript
+{ id: '[ID-KEBAB-CASE]', code: '', label: 'Nombre visible', folder: <n>, sub: '<subsección>',
+  icon: '<LucideIcon>', estado: 'active' /* | 'soon' */, tier: 'free' /* | 'premium' */,
+  fases: ['CONSTRUCCIÓN'], desc: 'Descripción corta.' },
+```
+
+- `estado: 'soon'` muestra la tarjeta deshabilitada; `'active'` la habilita (montará el componente del registry).
+- `tier: 'premium'` activa el candado del paywall vía `useAccess` (el `ToolHost` ya pasa `access`).
+- Si la tool restringe por tipo de proyecto, añade `tiposProyecto: [...]`.
+
+### Catálogos de DATOS desde `.md` (patrón EETT / Presupuesto)
+
+Cuando una herramienta se alimenta de un cuerpo de datos extenso y editable (partidas, precios,
+textos), **mantén el `.md` como fuente** en `DESARROLLO/` y genera un módulo TS tipado con un
+script en `Web/scripts/`. La herramienta importa el `.ts` (no parsea `.md` en runtime). Ejemplo
+vigente: `Web/scripts/build-catalogos-construccion.mjs` → `Web/src/tools/construccion/catalogo.eett.ts`
+y `catalogo.presupuesto.ts`, con la lógica de activación en `construccion/activaSi.ts`.
+
+> ⚠️ Nota de entorno: al editar archivos existentes grandes, hazlo en scratch y copia (`cp`),
+> porque el montaje puede truncar ediciones directas largas.

@@ -10,7 +10,7 @@ import { collection, getDocs, doc, updateDoc, getDoc, setDoc, query, where } fro
 import { db } from './firebase';
 import type { Plan, TopToolsConfig } from './types';
 
-export type UserEstado = 'Activo' | 'Suspendido';
+export type UserEstado = 'Activo' | 'Suspendido' | 'Pendiente';
 
 /** Fila de usuario para la tabla del panel de administración. */
 export interface AdminUserRow {
@@ -20,6 +20,8 @@ export interface AdminUserRow {
   plan: Plan;
   estado: UserEstado;
   compPremium: boolean;
+  /** true = usuario invitado Premium que aún no completó el registro. */
+  invitado?: boolean;
 }
 
 interface UserDoc {
@@ -30,10 +32,11 @@ interface UserDoc {
   plan?: string;
 }
 
-/** Lista todos los usuarios de la plataforma (colección users). */
+/** Lista todos los usuarios de la plataforma (colección users + invitaciones pendientes). */
 export async function listUsers(): Promise<AdminUserRow[]> {
+  // ── Usuarios registrados ──────────────────────────────────────────────────
   const snap = await getDocs(collection(db, 'users'));
-  return snap.docs.map((d) => {
+  const registered: AdminUserRow[] = snap.docs.map((d) => {
     const u = d.data() as UserDoc;
     const compPremium = u.compPremium === true;
     const plan: Plan = compPremium || u.plan === 'premium' || u.plan === 'Premium' ? 'Premium' : 'Free';
@@ -42,10 +45,33 @@ export async function listUsers(): Promise<AdminUserRow[]> {
       email: u.email ?? '—',
       nombre: u.nombre ?? u.email?.split('@')[0] ?? 'usuario',
       plan,
-      estado: u.estado ?? 'Activo',
+      estado: (u.estado ?? 'Activo') as UserEstado,
       compPremium,
     } satisfies AdminUserRow;
   });
+
+  // ── Invitaciones Premium pendientes (aún sin registro) ────────────────────
+  let pending: AdminUserRow[] = [];
+  try {
+    const invSnap = await getDocs(
+      query(collection(db, 'premiumInvitations'), where('pendiente', '==', true)),
+    );
+    pending = invSnap.docs.map((d) => {
+      const inv = d.data() as { email?: string };
+      const email = inv.email ?? '—';
+      return {
+        uid: `invite-${d.id}`,
+        email,
+        nombre: email.split('@')[0] ?? email,
+        plan: 'Premium' as Plan,
+        estado: 'Pendiente' as UserEstado,
+        compPremium: true,
+        invitado: true,
+      } satisfies AdminUserRow;
+    });
+  } catch { /* sin acceso a premiumInvitations (reglas/offline) → solo muestra registrados */ }
+
+  return [...pending, ...registered];
 }
 
 /** Suspende o reactiva una cuenta (users/{uid}.estado). */

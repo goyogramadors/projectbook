@@ -18,11 +18,10 @@ import { useDimensionadorSync } from '../hooks/useDimensionadorSync';
 import { loadComunaGeoJSON } from '../core/GeoJsonService';
 import { getNormativaDesdeFeature } from '../core/NormativaService';
 import type { ToolProps, NormativaPRC } from '../core/types';
+import { loadTerreno, saveTerreno } from './terrenoStore';
 
 const DEFAULT_CENTER = { lat: -33.4569, lng: -70.6483 }; // Ñuñoa (capa de muestra)
 const MAPS_KEY = ((import.meta as { env?: Record<string, string> }).env?.VITE_GOOGLE_MAPS_API_KEY) ?? '';
-// Clave de disco COMPARTIDA con Ubicación/Mapa de Terreno: el polígono es el mismo.
-const TERRENO_KEY = (pid: string) => `ab-mapa-terreno-${pid}`;
 
 interface WorkerIntersect { id: number; ok: boolean; feature: { properties: Record<string, unknown> } | null; areaM2: number | null; error?: string; }
 interface WorkerArea { id: number; ok: boolean; areaM2: number; error?: string; }
@@ -80,7 +79,7 @@ function fichaEstimada(zona: string | null): NormativaPRC {
 
 export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
-  const { getProject } = useProjects();
+  const { getProject, repo } = useProjects();
   const { syncSuperficie } = useDimensionadorSync();
   const project = getProject(projectId);
 
@@ -191,7 +190,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
             setAreaTerreno(r.areaM2);
             notify(`Polígono: ${r.areaM2.toLocaleString('es-CL')} m².`);
             // Persiste en la clave compartida; Ubicación lo redibuja al abrir.
-            if (projectId) { try { localStorage.setItem(TERRENO_KEY(projectId), JSON.stringify({ ring, areaM2: r.areaM2 })); } catch { /* ignore */ } }
+            if (projectId) saveTerreno(projectId, { ring, areaM2: r.areaM2 }, repo.kind === 'cloud');
           }
         };
         const pPath: MapsAny = polygon.getPath();
@@ -205,8 +204,8 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         // (misma clave de disco), se redibuja y encuadra; su área se recalcula.
         let teniaPoligono = false;
         try {
-          const raw = projectId ? localStorage.getItem(TERRENO_KEY(projectId)) : null;
-          const saved = raw ? ((JSON.parse(raw) as { ring?: Array<[number, number]> }).ring ?? []) : [];
+          const savedT = projectId ? await loadTerreno(projectId, repo.kind === 'cloud') : null;
+          const saved = savedT?.ring ?? [];
           if (saved.length >= 3) {
             teniaPoligono = true;
             ringRef.current = saved;

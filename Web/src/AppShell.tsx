@@ -41,9 +41,9 @@ export default function AppShell() {
   // Cambiar de herramienta dentro de un proyecto NO refunde el shell (el ToolHost
   // ya anima su propio cambio); solo se cruza-funde al cambiar de grupo.
   const segs = location.pathname.split('/').filter(Boolean);
-  const isWorkspace = segs[0] === 'p';
+  const isWorkspace = segs[0] === 'p' || segs[0] === 'o'; // 'o' = workspace LDO (ancho completo)
   const isHome = location.pathname === '/';
-  const routeKey = isWorkspace && segs[1] ? `/p/${segs[1]}` : location.pathname;
+  const routeKey = isWorkspace && segs[1] ? `/${segs[0]}/${segs[1]}` : location.pathname;
   const isShellLayout = isHome || isWorkspace;
 
   return (

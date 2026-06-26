@@ -14,12 +14,12 @@ import { motion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { useProjects } from '../core/db/ProjectProvider';
 import { useToast } from '../core/ui/ToastProvider';
-import { getRegionesSorted, getComunasPorRegionSorted } from '../core/data-chile';
+import { getRegionesSorted, getComunasPorRegionSorted, getRegionDeComuna } from '../core/data-chile';
 import type { ToolProps, ProjectMaster } from '../core/types';
+import { loadTerreno, readTerrenoLocal, saveTerreno } from './terrenoStore';
 
 /* ── constantes ────────────────────────────────────────────────────────────── */
 const STORAGE_KEY = (pid: string) => `ab-ubicacion-${pid}`;
-const TERRENO_KEY = (pid: string) => `ab-mapa-terreno-${pid}`; // COMPARTIDA con Geolocalizador
 const REGIONES = getRegionesSorted();
 const DEFAULT_CENTER = { lat: -33.4569, lng: -70.6483 };
 const MAPS_KEY = ((import.meta as { env?: Record<string, string> }).env?.VITE_GOOGLE_MAPS_API_KEY) ?? '';
@@ -110,17 +110,15 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
       try { setRegion((JSON.parse(raw) as { region?: string }).region ?? ''); }
       catch { /* datos corruptos — ignorar */ }
     } else setRegion('');
-    // Terreno guardado (clave compartida).
-    const rawT = localStorage.getItem(TERRENO_KEY(project.id));
-    if (rawT) {
-      try {
-        const d = JSON.parse(rawT) as TerrenoGuardado;
-        ringRef.current = d.ring ?? [];
-        setAreaM2(d.areaM2 ?? (project.superficieCalculada ? Number(project.superficieCalculada) : null));
-      } catch { ringRef.current = []; setAreaM2(project.superficieCalculada ? Number(project.superficieCalculada) : null); }
-    } else {
-      ringRef.current = [];
-      setAreaM2(project.superficieCalculada ? Number(project.superficieCalculada) : null);
+    // Terreno guardado (clave compartida): local para pintar al instante + nube (Premium).
+    const fallbackArea = project.superficieCalculada ? Number(project.superficieCalculada) : null;
+    const localT = readTerrenoLocal(project.id);
+    ringRef.current = localT?.ring ?? [];
+    setAreaM2(localT?.areaM2 ?? fallbackArea);
+    if (repo.kind === 'cloud') {
+      void loadTerreno(project.id, true).then((t) => {
+        if (t) { ringRef.current = t.ring; setAreaM2(t.areaM2); }
+      });
     }
   }, [project?.id]);
 
@@ -173,7 +171,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           if (r.ok) {
             setAreaM2(r.areaM2);
             // Persiste en la clave COMPARTIDA: el Geolocalizador lo redibuja al abrir.
-            if (project) { try { localStorage.setItem(TERRENO_KEY(project.id), JSON.stringify({ ring, areaM2: r.areaM2 } satisfies TerrenoGuardado)); } catch { /* ignore */ } }
+            if (project) saveTerreno(project.id, { ring, areaM2: r.areaM2 }, repo.kind === 'cloud');
           }
         };
         const pPath: MapsAny = polygon.getPath();
@@ -224,14 +222,17 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
       localStorage.setItem(STORAGE_KEY(project.id), JSON.stringify({ region }));
       const direccion = [calle.trim(), numero.trim()].filter(Boolean).join(' ');
       const area = areaM2 ?? (areaManual ? Number(areaManual) : null);
+      const regionFinal = region || getRegionDeComuna(comuna);
       const updated: ProjectMaster = {
         ...project,
         comuna, direccion, rol,
+        region: regionFinal,
+        ciudad: comuna, // ciudad/localidad: por defecto la comuna (no manual)
         superficieTerrenoLegal: supLegal,
         superficieCalculada: area != null && !Number.isNaN(area) ? String(area) : project.superficieCalculada,
       };
       if (area != null && !Number.isNaN(area)) {
-        try { localStorage.setItem(TERRENO_KEY(project.id), JSON.stringify({ ring: ringRef.current, areaM2: area } satisfies TerrenoGuardado)); } catch { /* ignore */ }
+        saveTerreno(project.id, { ring: ringRef.current, areaM2: area }, repo.kind === 'cloud');
       }
       await repo.save(updated);
       await reload();
@@ -265,7 +266,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
             </div>
             <div className="tech-input-group">
               <label>Comuna</label>
-              <input className="tech-input" value={comuna} disabled={readOnly} onChange={e => setComuna(e.target.value)} placeholder="Ej: Ñuñoa" list="ab-comunas-datalist" />
+              <input className="tech-input" value={comuna} disabled={readOnly} onChange={e => { const c = e.target.value; setComuna(c); const r = getRegionDeComuna(c); if (r) setRegion(r); }} placeholder="Ej: Ñuñoa" list="ab-comunas-datalist" />
               <datalist id="ab-comunas-datalist">{region && getComunasPorRegionSorted(region).map(c => <option key={c} value={c} />)}</datalist>
             </div>
             <div className="tech-input-group"><label>Calle</label><input className="tech-input" value={calle} disabled={readOnly} onChange={e => setCalle(e.target.value)} placeholder="Ej: Armando Carrera" /></div>

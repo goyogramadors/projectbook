@@ -10,6 +10,380 @@
 
 ---
 
+## 2026-06-26 23:30 (Chile) — Flujo invitación Premium + usuarios Free en panel admin
+
+**Contexto:** cuando el admin enviaba un correo de invitación Premium, el usuario no aparecía en el panel hasta hacer login. Los usuarios Free tampoco aparecían. Se implementó el flujo completo.
+
+**Cambios implementados:**
+
+- `Web/functions/src/index.ts` — `sendPremiumInviteEmail`: después de enviar el correo, intenta `auth.getUserByEmail(email)`. Si el usuario YA existe en Auth, crea/actualiza `users/{uid}` con Premium directamente. Registra en `premiumInvitations` con campo `pendiente: true/false` (false si ya estaba registrado).
+
+- `Web/src/core/AdminService.ts` — `UserEstado` ahora incluye `'Pendiente'`. `AdminUserRow` tiene `invitado?: boolean`. `listUsers()` también consulta `premiumInvitations where pendiente==true` y los agrega como filas con `estado:'Pendiente'`, mostrándolos ANTES de que el usuario haga su primer login.
+
+- `Web/src/core/auth/AuthProvider.tsx` — `resolveUser()`: en el branch de primer login (`!snap.exists()`), consulta `premiumInvitations` por el email. Si hay invitación pendiente, crea `users/{uid}` con `plan:'Premium'` y marca las invitaciones como `acceptedBy/acceptedAt`.
+
+- `Web/firestore.rules` — nueva sección `premiumInvitations`: admin tiene acceso completo; usuario autenticado puede leer su propia invitación (por email), necesario para la consulta en AuthProvider.
+
+- `Web/src/views/AdminDashboard.tsx` — eliminado `inviteUserPremiumMock` (ya no se necesita). `handleInvite` llama `recargar()` al final para mostrar la fila real. Filas con `estado:'Pendiente'` muestran "Esperando registro" en lugar de los botones de acción.
+
+**Archivos tocados:** `Web/functions/src/index.ts`, `Web/src/core/AdminService.ts`, `Web/src/core/auth/AuthProvider.tsx`, `Web/firestore.rules`, `Web/src/views/AdminDashboard.tsx`.
+
+**⚠️ Deploys requeridos (ejecutar en local):**
+1. `cd Web/functions && npm run build && firebase deploy --only functions` — nueva lógica Cloud Function
+2. `firebase deploy --only firestore:rules` — nueva regla premiumInvitations
+
+---
+
+## 2026-06-26 22:10 (Chile) — Legal real (Privacidad/TyC) + Bloque B seguridad (App Check, rate limits)
+
+**Contexto:** evaluación de cumplimiento SaaS. Verde en RLS (firestore/storage rules), auth (Firebase), API keys fuera del frontend. Brechas cerradas hoy: documentos legales y endurecimiento anti-abuso.
+
+**Legal (Ley 19.628 / Ley 21.719, rige 01-12-2026):**
+- Nuevo `src/core/legal/legalContent.ts` — Política de Privacidad y TyC reales, VERSIONADAS (v1.0, vigente 2026-06-26). Cubre: responsable, datos recopilados, finalidades+base de licitud, encargados (Firebase/Stripe/SendGrid/Maps/Gemini), transferencia internacional, conservación, derechos del titular (incl. portabilidad/bloqueo de la 21.719), seguridad, notificación de brechas, cookies/localStorage.
+- `src/views/LegalView.tsx` — reemplazado el placeholder; ahora renderiza el contenido versionado (texto escapado por React, sin innerHTML).
+- ⚠️ **[PENDIENTE titular]:** completar en `legalContent.ts` los `[PENDIENTE]`: razón social/RUT, domicilio legal, y validar con abogado antes de publicar.
+
+**Bloque B — seguridad técnica:**
+- `src/core/firebase.ts` — App Check (reCAPTCHA v3) vía `initializeAppCheck`, condicionado a `VITE_RECAPTCHA_V3_SITE_KEY` (no rompe dev si está vacío).
+- `functions/src/index.ts` — helper `enforceRateLimit(key,max,windowSec)` (ventana fija sobre colección `rateLimits`, Admin SDK). Aplicado: apiProxy (20/min + 200/día por uid), sendInviteEmail (30/h). `enforceAppCheck:true` + `maxInstances` en las 4 callables (apiProxy=10, sendInvite=10, sendPremiumInvite=5, setUserState=5). Validación/saneamiento de `prompt` en apiProxy (tipo, no vacío, ≤8000 chars).
+- Nuevo `Web/.env.local.example` documentando todas las VITE_* incl. la nueva site key.
+
+**Archivos tocados:** `Web/src/core/legal/legalContent.ts` (nuevo), `Web/src/views/LegalView.tsx`, `Web/src/core/firebase.ts`, `Web/functions/src/index.ts`, `Web/.env.local.example` (nuevo).
+
+**⚠️ Pasos requeridos en local/prod (NO ejecutados aquí):**
+1. `cd Web/functions && npm install && npm run build` (verificar TS) y `firebase deploy --only functions`.
+2. Registrar App Check en Firebase Console (reCAPTCHA v3), poner la site key en `VITE_RECAPTCHA_V3_SITE_KEY` (Cloudflare + .env.local). **Sin esto, las callables con `enforceAppCheck` rechazarán al frontend.**
+3. `npm run build` del frontend. (El sandbox sirvió montaje dessincronizado; tsc no se pudo confirmar aquí — validar en local.)
+
+**Intocables respetados:** reglas Firestore/Storage y validación `request.auth.uid` sin cambios.
+
+---
+
+## 2026-06-26 20:30 (Chile) — Auditoría YAGNI + limpieza quirúrgica (código muerto y deps)
+
+- Auditoría profunda Front+Back (criterio YAGNI). Reporte en `DESARROLLO/INFORME_AUDITORIA_YAGNI_2026-06-26.md`.
+- **Dependencias Turf saneadas** (`Web/package.json`): se eliminó el meta-paquete `@turf/turf` (nunca importado) y se declararon explícitamente los 4 submódulos que el código sí usa: `@turf/area`, `@turf/boolean-point-in-polygon`, `@turf/helpers`, `@turf/point-to-polygon-distance`. ⚠️ **Requiere `npm install`** en `Web/` antes del próximo build/deploy.
+- **Archivos muertos eliminados** (sin referencias en todo `src`): `src/components/ModuleHeader.tsx`, `src/tools/CalculadoraArquitectonica.tsx`, `src/tools/MapaTerrenoView.tsx`, y la cadena geoUtils muerta `src/core/geoUtils.ts` (`generarLlaveMaestra`, sin uso) + `src/utils/geoUtils.ts` (puente). Se eliminó la carpeta vacía `src/utils/`.
+- **Tipos/funciones sin uso eliminados:** `Coordenada` en `core/types.ts`; `getCiudadesPorRegionSorted` y `findProvinciaPorComuna` (+ su mapa `COMUNA_PROVINCIA_DATABASE`, ~100 líneas) en `core/data-chile.ts`.
+- **Doc alineada (P1-5):** `Iniciar Aquí.md` §1/§3 — el Cerebro Normativo resuelve la ficha desde archivos locales `/norma-data/*.json` (llave `comunaSlug`), no desde la DB `coordenadasnormativas` (marcada como legado).
+- **Intocables respetados:** no se tocó `try/catch`, validación `request.auth.uid`, reglas Firestore/Storage, ni `DocumentExportWrapper` (reutilizado por 22 tools).
+- **Verificación:** `tsc -b` pasó con 0 errores tras los cambios. ⚠️ El build `vite` en el sandbox no pudo confirmarse porque el montaje sirvió vistas truncadas de archivos NO tocados (`LegalView.tsx`, `AppShell.tsx`) — artefacto del entorno, no del código. **Pendiente: validar `npm install && npm run build` en local.**
+
+---
+
+## 2026-06-26 15:12 (Chile) — Layout 1 columna en EETT/Presupuesto/Gantt (previa PDF abajo)
+
+- A pedido del usuario, en las 3 herramientas de Construcción (Generador EETT, Presupuesto de Obra, Carta Gantt) la **vista de impresión PDF pasa de la 2ª columna a ir DEBAJO** del formulario, a ancho completo (en 2 columnas quedaba muy apretada).
+- Cambio en **un solo lugar**: `src/tools/construccion/construccion.css` → `.cx-2col` deja de ser grid de 2 columnas (`minmax(320px,420px) 1fr`) y pasa a **`flex-direction:column`** (apila form arriba + `.cx-preview` abajo). Se eliminó el `@media(max-width:900px)` ya redundante. La clase la usan exactamente esas 3 vistas (`cx-2col` solo aparece en GanttView/GeneradorEETTView/PresupuestoObraView). Regla `@media print` intacta.
+- **Tocado:** `Web/src/tools/construccion/construccion.css`. Sin cambios de TS/JSX. ⚠️ Falta `npm run dev` para confirmar el apilado y que la lámina PDF respira a ancho completo.
+
+---
+
+## 2026-06-26 15:10 (Chile) — Guía de dominio propio para Libro de Obra Digital (librodeobra.cl) + archivado del PLAN
+
+### Qué se hizo (solo documentación; CERO cambios de código)
+- **Nueva `DESARROLLO/GUIA_DOMINIO_LibroDeObra.md`**: guía operativa, lo más simple posible, para publicar el producto LDO en **`librodeobra.cl`**.
+- **Hallazgo clave:** el código **ya soporta `librodeobra.cl`** sin cambios. `Web/src/core/product/product.ts` (línea 60) resuelve `librodeobra` si `host.startsWith('librodeobra.') || host === 'librodeobra.cl'`. Es **solo configuración de dominio/DNS**, mismo build de Cloudflare Pages sirve los dos dominios.
+- **Resumen de la guía:** registrar `librodeobra.cl` en NIC Chile → mover su DNS a Cloudflare (Add site → cambiar nameservers en NIC) → añadirlo como **Custom Domain** del proyecto Pages `projectbook` (crea registros + SSL solo) → (opcional) redirección `www`→apex con Redirect Rule → verificar (`librodeobra.cl` = LDO, `archibots.cl` = Archiblocks; `?product=librodeobra` fuerza el modo para QA). Rollback: quitar el Custom Domain no afecta a archibots.cl.
+- **Opcionales documentados (no bloquean):** `<title>`/favicon por producto (hoy estáticos) y enlaces de invitación product-aware en las Functions (hoy base `archibots.cl`).
+- **`PLAN-LibroDeObraDigital.md` movido a `Antiguos u Obsoletos/`** (queda superado: Fases 1–3 ya implementadas; Fase 4 = esta guía; Fase 5 = el único pendiente menor, anotado arriba).
+
+### Archivos
+- **Nuevo:** `DESARROLLO/GUIA_DOMINIO_LibroDeObra.md`.
+- **Movido:** `DESARROLLO/PLAN-LibroDeObraDigital.md` → `Antiguos u Obsoletos/`.
+- **Tocados:** `DESARROLLO/MAPA_ARQUITECTURA_PROYECTO.md` (§2 y §8 apuntan a la nueva guía), `Last Update.md`.
+
+---
+
+## 2026-06-26 15:04 (Chile) — Consolidación de pendientes: se elimina Tintero (a Antiguos) y se archiva el Informe de Auditoría
+
+### Qué se hizo (solo documentación)
+- **`Tintero - Pendientes.md` movido a `DESARROLLO/Antiguos u Obsoletos/`.** Duplicaba/confundía información con esta bitácora. Antes de moverlo se rescataron **solo los ítems pendientes** y quedan consolidados abajo. Nota del usuario (Gregorio): en revisión rápida **casi todo ya está implementado**; lo de abajo queda como lista a **verificar/cerrar**, no como trabajo necesariamente abierto.
+- **`INFORME_AUDITORIA_ARQUITECTURA.md` movido a `Antiguos u Obsoletos/`** por obsoleto (snapshot 2026-06-17; hallazgos clave ya resueltos: hay git con remoto, `db = (default)`, MAPA al día).
+
+### 📌 Pendientes vigentes (heredados del Tintero — VERIFICAR, varios podrían estar ya cerrados)
+
+**Funcionalidad / lógica**
+- [ ] **Maps:** confirmar carga del SDK de Google Maps en runtime y degradación a ingreso manual si falla. (`GeolocalizadorView.tsx`, `MapaTerrenoView.tsx`; depende de `VITE_GOOGLE_MAPS_API_KEY`).
+- [ ] **Creador de polígono:** dibujo del polígono + cálculo de área; interacción mapa ↔ Web Worker. (`MapaTerrenoView`/`GeolocalizadorView`, `workers/geo.worker.ts` op `area`, `hooks/useDimensionadorSync.ts`).
+- [ ] **Módulo BIM:** asistente de usos BIM (Premium) y su llamada al backend. (`BimWizardView.tsx`, function `apiProxy`, `useAccess.ts`).
+- [ ] **Administración de Top Tools:** ranking/barra inferior. (`AdminDashboard.tsx`, `TopToolsBar.tsx`, `catalog.ts TOP_TOOLS_DEFAULT`, `config/topTools`).
+- [ ] **Ficha Normativa:** validar la Coreografía de Conexión y la ficha PRC resultante. (`NormativaService.ts`, `useCerebroNormativo.ts`, `GeolocalizadorView.tsx`, `GeoJsonService.ts`).
+
+**UX / layout**
+- [ ] **Reubicar botón "Compartir proyecto".** (`StatusBar.tsx`, `ShareProjectModal.tsx`).
+- [ ] **Quitar la barra de progreso del expediente** de la ficha. (`BinderFicha.tsx`).
+- [ ] **Reubicar "Avance del expediente".** (`BinderFicha.tsx`).
+- [ ] **Arreglar formato de la ficha de exportación** (membrete + firma + `@media print`). (`DocumentExportWrapper.tsx`, `archibots.css`).
+
+**Infraestructura / no-código**
+- [ ] **Correo institucional `@archibots`:** alinear remitente (`from:`) de `sendInviteEmail`/`sendPremiumInviteEmail`. *(Posiblemente ya resuelto: el último commit usa `contacto@archibots.cl`; confirmar.)*
+
+**Auditoría de persistencia (stores solo-local restantes)**
+- [ ] **`VolumenTeoricoView`** (inputs) y **`ExpedienteMunicipalView`** (estado) siguen en `localStorage`; migrar a `useToolData` si se confirma el alcance. *(Terreno y Seguimiento de Obras ya migrados/verificados — ver entradas 2026-06-26.)*
+
+### Archivos
+- **Movidos:** `DESARROLLO/Tintero - Pendientes.md`, `DESARROLLO/INFORME_AUDITORIA_ARQUITECTURA.md` → `DESARROLLO/Antiguos u Obsoletos/`.
+- **Tocado:** `Last Update.md` (esta entrada). El MAPA §8 ya no debe listar Tintero ni el Informe como vigentes (corregir al próximo toque).
+
+---
+
+## 2026-06-26 14:59 (Chile) — Limpieza de DESARROLLO: archivado de MD obsoletos + reescritura del MAPA de arquitectura
+
+### Qué se hizo (solo documentación; CERO cambios en código de la Web)
+- **Revisión de los `.md` de `DESARROLLO/`** contra la realidad actual (código en `Web/` + entradas recientes de `Last Update.md`). Clasificación vigente vs obsoleto.
+- **Movidos a `DESARROLLO/Antiguos u Obsoletos/`** (3, con `mv` simple porque había un `index.lock` de git activo; el versionado los recogerá en el próximo `guardar.bat`):
+  - `Mockup nuevas herramientas.md` — describía las 5 herramientas como **mockups en memoria**; hoy las 5 están productizadas (persistencia real, Storage, workers). Paths viejos `C:\G\ProjectBook`.
+  - `PLAN_ACCION_MAESTRO_PRODUCCION.md` — WBS de la migración micro-frontends → SPA: **ejecutada** (SPA en producción, SPRINT S7 cerrado, rutas `/test` eliminadas).
+  - `PLAN_REFACTORIZACION_SPA.md` — plan/registro del rediseño de layout: **ejecutado** (ShellTop/ShellDock, layout nuevo en producción).
+- **Conservados** (vigentes): `MAPA_ARQUITECTURA_PROYECTO.md` (actualizado), `Tintero - Pendientes.md`, `PROMPT_MAESTRO_HERRAMIENTA.md` (v1.1), `GUIA_GITHUB_Y_DEPLOY.md`, `PLAN-LibroDeObraDigital.md` (Fases 4–5 abiertas), `INFORME_AUDITORIA_ARQUITECTURA.md` (borderline: snapshot 2026-06-17, varios hallazgos superados — candidato a archivar si se confirma).
+- **`MAPA_ARQUITECTURA_PROYECTO.md` reescrito a la situación actual:** rebranding a Archiblocks (con nota de infra conservada), raíz `C:\G\Archiblocks\Web`, `db = (default)` (`initializeFirestore`, ya no la base `ai-studio-*`), **§2 dos productos host-aware** (`product.ts`, router con `libroChildren`/`archiblocksChildren`, `LibroLanding`/`LibroWorkspace`), árbol `src/` al día (ShellTop/ShellDock/ArchiblocksNav + escenas, subcarpetas `construccion/`/`forms/`/`obra/`/`termico/`, `terrenoStore`, `FormulariosDOMView`, EETT/Presupuesto/Gantt), **§4 catálogo completo** carpetas 0–7 con estado/tier, despliegue Cloudflare+Firebase, y §8 documentos hermanos.
+
+### Archivos
+- **Movidos:** `DESARROLLO/Mockup nuevas herramientas.md`, `DESARROLLO/PLAN_ACCION_MAESTRO_PRODUCCION.md`, `DESARROLLO/PLAN_REFACTORIZACION_SPA.md` → `DESARROLLO/Antiguos u Obsoletos/`.
+- **Reescrito:** `DESARROLLO/MAPA_ARQUITECTURA_PROYECTO.md`.
+- **Tocado:** `Last Update.md` (esta entrada).
+
+### Pendientes / nota
+- Confirmar si `INFORME_AUDITORIA_ARQUITECTURA.md` también se archiva (muchos hallazgos ya resueltos: hay git con remoto, `db=(default)`, MAPA al día).
+- `Iniciar Aquí.md` §7 todavía lista los dos planes movidos como referencia; conviene actualizar esa tabla cuando se toque ese doc.
+
+---
+
+## 2026-06-26 14:52 (Chile) — Rebranding a "Archiblocks" en Iniciar Aquí.md + migración del Terreno a la nube
+
+### Rebranding (Iniciar Aquí.md)
+- A pedido del usuario, el nombre de la plataforma pasa a ser **Archiblocks**. En `Iniciar Aquí.md`: título, prosa de §1 (antes "Archibots / Project_Book / BASEPRO — Gestión Documental") y **todas las rutas de repo** `C:\G\ProjectBook` → **`C:\G\Archiblocks`** (raíz, `\Web`, comandos git/npm).
+- **Decisión HITL:** se **dejaron intactos los identificadores reales de infraestructura** (proyecto Firebase `archibots-497423`/`archibots-dev`, repo GitHub `goyogramadors/projectbook`, proyecto Cloudflare `projectbook`, dominios `archibots.cl`/`projectbook-8qt.pages.dev`) y nombres de archivo (`archibots.css`) — renombrarlos en el doc apuntaría a recursos inexistentes. También se mantuvo el comando de skill `/Basepro Terminar` (comando real).
+
+### Migración de datos locales → nube (Tintero §"Auditoría de persistencia")
+- **Hallazgo:** de los dos "candidatos claros a nube", **Seguimiento de Obras YA persiste en Firestore** para Premium (`SeguimientoObrasView.tsx` líneas 90/109/120; localStorage solo Free) — la nota de auditoría estaba desactualizada en ese punto. El único store que escribía **solo a localStorage** sin importar el tier era el **terreno (polígono + área)**, compartido por 3 herramientas.
+- **Nuevo `src/tools/terrenoStore.ts`**: persistencia compartida. Premium (`repo.kind==='cloud'`) → `projects/{pid}/toolData/terreno` (esquema `{payload,updatedAt}` igual a `useToolData`, **cubierto por la regla existente `toolData/{document=**}`** — sin cambios de reglas ni índices). Escritura **siempre espeja a localStorage** (clave compartida `ab-mapa-terreno-${pid}` intacta) para sync en caliente entre herramientas y offline. Lectura: nube primero (Premium) y degrada a local.
+- **Cableado quirúrgico** en `UbicacionView.tsx`, `MapaTerrenoView.tsx`, `GeolocalizadorView.tsx`: reemplazados los `localStorage.get/setItem` del terreno por `loadTerreno`/`readTerrenoLocal`/`saveTerreno`; agregado `repo` al `useProjects()` donde faltaba; eliminadas las consts de clave ya inútiles. La carga pinta local al instante y reconcilia con nube en async.
+
+### Archivos
+- **Nuevos:** `Web/src/tools/terrenoStore.ts`.
+- **Tocados:** `Iniciar Aquí.md`, `DESARROLLO/Tintero - Pendientes.md`, `Web/src/tools/UbicacionView.tsx`, `Web/src/tools/MapaTerrenoView.tsx`, `Web/src/tools/GeolocalizadorView.tsx`.
+
+### Verificación
+- **`tsc --noEmit` del proyecto completo: 0 errores.** Se removieron bloques de bytes NUL (artefacto de truncado del montaje §8) al final de `GeolocalizadorView.tsx` y `MapaTerrenoView.tsx` antes del typecheck. ⚠️ Falta `npm run dev` local: confirmar que en Premium el polígono/área sincroniza entre dispositivos y que en equipo nuevo (local vacío) la carga async redibuja; revisar el caso de redibujo del polígono al hidratar desde nube tras montar el mapa.
+
+### Pendientes
+- En equipo nuevo Premium, el área se hidrata desde nube pero el redibujo del polígono depende del efecto de Maps; validar UX.
+
+### Adenda (misma sesión) — Expediente Municipal a la nube; Volumen Teórico ya estaba
+- **Verificación pedida por el usuario:** `VolumenTeoricoView` **ya persistía en la nube** para Premium (subcolección `projects/{id}/volumen/estado`, líneas 197/216) — la subcolección ya existía; no requirió cambios.
+- **`ExpedienteMunicipalView` migrado** a `useToolData('expediente-dom')` → `projects/{pid}/toolData/expediente-dom` (cubierto por la regla `toolData/{document=**}`, sin cambios de reglas/índices). Free/offline → localStorage `ab-expediente-dom-{pid}` (misma clave de antes: datos previos conservados). Guardado con **debounce 600 ms** (evita escribir en cada tecla). Se quitaron states/efecto/persist locales redundantes.
+- ⚠️ El montaje truncó el archivo largo a mitad del JSX (riesgo §8): se reconstruyó completo en scratch (`/outputs`) y se copió. **`tsc --noEmit` del proyecto: 0 errores.**
+- **Tocado:** `Web/src/tools/ExpedienteMunicipalView.tsx`. Tintero: auditoría de persistencia **cerrada** (todos los stores señalados sincronizan en nube para Premium).
+
+---
+
+## 2026-06-26 22:45 (Chile) — Región/Ciudad no manuales en ProjectMaster + Carta Gantt (catálogo de plazos)
+
+### Región y Ciudad (campos no manuales)
+- **`ProjectMaster`** (`types.ts`): nuevos `region?: string` y `ciudad?: string`.
+- **`data-chile.ts`**: nuevo `getRegionDeComuna(comuna)` (reverse determinista comuna→región).
+- **`UbicacionView.tsx`**: al escribir la comuna **autollena la región** (no manual); al guardar persiste `region` (derivada) y `ciudad` (= comuna por defecto) en el master. Antes la región vivía solo en localStorage.
+- **Lectura aguas abajo:** `GeneradorEETTView` usa `master.region` para el placeholder `{region}` (el campo manual queda solo como override). Los formularios DOM ya resuelven binds desde el master, por lo que `project.region`/`project.ciudad` quedan disponibles para los field-maps que los referencien. El Térmico sigue usando `comuna` (no requiere región para el cálculo).
+
+### Carta Gantt (nueva herramienta, carpeta 5)
+- **Catálogo de plazos aparte y editable:** `DESARROLLO/EETT y Presupuesto/CATALOGO_GANTT_PLAZOS.md` (por capítulo NCh 1150: semanas + solape). El generador `build-catalogos-construccion.mjs` lo parsea a `Web/src/tools/construccion/catalogo.gantt.ts` (9 capítulos).
+- **`GanttView.tsx`** (id `gantt`, ahora `active`): activa los capítulos según la MISMA selección del Generador de EETT (un capítulo aparece si tiene partida activa en el presupuesto, + 1 y 9 siempre); calcula barras secuenciales con solape, fecha de inicio editable, plazos editables por capítulo, total en semanas/meses. Exporta PDF vía `DocumentExportWrapper`.
+- Cableado en `catalog.ts` (gantt → active) y `registry.ts` (lazy → GanttView).
+
+### Archivos
+- **Nuevos:** `DESARROLLO/EETT y Presupuesto/CATALOGO_GANTT_PLAZOS.md`; `Web/src/tools/construccion/catalogo.gantt.ts`; `Web/src/tools/GanttView.tsx`.
+- **Tocados:** `Web/src/core/types.ts`, `Web/src/core/data-chile.ts`, `Web/src/tools/UbicacionView.tsx`, `Web/src/tools/GeneradorEETTView.tsx`, `Web/scripts/build-catalogos-construccion.mjs`, `Web/src/core/catalog.ts`, `Web/src/core/registry.ts`.
+
+### Verificación
+- **`tsc --noEmit`: 0 errores** en todo el proyecto. esbuild RC=0 en los archivos nuevos. ⚠️ Falta `npm run dev` local para revisar render (autollenado de región al elegir comuna, barras de la Gantt, exportación PDF).
+
+### Pendientes
+- Curar los field-maps DOM para que enlacen `project.region`/`project.ciudad` donde corresponda.
+- Ciudad: hoy = comuna; si se quiere la localidad real, extraerla del geocode (locality) en UbicacionView.
+- Export `.xlsx` del Presupuesto (heredado).
+
+---
+
+## 2026-06-26 21:30 (Chile) — Integración EETT (Generador) + Presupuesto de Obra (carpeta 5 · Construcción)
+
+### Qué se hizo
+Integradas y ACTIVADAS dos herramientas de la sección Construcción → "EETT, Presupuesto y Carta Gantt", a partir de los mockups + catálogos `.md` que dejó el usuario en `DESARROLLO/EETT y Presupuesto/`.
+
+- **Catálogos de datos generados desde `.md` (fuente editable):** script `Web/scripts/build-catalogos-construccion.mjs` parsea `CATALOGO_EETT_RESUMIDAS.md` y `CATALOGO_PRESUPUESTO_2.0.md` → `Web/src/tools/construccion/catalogo.eett.ts` (45 partidas) y `catalogo.presupuesto.ts` (39 partidas), tipados. La taquigrafía `activa_si` del presupuesto se normaliza a la gramática canónica en el script. **Editas el `.md` y re-corres el script.**
+- **Evaluador de activación** `construccion/activaSi.ts`: parser AND/OR/paréntesis con átomos (`∈ {set}`, `= sí`, `incluye`, `no vacío`, `≠ solo_obra_gruesa`, `siempre`, `opcional`). Probado 12/12 + 8/8 casos.
+- **Generador de EETT** (`GeneradorEETTView.tsx`, id `eett-generador`, **colapsa** las antiguas `eett-generales` + `eett-estructuras`): selector guiado (naturaleza/estructura/terminaciones/instalaciones/urbanización), prellena desde el ProjectMaster (nombre/comuna/dirección/naturaleza desde tipoProyecto), ensambla por inclusión condicional con sustitución de placeholders, trazabilidad NCh 1150 e índice opcionales. Persiste con `useToolData('eett-generador')`. Vista previa + **Exportar PDF** vía `DocumentExportWrapper` (mismo visor PDF del resto).
+- **Presupuesto de Obra** (`PresupuestoObraView.tsx`, id `presupuesto`): itemiza activando partidas con la MISMA selección del Generador de EETT; cantidades por defecto desde la superficie del master; PU en UF editables; **valor UF en vivo desde mindicador.cl** con default editable (fallback si falla la red); GG/utilidades/IVA/proforma; totales A–F en UF y $. Exporta PDF (DocumentExportWrapper). `.xlsx` queda pendiente (decisión HITL).
+- **Cableado:** `catalog.ts` (eett-generador y presupuesto a `estado:'active'`, gantt sigue `soon`) + `registry.ts` (2 lazy). Estilos namespaced en `construccion/construccion.css` (cx-*).
+- **`PROMPT_MAESTRO_HERRAMIENTA.md` → v1.1:** corregidas rutas (`Web/...` en vez de `Archibots/Archibots/...`), agregado §6.5 `useToolData`, §16 registro en `catalog.ts` + patrón de catálogos de datos desde `.md`, nota §8 de truncado del montaje.
+
+### Archivos
+- **Nuevos:** `Web/scripts/build-catalogos-construccion.mjs`; `Web/src/tools/construccion/{activaSi.ts, meta.ts, catalogo.eett.ts, catalogo.presupuesto.ts, construccion.css}`; `Web/src/tools/{GeneradorEETTView.tsx, PresupuestoObraView.tsx}`.
+- **Tocados:** `Web/src/core/catalog.ts`, `Web/src/core/registry.ts`, `DESARROLLO/PROMPT_MAESTRO_HERRAMIENTA.md`.
+
+### Verificación
+- **`tsc --noEmit` del proyecto completo: 0 errores.** esbuild RC=0 en todos los archivos nuevos. Evaluador de activa_si testeado por unidad. ⚠️ Falta `npm run dev` local para revisar render (selector, lámina PDF, llamada a mindicador) y temas.
+
+### Pendientes
+- Carta Gantt (sin mockup; queda `soon`).
+- Export `.xlsx` con fórmulas del Presupuesto.
+- Afinar prellenado: `region` no existe en ProjectMaster (campo manual en el Generador); revisar mapeo fino de placeholders por partida si el usuario lo pide.
+
+---
+
+## 2026-06-26 20:00 (Chile) — Block LDO: etiqueta sincronizada + fix wrap del header (SYSTEM_OK 2 filas)
+
+### Qué se corrigió
+- **El texto del Block ahora cambia en LDO** (igual que Archiblocks): `onNav` marca el nodo con `setNavNode(node)` antes de navegar (db→Carpeta Digital, libro→Libro de Obras, edificio→Inicio), y un `useEffect` **sincroniza el nodo activo con la ruta/`?m=`** al cargar o recargar `/o/:id`. Antes solo navegaba con `?m=` y nunca actualizaba `navNode`, por eso la etiqueta 3D no cambiaba.
+- **Fix wrap del header solo en LDO:** la marca "Libro de Obra Digital" (3.5rem + letter-spacing .16em) era mucho más ancha que "Archiblocks", comprimía `.ab-topbar` (flex:1, flex-wrap) y empujaba `SYSTEM_OK` a una 2ª fila. En LDO la marca pasa a **2.5rem / letter-spacing .08em** (inline, solo si `isLibroDeObra`); Archiblocks queda intacto.
+
+### Archivos
+- **Tocado:** `Web/src/components/ShellTop.tsx`.
+
+### Verificación
+- esbuild RC=0. `setNavNode` es `useState` plano → acepta nodos 'db'/'libro'. ⚠️ Falta `npm run dev` local para confirmar etiqueta y header en una sola fila.
+
+### Nota
+- El conmutador interno de módulos del workspace (tabs `lw-switch`) cambia el módulo sin tocar la URL, así que en ese caso la etiqueta del Block no se re-sincroniza; los accesos directos del Block sí. Si se quiere, se puede hacer que las tabs también actualicen `?m=`.
+
+---
+
+## 2026-06-26 19:30 (Chile) — Landing LDO ancho completo + nodos del Block como accesos directos (db/libro/edificio)
+
+### Qué se hizo
+- **Landing LDO a ancho completo:** `.lo-land` pasó de `max-width:1100px;margin:0 auto` a `width:100%;max-width:none;margin:0` (`LibroLanding.css`). La home de Libro de Obra ya no queda centrada/angosta.
+- **Nodos del Block = accesos directos reales** (`ShellTop.onNav`, solo en LDO): `db` → workspace con **Carpeta Digital** (`/o/:id?m=carpeta-digital`), `libro` → **Libro de Obras** (`/o/:id?m=libro-obras`), `edificio` → **Inicio** (`/`).
+- **`LibroWorkspaceView`** lee `?m=` (`useSearchParams`) para preseleccionar el módulo al cargar y **re-selecciona** cuando cambia el query (clic en otro nodo del Block), sin remontar la vista. Reconstruido completo tras truncado del montaje (§8).
+- Etiqueta 3D del Block: muestra el nombre del nodo activo y escala con el SVG (responsiva al ancho del host).
+
+### Archivos
+- **Tocados:** `Web/src/views/LibroLanding.css`, `Web/src/components/ShellTop.tsx`, `Web/src/views/LibroWorkspaceView.tsx` (reescrito).
+
+### Verificación
+- ShellTop y LibroWorkspaceView pasan esbuild (RC=0). ⚠️ Falta `npm run dev` local para confirmar el ancho completo y el salto db→Carpeta / libro→Libro de Obras.
+
+---
+
+## 2026-06-26 18:55 (Chile) — Block LDO con edificio central + isométricas + fix ancho del workspace LDO
+
+### Qué se corrigió
+- **Block de LDO reconstruido (`librodeobra-scene.html`):** se **retomó el EDIFICIO central** (3 plantas que se arman/desarman) que se había perdido. Los dos objetos flotantes quedan **isométricos reusando la geometría original** del Block completo: `db` = pila isométrica (Carpeta Digital) y `libro` = libro isométrico (Libro de Obras). **Líneas conectoras isométricas** (rutas del Block original) y **etiqueta 3D isométrica** que muestra el **nombre de la herramienta seleccionada** (NODE_LABEL: db→Carpeta Digital, libro→Libro de Obra). Sigue siendo archivo aparte de `archiblocks-scene.html`.
+- **Ancho del workspace LDO (`AppShell.tsx`):** `isWorkspace` solo reconocía rutas `/p/...`, así que `/o/:id` (workspace LDO) caía al layout estrecho `ab-outlet--mini`. Ahora `isWorkspace = segs[0]==='p' || segs[0]==='o'` y la clave de fade usa `/${segs[0]}/${segs[1]}` → el workspace LDO se expande a **ancho completo** como el de Archiblocks.
+
+### Archivos
+- **Reescrito:** `Web/src/components/librodeobra-scene.html` (edificio + db + libro, isométrico).
+- **Tocado:** `Web/src/AppShell.tsx`.
+
+### Verificación
+- `AppShell.tsx` y `ArchiblocksNav.tsx` pasan esbuild (RC=0). ⚠️ Falta `npm run dev` local para revisar el render del Block LDO y confirmar el ancho completo.
+
+---
+
+## 2026-06-26 18:10 (Chile) — Block reducido para LDO + botones de producto arriba a la derecha + terminología "Block"
+
+### Terminología (documentada)
+- Se agregó a `Iniciar Aquí.md` (sección 1) la definición de **"el Block"**: el elemento isométrico del header que representa una construcción y funciona como **navegador con accesos directos a las secciones**. Componente `ArchiblocksNav.tsx` + escena `archiblocks-scene.html`. Futuras referencias del usuario a "el Block" apuntan a esto.
+
+### Qué se hizo
+- **Nuevo Block reducido para "Libro de Obra Digital" en archivo aparte:** `Web/src/components/librodeobra-scene.html` (distinto de `archiblocks-scene.html`). Solo **dos nodos**: símbolo de **base de datos** (`data-node="db"`, cilindro de 3 anillos) y **libro** (`data-node="libro"`), con sus dos conectores; se eliminaron los demás. Reusa `#ab-nav-root` y las clases `.ab-*`.
+- **`ArchiblocksNav.tsx`:** nueva prop `scene: 'archiblocks' | 'librodeobra'` que elige qué escena inyectar (importa ambos `?raw`). `NODE_LABEL.db = 'Carpeta Digital'`. (La prop `allowed` queda disponible pero ya no se usa en LDO porque la escena reducida solo trae db+libro.)
+- **`ShellTop.tsx`:** pasa `scene` según producto. **Conmutador de producto reubicado** a la **esquina superior derecha** del header (`.ab-prodswitch`, `position:absolute; top:3; right:10`), casi pegado arriba (antes estaba en la fila de controles). `.ab-top` pasa a `position:relative`.
+
+### Archivos
+- **Nuevo:** `Web/src/components/librodeobra-scene.html`.
+- **Tocados:** `Web/src/components/ArchiblocksNav.tsx`, `Web/src/components/ShellTop.tsx`, `Iniciar Aquí.md`.
+
+### Verificación
+- ShellTop y ArchiblocksNav pasan **esbuild** (RC=0). ⚠️ Falta `npm run dev`/`build` local para confirmar 0 errores TS y revisar el render del Block reducido (proporciones del cilindro de base de datos).
+
+### Pendiente menor
+- Opcional: que los nodos del Block LDO preseleccionen el módulo en el workspace (db→Carpeta, libro→Libro de Obras) vía query; hoy ambos llevan a `/o/:id`.
+
+---
+
+## 2026-06-26 17:05 (Chile) — Header: conmutador de producto (2 botones) + marca sin link
+
+### Qué se hizo
+- **`ShellTop.tsx`** (chrome persistente, aplica a TODAS las páginas):
+  - **Dos botones nuevos** estilo `.ab-topbtn` (tamaño del de Tema) en la barra superior, tras "SYSTEM_OK": **"Archiblocks"** (ícono Boxes) y **"LibrodeObra"** (ícono Notebook). Cada uno llama `switchProduct(id)` → `window.location.assign('/?product=<id>')`, que persiste el override y **recarga** para que el router host-aware se re-resuelva y caiga en la landing correcta (`HomeView` vs `LibroLandingView`). El producto activo se resalta en rojo (`--destructive`).
+  - **Eliminado el link de la marca:** `.ab-brand-title` ya no navega (se quitó `onClick={() => navigate('/')}` y `title`; `cursor:default`). Antes la palabra de marca actuaba como enlace a `/`.
+
+### Archivos
+- **Tocado:** `Web/src/components/ShellTop.tsx`.
+
+### Verificación
+- esbuild RC=0. ⚠️ Falta `npm run build`/`dev` local para confirmar 0 errores TS (el dev server recarga en caliente).
+
+### Nota
+- El conmutador usa recarga completa a propósito: `PRODUCT`/`isLibroDeObra` y el árbol de rutas se resuelven una sola vez por carga de módulo (`core/product/product.ts`), así que un `navigate` SPA no bastaría para cambiar de producto.
+
+---
+
+## 2026-06-26 16:15 (Chile) — Libro de Obra Digital · Fase 3 (ShellTop parametrizado por producto)
+
+### Qué se hizo
+- **`ShellTop.tsx` host-aware** vía `PRODUCT`/`isLibroDeObra` (`core/product/product.ts`):
+  - **Marca (der.):** título y acento rojo desde `PRODUCT.brandTop`/`brandPro`; en `librodeobra` el subtítulo es fijo (`brandSub` = "un producto de Archiblocks") en vez del slogan rotativo. Archiblocks conserva `BrandTagline`.
+  - **Selector proyecto/obra:** etiqueta desde `PRODUCT.unit.singular` ("Obra" vs "Proy") y ruta `/o/:id` en librodeobra (antes siempre `/p/:id`).
+  - **`onNav`:** en librodeobra cada nodo del navegador lleva al workspace de la obra (`/o/:id`).
+- **`ArchiblocksNav.tsx` · navegador reducido:** nueva prop `allowed?: string[]`; tras inyectar la escena oculta (`display:none`) los `[data-node]` fuera de la lista blanca. En librodeobra se pasa `['edificio','libro','carpeta','ductos']` (Inicio + nodos de obra). Barra inferior sin cambios (reuso directo, plan §3.5).
+
+### Archivos
+- **Tocados:** `Web/src/components/ShellTop.tsx`, `Web/src/components/ArchiblocksNav.tsx`.
+
+### Verificación
+- `ShellTop.tsx` y `ArchiblocksNav.tsx` pasan **esbuild** (RC=0). ⚠️ Falta `npm run build`/`dev` local para confirmar 0 errores TS.
+
+### ⚠️ Incidencia del entorno (§8)
+- El montaje **truncó** las ediciones directas largas de `ShellTop.tsx` y `ArchiblocksNav.tsx` (archivos cortados a la mitad). **Reparado** reconstruyendo desde `git show HEAD:<archivo>`, aplicando los cambios en el sandbox y copiando con `cp`. Recordatorio §8: para archivos grandes existentes, editar en scratch y `cp`, no Edit directo.
+
+### Pendientes
+- **Fase 4** — subdominio `librodeobra.archibots.cl` (custom domain en Cloudflare Pages) + verificación SPA + gating Premium en rutas `/o/:id`.
+- **Fase 5** — invitaciones product-aware (base de enlace en Functions) + QA permisos/responsive/temas.
+- Refactor presentacional fino (opción 3.4.2) para el layout grande definitivo del workspace.
+
+---
+
+## 2026-06-26 15:30 (Chile) — Libro de Obra Digital · Fase 2 (Workspace 3 columnas)
+
+### Qué se hizo
+- **`LibroWorkspaceView.tsx` (ruta `/o/:projectId`) construido** desde el placeholder de Fase 1 a la maqueta a **3 columnas con reuso directo (opción 3.4.1 del PLAN-LibroDeObraDigital.md):**
+  - **Col 1 · "Mis Obras":** selector de obras (reusa `useProjects`, filtra `DEFAULT_PROJECT_ID`), resalta la obra activa, navega a `/o/:id`; botón "Iniciar nueva obra" → `/`.
+  - **Col 2+3 · herramienta activa:** monta `LibroObrasDigitalView` o `CarpetaDigitalView` (lazy, un chunk por tool) por `projectId`, con su propio layout interno (sub-libros/folios o árbol/agregar) mostrado "grande".
+  - **Conmutador de módulo LDO ⇄ Carpeta** (tabs) sobre las dos columnas anchas.
+- **Gating Premium** derivado con `useAccess(toolOf(modulo), obra)` — misma fuente de verdad que `ToolHost`; sin duplicar lógica ni estado (la persistencia de cada tool ya existe).
+
+### Archivos
+- **Tocado:** `Web/src/views/LibroWorkspaceView.tsx` (placeholder → workspace real).
+- **Nuevo:** `Web/src/views/LibroWorkspace.css` (estilos scoped `.lw-*`, tokens del tema, responsive a 1 columna <860px).
+
+### Verificación
+- `LibroWorkspaceView.tsx` pasa **esbuild** (transform `tsx`, RC=0, sin errores). `Icon` acepta `name:string` (íconos Notebook/FolderTree/FolderPlus). ⚠️ Falta `npm run build`/`dev` local para confirmar 0 errores TS (el montaje del sandbox no refleja edición sobre archivos existentes).
+
+### Pendientes
+- **Fase 3** — `ShellTop` parametrizado por producto (branding "Libro de Obra Digital", navegador reducido), barra inferior, y refactor presentacional (3.4.2) para el layout grande definitivo.
+- Fases 4 (subdominio `librodeobra.archibots.cl` en Pages) y 5 (invitaciones product-aware) según el plan.
+
+---
+
+## 2026-06-26 14:30 (Chile) — Corrección skill `ordenanza-a-json` (Firestore→local + cobertura de zonas)
+
+### Qué se corrigió
+- **Destino del JSON: Firestore → archivos locales.** La descripción e intro de la skill citaban "para importar a Firestore" (etapa abandonada el 22-jun). Ahora aclaran que el JSON alimenta el geolocalizador normativo como archivo local en `Web/public/norma-data/13_comuna.json` (array por comuna), matcheado por `zona_codigo`. El esquema `NormativaPRC` es idéntico; solo cambia el destino. No requiere Firebase.
+- **Cobertura total de zonas (sección nueva).** Se agregó instrucción crítica de incluir TODAS las zonas, con énfasis en especiales/patrimoniales (ICH, ZCH, ZT, MH, CD, UCH, UMCE, Z-US, ZR, PM y AP, áreas verdes, área de restricción). Motivo: el geolocalizador solo devuelve ficha si el `zona_codigo` existe en el JSON; si falta, el punto cae a "parámetros estimados". Caso de referencia: Ñuñoa, 20/40 zonas sin ficha por omitir las especiales. Reforzado el checklist de validación y la coherencia `zona_codigo` ↔ GeoJSON.
+- **Fix tag XML en frontmatter.** La descripción tenía `13_<comuna>.json`; el `<comuna>` se interpretaba como tag XML ("SKILL.md description cannot contain XML tags"). Reescrito a texto plano (`13_comuna.json`).
+
+### Archivos
+- **Respaldo nuevo:** `DESARROLLO/skills-respaldo/ordenanza-a-json/` (`SKILL.md` corregido + `references/` copiadas: `NormativaPRC.ts`, `ejemplo_zona_ec5.json`, `ejemplo_zona_patrimonio.json`).
+- **Paquete instalable:** `DESARROLLO/skills-respaldo/ordenanza-a-json.skill` (zip) — cargar en otras sesiones vía Settings > Capabilities / botón "Save skill".
+
+### Nota / pendiente
+- La skill **activa** en la sesión sigue siendo la versión vieja (caché de solo lectura); para que el cambio tome efecto hay que **instalar el `.skill`** corregido.
+- Sigue vigente el pendiente heredado de **completar fichas faltantes de zonas especiales en `norma-data`** para las comunas ya cargadas (esta corrección previene el problema en transcripciones futuras, no rellena las existentes).
+
+---
+
 ## 2026-06-24 23:30 (Chile) — Ajustes del "Block" (navegador), layout central y remitente de correos
 
 ### Block (navegador del header) — afinamientos visuales
@@ -718,63 +1092,4 @@ Trabajo sobre los mockups de las herramientas nuevas (Fase 0). Cuatro bloques: (
 - *Archivos:* `Web/src/tools/LibroObrasDigitalView.tsx`.
 
 ### ⚠️ Incidencias del entorno
-- **El mount trunca escrituras grandes** (Write/Edit) en ~13,4 KB en algunos archivos (afectó a `CarpetaDigitalView.tsx` y a este `Last Update.md`). **Workaround confirmado:** construir el archivo completo en disco nativo del sandbox (`/tmp`, `head` + heredoc) y `cp` al árbol, verificando con `tsc`/`Read`. El `Write` de un solo golpe del Libro (24 KB) sí persistió; el riesgo aparece con archivos grandes y con múltiples `Edit` sobre el mount.
-- `npm run build` a `dist/` real sigue fallando en el sandbox por permisos al borrar `dist/Biblioteca/*.pdf` (solo entorno; en la máquina del usuario compila normal).
-
-### 🔧 Pendientes generados / estado
-- [ ] **Desarrollo productivo** de Carpeta Digital y Libro de Obras (persistencia `useToolData` + Firestore/Storage, adjuntos UUID, permisos denormalizados reales). Hoy siguen como **mockups en memoria**.
-- [x] Glosario aplicado y numerado en Carpeta Digital.
-- [x] Libro de Obras con formatos, libros por defecto/agregar, subtemas, compartir, vinculados, participantes y adjuntos.
-
----
-
-## 2026-06-22 14:51 (Chile) — Ficha Normativa migrada a archivos locales + UX Tintero + Maps/Polígono
-
-### Resumen de la sesión
-Sesión de trabajo sobre pendientes del `Tintero - Pendientes.md`. Tres bloques entregados, todos con build verde (`tsc -b` y `vite build` en 0 errores; cada herramienta genera su chunk).
-
-### A. UX rápidos del Tintero (ítems 6, 7, 8, 10) — RESUELTOS
-- **Ítem 6 — Compartir reubicado a la ficha.** Botón "Compartir" añadido en `BinderFicha` junto al título del proyecto; `onShare` baja vía `useOutletContext` (`AppShell` → `WorkspaceView` → `BinderFicha`). Se quitó el botón `[ COMPARTIR ]` de `ShellTop` (permanece en el menú de cuenta).
-- **Ítems 7+8 — Avance del expediente fuera de la ficha.** Eliminado el bloque `ab-progress` (barra + 15 chequeos) de `BinderFicha`. Se conserva el "Avance del Expediente" de `WorkspaceView` (`ab-wavance`, con accesos directos a las herramientas agregadas).
-- **Ítem 10 — Membrete de exportación.** En `DocumentExportWrapper` el membrete pasó a **grid único de 4 columnas** (corrige la desalineación de la 3ª columna) + **borde perimetral**.
-- *Archivos:* `Web/src/AppShell.tsx`, `Web/src/views/WorkspaceView.tsx`, `Web/src/components/BinderFicha.tsx`, `Web/src/components/ShellTop.tsx`, `Web/src/components/DocumentExportWrapper.tsx`.
-
-### B. Maps + Polígono del Tintero (ítems 1, 2) — RESUELTOS (código)
-- **Polígono guardado se redibuja** al abrir `MapaTerrenoView` y se encuadra (`fitBounds`).
-- **Botón `[ LIMPIAR ]` nuevo en `MapaTerrenoView`** (no existía) y **`Limpiar` en `GeolocalizadorView` ahora vacía el polígono del mapa** (vía `polygonRef`).
-- **Mapa simple en blanco y negro**, solo nombres de calles (estilo `MAP_STYLE_BW`, `roadmap`, UI mínima) en ambas herramientas (antes `hybrid`/satélite).
-- **Auto-centrado** del mapa según `comuna`/`dirección` del proyecto (geocoder).
-- Revisión de carga del SDK (loader funcional v2, `gm_authFailure`, degradación a manual): correcta. **No hay duplicación de mapas.**
-- *Archivos:* `Web/src/tools/MapaTerrenoView.tsx`, `Web/src/tools/GeolocalizadorView.tsx`.
-
-### C. Ficha Normativa (ítem 9) — MIGRADA A ARCHIVOS LOCALES
-- **Decisión del usuario:** olvidar Firestore (`coordenadasnormativas`/`normativas_prc`); la ficha ahora se resuelve desde **archivos locales** en `Web/public/norma-data/13_<comuna>.json` (8 comunas RM: Ñuñoa, Las Condes, Lo Barnechea, La Florida, Peñalolén, Providencia, Santiago, Vitacura).
-- `core/NormativaService.ts` reescrito: carga `/norma-data/13_<slug>.json` (slug sin tildes/espacios), caché en memoria por comuna, **match por `zona_codigo` normalizado** (sin tildes/espacios, mayúsculas). Firmas exportadas intactas (`getNormativa`, `getNormativaDesdeFeature`, `codigoZonaDeProperties`).
-- `core/useCerebroNormativo.ts` reescrito: elimina `firebase/storage` y `firestore`; usa `GeoJsonService` (capa PRC `/geo-data`) + `NormativaService` local. API `{isLoading, error, data}` intacta (no rompe `CalculadoraArquitectonica`).
-- Textos de UI actualizados (Geolocalizador y Calculadora) para citar `/norma-data` en vez de `normativas_prc`/`coordenadasnormativas`.
-- **Verificado end-to-end:** resuelve `Ñuñoa/Z-4B` (constructibilidad 1.8, COS 0.4) y las 8 comunas.
-- *Archivos:* `Web/src/core/NormativaService.ts`, `Web/src/core/useCerebroNormativo.ts`, `Web/src/tools/GeolocalizadorView.tsx`, `Web/src/tools/CalculadoraArquitectonica.tsx`.
-
-### ⚠️ Incidencias del entorno detectadas
-- **El montaje truncó/corrompió ediciones directas largas** (bytes NUL / truncamiento) — se reconstruyeron los archivos vía el sandbox. Confirma la regla §8 "archivos grandes en scratch".
-- **Índice de git corrupto** (`.git/index`, "bad signature 0x00000000"; `index.lock` no se puede borrar por permisos). NO se tocó. **Pendiente:** regenerar el índice (`rm -f .git/index.lock .git/index && git reset`) desde una terminal con el repo cerrado, antes de commitear.
-- `npm run build` a `dist/` real falla en el sandbox por permisos al borrar `dist/` (solo entorno; en la máquina del usuario compila normal). Verificación hecha con `--outDir` temporal.
-
-### 🔧 Pendientes generados en esta sesión
-- [ ] **Fichas normativas faltantes (Ñuñoa).** En Ñuñoa, 20 de las 40 zonas del GeoJSON tienen ficha (incluida Z-4B); las **20 restantes son zonas especiales** (ICH-1..4, MH-1..3, ZT-1..5, ZCH-1, CD, UCH, UMCE, Z-US, ZR-1, PM y AP, "Áreas verdes") que el archivo de 36 fichas **no incluye** → esas caen a "parámetros estimados". *Acción:* completar esas fichas en los JSON locales de `norma-data`. (Aplica el mismo criterio de cobertura a revisar en las otras 7 comunas.)
-- [ ] **Verificar facturación/API en Google Cloud (Maps).** La API Key existe en `.env.local` (presente, 39 chars). Si Maps no carga, revisar: "Maps JavaScript API" **y** "Geocoding API" habilitadas, facturación activa, y restricciones de dominio (prod + `localhost`).
-- [ ] **Regenerar índice de git** (ver Incidencias).
-
-### Pendientes del Tintero aún abiertos (no tocados esta sesión)
-- Ítem 3 — Revisar módulo BIM (`apiProxy`).
-- Ítem 4 — Administración de Top Tools.
-- Ítem 5 — Crear correo `@archibots` (infra).
-
----
-
-<!-- Plantilla para la próxima entrada (copiar arriba):
-## YYYY-MM-DD HH:MM (zona) — Título corto
-### Resumen
-### Cambios (con archivos)
-### Pendientes generados / resueltos
--->
+- **El mount trunca escrituras grandes** (Write/Edit) en ~13,4 KB en algunos archivos (afectó a `CarpetaDigitalView.tsx` y a este `Last Update.md`). **Workaround confirmado:** construir el ar

@@ -1,4 +1,4 @@
-# 🚀 INICIAR AQUÍ — Memoria del Proyecto Archibots / Project_Book
+# 🚀 INICIAR AQUÍ — Memoria del Proyecto Archiblocks
 
 > **Para nuevas instancias de Claude:** lee este documento completo antes de tocar nada.
 > Contiene (1) qué es el proyecto, (2) dónde está cada cosa, (3) cómo se despliega a la web,
@@ -9,16 +9,16 @@
 > **`Last Update.md`** (raíz del repo): fecha, hora, detalle de lo hecho, archivos tocados y
 > pendientes generados/resueltos. Es el reporte de estado que se entrega a la siguiente instancia.
 >
-> **Última actualización:** 2026-06-23 · **Repositorio:** `C:\G\ProjectBook` · **Raíz de la SPA:** `C:\G\ProjectBook\Web`
+> **Última actualización:** 2026-06-23 · **Repositorio:** `C:\G\Archiblocks` · **Raíz de la SPA:** `C:\G\Archiblocks\Web`
 
 ---
 
 ## 0. Estructura del repositorio (dos ramas)
 
-El proyecto se divide en dos carpetas, **ambas versionadas en un único repositorio Git** cuya raíz es `C:\G\ProjectBook` (ahí viven `.git` y `.gitignore`):
+El proyecto se divide en dos carpetas, **ambas versionadas en un único repositorio Git** cuya raíz es `C:\G\Archiblocks` (ahí viven `.git` y `.gitignore`):
 
 ```
-C:\G\ProjectBook\          ← raíz del repo (.git, .gitignore, Iniciar Aquí.md)
+C:\G\Archiblocks\          ← raíz del repo (.git, .gitignore, Iniciar Aquí.md)
 ├── DESARROLLO\                  ← documentación y material de diseño (todos los .md)
 │   ├── GUIA_GITHUB_Y_DEPLOY.md  · MAPA_ARQUITECTURA_PROYECTO.md
 │   ├── INFORME_AUDITORIA_ARQUITECTURA.md · PLAN_ACCION_MAESTRO_PRODUCCION.md
@@ -36,23 +36,25 @@ C:\G\ProjectBook\          ← raíz del repo (.git, .gitignore, Iniciar Aquí.m
 ```
 
 **Regla de oro de rutas:**
-- Comandos **Git** → desde la **raíz** `C:\G\ProjectBook` (versiona DESARROLLO + Web juntas).
-- Comandos **`npm` y `firebase`** → desde **`C:\G\ProjectBook\Web`** (ahí está `package.json` y `firebase.json`).
+- Comandos **Git** → desde la **raíz** `C:\G\Archiblocks` (versiona DESARROLLO + Web juntas).
+- Comandos **`npm` y `firebase`** → desde **`C:\G\Archiblocks\Web`** (ahí está `package.json` y `firebase.json`).
 - Las rutas de código de este documento (`src/...`, `functions/...`) son **relativas a `Web\`**.
 
 ---
 
 ## 1. Qué es este proyecto
 
-**Archibots** (rotulado en la web como **BASEPRO — Gestión Documental**; el nombre interno del repo sigue siendo Archibots / Project_Book) es una **SPA web para organizar la información de proyectos de arquitectura y construcción**. Funciona como un "expediente digital" donde cada proyecto tiene una ficha maestra y un set de **herramientas** (calculadoras, generadores de documentos, geolocalizador normativo, etc.) que el usuario agrega a carpetas temáticas.
+**Archiblocks** (rotulado en la web como **Archiblocks — Gestión Documental**) es una **SPA web para organizar la información de proyectos de arquitectura y construcción**. Funciona como un "expediente digital" donde cada proyecto tiene una ficha maestra y un set de **herramientas** (calculadoras, generadores de documentos, geolocalizador normativo, etc.) que el usuario agrega a carpetas temáticas.
 
 Está **en producción y funcionando**. El rol de cualquier sesión de desarrollo es **agregar valor sin romper la base existente**, implementando el modelo **"Dos Cerebros"**:
 
 - **Cerebro Espacial** — cálculo geográfico con `@turf/turf` aislado en un **Web Worker** (`src/workers/geo.worker.ts`). Hace intersecciones punto↔polígono y cálculo de áreas.
-- **Cerebro Normativo** — base de datos Firestore nombrada `coordenadasnormativas` que devuelve la ficha normativa (PRC) según la zona. Desacoplado del cerebro espacial.
+- **Cerebro Normativo** — `NormativaService.ts` resuelve la ficha normativa (PRC) por zona desde **archivos estáticos locales `/norma-data/*.json`** (llave `{region}_{comunaSlug(comuna)}` vía `NormativaService.comunaSlug`). Desacoplado del cerebro espacial. ⚠️ *Legado:* la DB Firestore `coordenadasnormativas` y `core/geoUtils.generarLlaveMaestra` quedaron sin uso en el runtime; la implementación vigente es la de archivos locales.
+
+> 🧱 **Terminología — el "Block":** cuando el usuario dice **"el Block"** se refiere al **elemento isométrico del header que representa una construcción** (el SVG de bloques/edificio) y que funciona como **navegador con accesos directos a las secciones de la página**. Componente: `src/components/ArchiblocksNav.tsx` + escena `src/components/archiblocks-scene.html` (Archiblocks). El producto "Libro de Obra Digital" usa una escena de Block **reducida y en archivo aparte** (`librodeobra-scene.html`). Cualquier referencia futura a "el Block" apunta a este elemento.
 
 La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
-`GeolocalizadorView` → `GeoJsonService` (CDN + IndexedDB) → `geo.worker` (Turf `intersect`) → `NormativaService` (DB `coordenadasnormativas`) → **ficha PRC**.
+`GeolocalizadorView` → `GeoJsonService` (Hosting `/geo-data` + IndexedDB) → `useCerebroNormativo` (Turf `booleanPointInPolygon` + snap por distancia) → `NormativaService` (`/norma-data/*.json` local) → **ficha PRC**.
 
 ---
 
@@ -83,8 +85,8 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 - `catalog.ts` — metadata de presentación (`FOLDERS`, `CATALOG[]`, `TOP_TOOLS_DEFAULT`). **No** implementa herramientas.
 - `registry.ts` — une catálogo + componente lazy (`LAZY_COMPONENTS`). **Único** lugar con los `import()` de cada tool.
 - `useAccess.ts` — gating central del paywall (`AccessMode` = `edit` / `read` / `locked`)
-- `NormativaService.ts` — Cerebro Normativo (DB `coordenadasnormativas`, llave `{comuna}_{zona}`)
-- `GeoJsonService.ts` — carga GeoJSON PRC desde CDN `/geo-data/` + caché IndexedDB
+- `NormativaService.ts` — Cerebro Normativo (archivos locales `/norma-data/*.json`, llave `{region}_{comunaSlug(comuna)}`)
+- `GeoJsonService.ts` — carga GeoJSON PRC desde Hosting `/geo-data/` + caché IndexedDB
 - `db/ProjectRepository.ts` — persistencia **Cloud (Premium)** / **Local (Free)**
 - `AdminService.ts` · `ShareService.ts` · proveedores en `auth/`, `db/`, `theme/`, `ui/`
 
@@ -116,7 +118,7 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 > - **Backend** (reglas Firestore, reglas Storage, Cloud Functions) → **Firebase** (`archibots-497423`).
 > - ⚠️ **Firebase Hosting NO se usa.** Existe `hosting` en `firebase.json` y la URL `archibots-497423.web.app`, pero es **secundaria/sin uso**. Un `firebase deploy --only hosting` sube a esa URL Firebase, **no** actualiza el sitio real (Cloudflare). No lo uses para publicar el frontend.
 >
-> ⚠️ Los comandos `npm` se ejecutan desde `C:\G\ProjectBook\Web`; los `git` desde la raíz `C:\G\ProjectBook`. El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
+> ⚠️ Los comandos `npm` se ejecutan desde `C:\G\Archiblocks\Web`; los `git` desde la raíz `C:\G\Archiblocks`. El paso a paso completo está en `DESARROLLO/GUIA_GITHUB_Y_DEPLOY.md`.
 
 ### Frontend (Cloudflare Pages) — proyecto `projectbook`, conectado a GitHub
 El proyecto `projectbook` está **conectado al repo `goyogramadors/projectbook`** (rama `main`, *Automatic deployments: Enabled*). Dominios: **`archibots.cl`** + `projectbook-8qt.pages.dev`. `Web/public/_redirects` (`/*  /index.html  200`) hace la reescritura SPA.

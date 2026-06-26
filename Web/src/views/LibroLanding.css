@@ -1,0 +1,31 @@
+/* =============================================================================
+   Libro de Obra Digital — LANDING (F-LDO 1)
+   Estilos scoped bajo .lo-land. Usa los tokens del tema (var(--...)).
+   ============================================================================= */
+.lo-land{ width:100%; max-width:none; margin:0; }
+
+.lo-hero{ padding:48px 28px 24px; }
+.lo-kicker{ font-size:11px; font-weight:700; letter-spacing:.18em; text-transform:uppercase; color:var(--muted-foreground); }
+.lo-h1{ font-family:var(--font-heading); font-size:4rem; font-weight:800; letter-spacing:-2px; line-height:.95; margin:6px 0 2px; color:var(--foreground); }
+.lo-h1 .pro{ color:var(--destructive); }
+.lo-h1sub{ font-size:11px; letter-spacing:.16em; text-transform:uppercase; color:var(--muted-foreground); }
+.lo-proj{ margin:26px 0 8px; font-size:1.5rem; font-weight:700; border-left:4px solid var(--destructive); padding-left:14px; color:var(--foreground); }
+.lo-howto{ font-size:.95rem; line-height:1.6; max-width:680px; color:var(--foreground); opacity:.9; }
+.lo-howto b{ color:var(--destructive); }
+
+.lo-cta{ display:flex; gap:12px; margin:28px 0 4px; flex-wrap:wrap; }
+.lo-btn{ display:inline-flex; align-items:center; gap:9px; padding:13px 24px; font-size:13px; font-weight:800; text-transform:uppercase; cursor:pointer; border:var(--bw,1px) solid var(--destructive); background:var(--destructive); color:var(--destructive-foreground); }
+.lo-btn:hover{ filter:brightness(1.08); }
+.lo-btn.sec{ background:var(--muted); color:var(--foreground); border-color:var(--border); }
+.lo-btn.sec:hover{ filter:none; background:color-mix(in srgb, var(--muted) 80%, var(--foreground) 8%); }
+
+.lo-shortcuts{ padding:8px 28px 56px; }
+.lo-shhead{ font-size:13px; font-weight:800; text-transform:uppercase; letter-spacing:.08em; border-bottom:2px solid var(--foreground); padding-bottom:7px; margin-bottom:16px; color:var(--foreground); }
+.lo-grid{ display:grid; grid-template-columns:repeat(auto-fill,minmax(230px,1fr)); gap:14px; }
+.lo-card{ background:var(--card); border:var(--bw,1px) solid var(--border); padding:15px; display:flex; flex-direction:column; gap:9px; transition:.12s; cursor:pointer; text-align:left; color:var(--foreground); font-family:inherit; }
+.lo-card:hover{ border-color:var(--destructive); transform:translateY(-2px); }
+.lo-card .nm{ font-weight:800; font-size:14px; text-transform:uppercase; }
+.lo-card .meta{ font-size:10px; color:var(--muted-foreground); }
+.lo-chip{ align-self:flex-start; font-size:9px; font-weight:800; text-transform:uppercase; padding:2px 7px; border:1px solid var(--success); color:var(--success); }
+.lo-card.new{ border-style:dashed; align-items:center; justify-content:center; text-align:center; color:var(--muted-foreground); min-height:118px; }
+.lo-card.new:hover{ color:var(--destructive); }

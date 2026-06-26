@@ -1,0 +1,492 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Estimador de Presupuesto General · Obra (UF)</title>
+<style>
+:root{
+  --ink:#16191d;--ink-soft:#4a5159;--line:#c9cdd2;--line-strong:#3a3f45;
+  --paper:#f6f4ef;--field:#ffffff;--stamp:#1d4e89;--stamp-soft:#e7eef6;
+  --accent:#9a3b22;--ok:#2f6b3a;--uf:#1d4e89;
+  --mono:"SFMono-Regular",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.masthead{border-bottom:2px solid var(--line-strong);background:var(--paper);padding:18px 28px 14px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
+.masthead .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.masthead h1{font-family:var(--serif);font-weight:600;font-size:25px;margin:0;letter-spacing:-.01em;line-height:1.05}
+.masthead .meta{font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right;line-height:1.7;border-left:1px solid var(--line);padding-left:18px;white-space:nowrap}
+.masthead .meta b{color:var(--stamp)}
+
+.shell{display:grid;grid-template-columns:minmax(390px,0.85fr) minmax(560px,1.25fr)}
+.config{padding:22px 26px 90px;border-right:1px solid var(--line);overflow-x:hidden}
+.budget-wrap{background:#eceae4;padding:22px 22px 60px}
+
+.section{margin-bottom:22px}
+.section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:9px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.section-head .num{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600}
+.section-head h2{font-size:13px;font-weight:700;margin:0;text-transform:uppercase;letter-spacing:.04em}
+.section-head .hint{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-left:auto}
+.fieldnote{font-size:12px;color:var(--ink-soft);margin:-2px 0 10px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f-label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 4px}
+.f-input{width:100%;background:var(--field);border:1px solid var(--line);padding:7px 9px;font-family:var(--sans);font-size:13px;color:var(--ink)}
+.f-input:focus{outline:2px solid var(--stamp);outline-offset:-1px;border-color:var(--stamp)}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.chip{position:relative;cursor:pointer;user-select:none}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip .face{display:inline-block;border:1px solid var(--line);background:var(--field);padding:6px 11px;font-size:12.5px;color:var(--ink-soft);transition:.12s;line-height:1.2}
+.chip:hover .face{border-color:var(--line-strong);color:var(--ink)}
+.chip input:checked + .face{border-color:var(--stamp);background:var(--stamp-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--stamp)}
+.chip.single input:checked + .face{border-color:var(--accent);background:#f6e9e4;box-shadow:inset 0 0 0 1px var(--accent)}
+
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toggle{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);background:var(--field);padding:7px 10px}
+.toggle span{font-size:12.5px}
+.toggle .sw{width:34px;height:18px;border:1px solid var(--line-strong);background:#ddd;position:relative;flex:none;transition:.15s;cursor:pointer}
+.toggle .sw::after{content:"";position:absolute;top:1px;left:1px;width:14px;height:14px;background:#fff;border:1px solid var(--line-strong);transition:.15s}
+.toggle input{display:none}
+.toggle input:checked + .sw{background:var(--stamp);border-color:var(--stamp)}
+.toggle input:checked + .sw::after{left:17px;border-color:var(--stamp)}
+
+.cond{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.cond.open{max-height:300px}
+.cond-inner{padding-top:10px}
+
+/* ===== panel presupuesto ===== */
+.params{display:flex;flex-wrap:wrap;gap:10px;margin-bottom:16px;padding:12px 14px;background:#fff;border:1px solid var(--line)}
+.param{display:flex;flex-direction:column;gap:3px}
+.param label{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:var(--ink-soft)}
+.param input{width:96px;background:var(--field);border:1px solid var(--line);padding:5px 7px;font-family:var(--mono);font-size:12.5px;text-align:right}
+.param input:focus{outline:2px solid var(--stamp);outline-offset:-1px}
+.param.uf input{color:var(--uf);font-weight:600}
+
+.sheet{background:#fff;border:1px solid var(--line);box-shadow:0 14px 34px -22px rgba(0,0,0,.4)}
+.sheet-head{display:flex;justify-content:space-between;align-items:center;padding:14px 18px;border-bottom:2px solid #1a1d21}
+.sheet-head .t{font-family:var(--serif);font-size:16px;font-weight:600}
+.sheet-head .s{font-family:var(--mono);font-size:10px;color:#666;letter-spacing:.05em}
+
+table.bud{width:100%;border-collapse:collapse;font-size:12px}
+table.bud thead th{position:sticky;top:0;background:#f0f0ec;border-bottom:1px solid var(--line-strong);text-align:right;padding:7px 9px;font-family:var(--mono);font-size:9.5px;text-transform:uppercase;letter-spacing:.04em;color:#555;font-weight:700}
+table.bud thead th.l{text-align:left}
+table.bud .cap-row td{background:#23262b;color:#fff;font-weight:700;font-size:10.5px;text-transform:uppercase;letter-spacing:.06em;padding:6px 9px;font-family:var(--sans)}
+table.bud .cap-row td .csum{float:right;font-family:var(--mono);color:#d8c4b0}
+table.bud tbody td{border-bottom:1px solid #ececec;padding:5px 9px;text-align:right;vertical-align:middle}
+table.bud tbody td.l{text-align:left;color:#23262b}
+table.bud tbody td.unit{font-family:var(--mono);font-size:10px;color:#999;text-align:center}
+table.bud tbody td.uf{font-family:var(--mono);color:var(--uf);white-space:nowrap}
+table.bud tbody td.clp{font-family:var(--mono);color:#444;white-space:nowrap}
+table.bud tbody td.pu{font-family:var(--mono);color:#777}
+table.bud input.qty{width:62px;border:1px solid var(--line);padding:3px 5px;font-family:var(--mono);font-size:11.5px;text-align:right;background:#fffdf7}
+table.bud input.qty:focus{outline:1.5px solid var(--stamp);outline-offset:-1px}
+table.bud input.pu-edit{width:56px;border:1px solid transparent;padding:3px 4px;font-family:var(--mono);font-size:11px;text-align:right;background:transparent;color:#777}
+table.bud input.pu-edit:hover{border-color:var(--line)}
+table.bud input.pu-edit:focus{outline:1.5px solid var(--accent);outline-offset:-1px;background:#fff;color:var(--accent)}
+table.bud tr.proforma td.l{color:var(--accent)}
+table.bud tr.proforma input.glosa{width:97%;border:1px solid var(--line);padding:3px 6px;font-size:11.5px;background:#fff}
+table.bud .del{border:none;background:none;color:var(--accent);cursor:pointer;font-family:var(--mono);font-size:14px;padding:0 3px}
+.addrow{padding:8px 12px;border-top:1px solid #eee}
+.addrow button{font-family:var(--mono);font-size:11px;border:1px dashed var(--line-strong);background:transparent;color:var(--ink-soft);padding:6px 11px;cursor:pointer}
+.addrow button:hover{border-color:var(--accent);color:var(--accent)}
+
+/* resumen */
+.totals{border-top:2px solid #1a1d21}
+.totals .tr{display:flex;justify-content:space-between;align-items:center;padding:7px 18px;font-size:13px;border-bottom:1px solid #eee}
+.totals .tr .lab{color:#444;display:flex;align-items:center;gap:8px}
+.totals .tr .lab .pct{width:54px;border:1px solid var(--line);padding:3px 5px;font-family:var(--mono);font-size:11px;text-align:right;background:#fffdf7}
+.totals .tr .vals{font-family:var(--mono);display:flex;gap:18px}
+.totals .tr .vals .vuf{color:var(--uf);width:120px;text-align:right}
+.totals .tr .vals .vclp{color:#333;width:140px;text-align:right}
+.totals .tr.grand{background:#1d4e89;color:#fff;padding:13px 18px;font-size:15px;font-weight:700;border:none}
+.totals .tr.grand .lab{color:#fff;font-family:var(--serif)}
+.totals .tr.grand .vals .vuf{color:#bcd4ef}
+.totals .tr.grand .vals .vclp{color:#fff;font-size:16px}
+.totals .tr.sub{background:#fafafa}
+.totals .tr.sub .lab{font-weight:600;color:#1a1d21}
+
+.perm2{font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right;padding:8px 18px;background:#f4f3ef}
+.perm2 b{color:var(--uf)}
+
+.actions{position:sticky;bottom:0;display:flex;gap:10px;margin-top:16px;padding-top:14px;border-top:1px solid var(--line);background:#eceae4}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line-strong);background:#fff;padding:9px 16px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--stamp);color:#fff;border-color:var(--stamp)}
+.btn.primary:hover{background:#163d6b}
+.btn:hover{border-color:var(--ink)}
+
+@media (max-width:1000px){.shell{grid-template-columns:1fr}.config{border-right:none;border-bottom:1px solid var(--line)}.masthead{flex-direction:column;align-items:flex-start;gap:8px}.masthead .meta{text-align:left;border-left:none;padding-left:0}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <span class="kicker">Oficina Técnica · Chile · Presupuesto en UF</span>
+    <h1>Estimador de Presupuesto General de Obra</h1>
+  </div>
+  <div class="meta">DOC · <b>PPTO-GEN</b><br>Versión 2.0 · Borrador<br>Valores referenciales</div>
+</header>
+
+<div class="shell">
+  <div class="config">
+
+    <div class="section">
+      <div class="section-head"><span class="num">00</span><h2>Identificación del proyecto</h2></div>
+      <div class="grid2">
+        <div><label class="f-label" style="margin-top:0">Nombre del proyecto</label><input class="f-input" id="p_nombre" placeholder="Casa Arboleda"></div>
+        <div><label class="f-label" style="margin-top:0">Comuna</label><input class="f-input" id="p_comuna" placeholder="Las Condes"></div>
+        <div><label class="f-label" style="margin-top:0">Superficie construida [m²]</label><input class="f-input" id="p_m2" type="number" placeholder="180"></div>
+        <div><label class="f-label" style="margin-top:0">Región</label><input class="f-input" id="p_region" placeholder="Metropolitana"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">01</span><h2>Naturaleza de la intervención</h2><span class="hint">DOM</span></div>
+      <div class="chips" id="g_naturaleza">
+        <label class="chip single"><input type="radio" name="nat" value="obra_nueva" checked><span class="face">Obra nueva</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="ampliacion_mayor"><span class="face">Ampliación &gt; 100 m²</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="alteracion"><span class="face">Alteración</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="reconstruccion"><span class="face">Reconstrucción</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="reparacion"><span class="face">Reparación</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="obra_menor"><span class="face">Obra menor</span></label>
+      </div>
+    </div>
+
+    <div class="section" data-hide-on="obra_menor">
+      <div class="section-head"><span class="num">02</span><h2>Sistema estructural</h2></div>
+      <div class="chips" id="g_estructura">
+        <label class="chip"><input type="checkbox" value="hormigon"><span class="face">Hormigón armado</span></label>
+        <label class="chip"><input type="checkbox" value="albanileria"><span class="face">Albañilería</span></label>
+        <label class="chip"><input type="checkbox" value="metalica"><span class="face">Metálica</span></label>
+        <label class="chip"><input type="checkbox" value="madera"><span class="face">Madera</span></label>
+        <label class="chip"><input type="checkbox" value="tabiqueria_liviana"><span class="face">Tab. liviana</span></label>
+        <label class="chip"><input type="checkbox" value="prefabricado_sip"><span class="face">Prefab / SIP</span></label>
+      </div>
+    </div>
+
+    <div class="section" data-hide-on="obra_menor">
+      <div class="section-head"><span class="num">03</span><h2>Obra gruesa</h2></div>
+      <div class="toggles">
+        <label class="toggle"><span>Fundaciones</span><input type="checkbox" id="t_fund"><i class="sw"></i></label>
+        <label class="toggle"><span>Radier / sobrecim.</span><input type="checkbox" id="t_radier"><i class="sw"></i></label>
+        <label class="toggle"><span>Sobrelosas</span><input type="checkbox" id="t_sobrelosa"><i class="sw"></i></label>
+        <label class="toggle"><span>Demoliciones</span><input type="checkbox" id="t_demo"><i class="sw"></i></label>
+        <label class="toggle"><span>Techumbre</span><input type="checkbox" id="t_tech"><i class="sw"></i></label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">04</span><h2>Terminaciones</h2></div>
+      <div class="toggles" style="margin-bottom:10px">
+        <label class="toggle"><span>Tabiquería</span><input type="checkbox" id="t_tab"><i class="sw"></i></label>
+        <label class="toggle"><span>Pinturas</span><input type="checkbox" id="t_pint"><i class="sw"></i></label>
+        <label class="toggle"><span>Baños / húmedos</span><input type="checkbox" id="t_banos"><i class="sw"></i></label>
+        <label class="toggle"><span>Mobiliario en obra</span><input type="checkbox" id="t_mob"><i class="sw"></i></label>
+        <label class="toggle"><span>Norma térmica</span><input type="checkbox" id="t_termica"><i class="sw"></i></label>
+        <label class="toggle"><span>Resist. fuego</span><input type="checkbox" id="t_fuego"><i class="sw"></i></label>
+      </div>
+      <label class="f-label">Cielos</label>
+      <div class="chips" id="g_cielo">
+        <label class="chip"><input type="checkbox" value="modular"><span class="face">Modular</span></label>
+        <label class="chip"><input type="checkbox" value="volcanita"><span class="face">Volcanita</span></label>
+        <label class="chip"><input type="checkbox" value="enlucido"><span class="face">Enlucido</span></label>
+        <label class="chip"><input type="checkbox" value="obra_gruesa"><span class="face">Sin term.</span></label>
+      </div>
+      <label class="f-label">Revestimiento de muros</label>
+      <div class="chips" id="g_revmuros">
+        <label class="chip"><input type="checkbox" value="pintura"><span class="face">Pintura</span></label>
+        <label class="chip"><input type="checkbox" value="ceramico"><span class="face">Cerámico</span></label>
+        <label class="chip"><input type="checkbox" value="revest_madera"><span class="face">Madera</span></label>
+        <label class="chip"><input type="checkbox" value="obra_gruesa"><span class="face">Sin term.</span></label>
+      </div>
+      <label class="f-label">Pisos</label>
+      <div class="chips" id="g_pisos">
+        <label class="chip"><input type="checkbox" value="porcelanato"><span class="face">Porcelanato</span></label>
+        <label class="chip"><input type="checkbox" value="ceramico"><span class="face">Cerámico</span></label>
+        <label class="chip"><input type="checkbox" value="vinilico"><span class="face">Vinílico</span></label>
+        <label class="chip"><input type="checkbox" value="flotante"><span class="face">Flotante</span></label>
+        <label class="chip"><input type="checkbox" value="hormigon_pulido"><span class="face">H. pulido</span></label>
+        <label class="chip"><input type="checkbox" value="obra_gruesa"><span class="face">Sin term.</span></label>
+      </div>
+      <label class="f-label">Puertas</label>
+      <div class="chips" id="g_puertas">
+        <label class="chip"><input type="checkbox" value="madera_mdf"><span class="face">Madera/MDF</span></label>
+        <label class="chip"><input type="checkbox" value="metalica"><span class="face">Metálica</span></label>
+        <label class="chip"><input type="checkbox" value="cristal_templado"><span class="face">Cristal</span></label>
+        <label class="chip"><input type="checkbox" value="aluminio"><span class="face">Aluminio</span></label>
+      </div>
+      <label class="f-label">Ventanas</label>
+      <div class="chips" id="g_ventanas">
+        <label class="chip"><input type="checkbox" value="aluminio"><span class="face">Aluminio</span></label>
+        <label class="chip"><input type="checkbox" value="pvc"><span class="face">PVC</span></label>
+        <label class="chip"><input type="checkbox" value="madera"><span class="face">Madera</span></label>
+        <label class="chip"><input type="checkbox" value="fierro"><span class="face">Fierro</span></label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">05</span><h2>Instalaciones</h2></div>
+      <div class="chips" id="g_inst">
+        <label class="chip"><input type="checkbox" value="electrica"><span class="face">Eléctrica</span></label>
+        <label class="chip"><input type="checkbox" value="sanitaria"><span class="face">Sanitaria</span></label>
+        <label class="chip"><input type="checkbox" value="climatizacion"><span class="face">Climatización</span></label>
+        <label class="chip"><input type="checkbox" value="gas"><span class="face">Gas</span></label>
+        <label class="chip"><input type="checkbox" value="corrientes_debiles"><span class="face">C. débiles</span></label>
+        <label class="chip"><input type="checkbox" value="incendio"><span class="face">Incendio</span></label>
+        <label class="chip"><input type="checkbox" value="transporte_vertical"><span class="face">Transp. vertical</span></label>
+      </div>
+    </div>
+
+    <div class="section" data-hide-on="obra_menor">
+      <div class="section-head"><span class="num">06</span><h2>Urbanización y exteriores</h2></div>
+      <div class="chips" id="g_urb">
+        <label class="chip"><input type="checkbox" value="pav_exterior"><span class="face">Pav. exteriores</span></label>
+        <label class="chip"><input type="checkbox" value="areas_verdes"><span class="face">Áreas verdes</span></label>
+        <label class="chip"><input type="checkbox" value="cierros"><span class="face">Cierros</span></label>
+        <label class="chip"><input type="checkbox" value="aguas_lluvia"><span class="face">Aguas lluvias</span></label>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- ===== PRESUPUESTO ===== -->
+  <div class="budget-wrap">
+    <div class="params">
+      <div class="param uf"><label>Valor UF [$]</label><input id="x_uf" type="number" value="39000"></div>
+      <div class="param"><label>Gastos grales. %</label><input id="x_gg" type="number" value="15"></div>
+      <div class="param"><label>Utilidades %</label><input id="x_ut" type="number" value="10"></div>
+      <div class="param"><label>IVA %</label><input id="x_iva" type="number" value="19"></div>
+    </div>
+
+    <div class="sheet">
+      <div class="sheet-head">
+        <div><div class="t" id="sh_nombre">Casa Arboleda</div><div class="s" id="sh_sub">Las Condes · 180 m² · Obra nueva</div></div>
+        <div class="s" style="text-align:right">Presupuesto general<br>valores en UF y $</div>
+      </div>
+      <table class="bud">
+        <thead><tr>
+          <th class="l">Partida</th><th>Un.</th><th>Cant.</th><th>P.U. [UF]</th><th>Subtotal UF</th><th>Total $</th><th></th>
+        </tr></thead>
+        <tbody id="bud_body"></tbody>
+      </table>
+      <div class="addrow"><button id="add_pf">+ Agregar línea proforma (manual)</button></div>
+
+      <div class="totals" id="totals"></div>
+      <div class="perm2" id="perm2"></div>
+    </div>
+
+    <div class="actions">
+      <button class="btn primary" onclick="alert('Versión final: exporta a .xlsx con fórmulas y a .pdf.')">Exportar .xlsx</button>
+      <button class="btn" onclick="window.print()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NAT_LABEL={obra_nueva:"Obra nueva",ampliacion_mayor:"Ampliación > 100 m²",alteracion:"Alteración",reconstruccion:"Reconstrucción",reparacion:"Reparación",obra_menor:"Obra menor"};
+const has=(a,v)=>a.includes(v);
+const notOnlyOG=a=>a.length>0 && !(a.length===1 && a[0]==="obra_gruesa");
+
+const CAPS=[
+ ["1","Obras Preliminares e Instalación de Faenas"],
+ ["2","Habilitación del Terreno"],
+ ["3","Demoliciones y Obras Previas"],
+ ["4","Obra Gruesa"],
+ ["5","Terminaciones"],
+ ["6","Instalaciones"],
+ ["7","Térmica y Seguridad contra Incendio"],
+ ["8","Urbanización y Exteriores"],
+];
+
+// id, cap, nombre, unidad, PU[UF], cantidad por defecto (fn de m2 -> num | null), cond
+const CATALOG=[
+ {id:"1.1",cap:"1",n:"Instalación de faenas y obras provisorias",u:"glob",pu:80,q:m=>1,cond:s=>true},
+ {id:"1.2",cap:"1",n:"Empalmes provisorios de servicios",u:"glob",pu:25,q:m=>1,cond:s=>["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat)},
+ {id:"1.3",cap:"1",n:"Cierro provisorio y letrero de obra",u:"ml",pu:0.45,q:m=>null,cond:s=>s.nat!=="obra_menor"},
+ {id:"1.4",cap:"1",n:"Trazado, niveles y replanteo",u:"m2",pu:0.12,q:m=>m,cond:s=>true},
+
+ {id:"2.1",cap:"2",n:"Despeje y limpieza del terreno",u:"m2",pu:0.15,q:m=>m,cond:s=>["obra_nueva","reconstruccion"].includes(s.nat)||s.urb.length>0},
+ {id:"2.2",cap:"2",n:"Movimiento de tierras",u:"m3",pu:0.55,q:m=>null,cond:s=>s.fund&&["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat)},
+ {id:"2.3",cap:"2",n:"Muros de contención y estabilización",u:"m3",pu:9.5,q:m=>null,cond:s=>s.fund&&["obra_nueva","reconstruccion"].includes(s.nat)},
+
+ {id:"3.1",cap:"3",n:"Demoliciones y desarmes",u:"m2",pu:0.9,q:m=>null,cond:s=>s.demo},
+ {id:"3.2",cap:"3",n:"Retiro de artefactos e instalaciones",u:"glob",pu:12,q:m=>1,cond:s=>s.demo&&(s.banos||s.inst.length>0)},
+ {id:"3.3",cap:"3",n:"Retiro de escombros",u:"m3",pu:0.55,q:m=>null,cond:s=>s.demo},
+
+ {id:"4.1",cap:"4",n:"Fundaciones (hormigón + acero + emplant.)",u:"m2",pu:4.8,q:m=>m,cond:s=>s.fund},
+ {id:"4.2",cap:"4",n:"Sobrecimientos y radier",u:"m2",pu:1.2,q:m=>m,cond:s=>s.radier||s.fund},
+ {id:"4.3",cap:"4",n:"Sobrelosas de nivelación",u:"m2",pu:0.85,q:m=>null,cond:s=>s.sobrelosa},
+ {id:"4.4",cap:"4",n:"Estructura resistente vertical",u:"m2",pu:6.5,q:m=>m,cond:s=>["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat)},
+ {id:"4.5",cap:"4",n:"Losas y entrepisos",u:"m2",pu:5.2,q:m=>null,cond:s=>["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat)&&(has(s.est,"hormigon")||has(s.est,"metalica"))},
+ {id:"4.6",cap:"4",n:"Estructura de techumbre",u:"m2",pu:2.4,q:m=>null,cond:s=>s.tech},
+ {id:"4.7",cap:"4",n:"Cubierta y hojalatería",u:"m2",pu:2.8,q:m=>null,cond:s=>s.tech},
+
+ {id:"5.1",cap:"5",n:"Tabiquería interior",u:"m2",pu:1.8,q:m=>null,cond:s=>s.tab},
+ {id:"5.2",cap:"5",n:"Revestimiento de muros",u:"m2",pu:1.4,q:m=>null,cond:s=>notOnlyOG(s.rev)},
+ {id:"5.3",cap:"5",n:"Cielos",u:"m2",pu:1.6,q:m=>null,cond:s=>notOnlyOG(s.cielo)},
+ {id:"5.4",cap:"5",n:"Pavimentos y pisos",u:"m2",pu:1.5,q:m=>m,cond:s=>notOnlyOG(s.pisos)},
+ {id:"5.5",cap:"5",n:"Puertas",u:"un",pu:2.5,q:m=>null,cond:s=>s.puertas.length>0},
+ {id:"5.6",cap:"5",n:"Ventanas",u:"m2",pu:3.2,q:m=>null,cond:s=>s.ventanas.length>0},
+ {id:"5.7",cap:"5",n:"Pinturas",u:"m2",pu:0.35,q:m=>m?Math.round(m*2.5):null,cond:s=>s.pint},
+ {id:"5.8",cap:"5",n:"Impermeabilización recintos húmedos",u:"m2",pu:0.9,q:m=>null,cond:s=>s.banos},
+ {id:"5.9",cap:"5",n:"Mobiliario en obra",u:"glob",pu:60,q:m=>1,cond:s=>s.mob},
+
+ {id:"6.1",cap:"6",n:"Instalación eléctrica",u:"m2",pu:3.5,q:m=>m,cond:s=>has(s.inst,"electrica")},
+ {id:"6.2",cap:"6",n:"Instalación sanitaria",u:"m2",pu:2.8,q:m=>m,cond:s=>has(s.inst,"sanitaria")||s.banos},
+ {id:"6.3",cap:"6",n:"Climatización y ventilación",u:"m2",pu:4.5,q:m=>m,cond:s=>has(s.inst,"climatizacion")},
+ {id:"6.4",cap:"6",n:"Gas",u:"glob",pu:40,q:m=>1,cond:s=>has(s.inst,"gas")},
+ {id:"6.5",cap:"6",n:"Corrientes débiles",u:"m2",pu:1.2,q:m=>m,cond:s=>has(s.inst,"corrientes_debiles")},
+ {id:"6.6",cap:"6",n:"Red de incendio",u:"m2",pu:1.8,q:m=>m,cond:s=>has(s.inst,"incendio")},
+ {id:"6.7",cap:"6",n:"Transporte vertical",u:"un",pu:900,q:m=>null,cond:s=>has(s.inst,"transporte_vertical")},
+
+ {id:"7.1",cap:"7",n:"Cumplimiento norma térmica",u:"m2",pu:1.1,q:m=>m,cond:s=>s.termica},
+ {id:"7.2",cap:"7",n:"Resistencia al fuego / protección pasiva",u:"m2",pu:0.8,q:m=>m,cond:s=>s.fuego},
+
+ {id:"8.1",cap:"8",n:"Pavimentos exteriores",u:"m2",pu:1.3,q:m=>null,cond:s=>has(s.urb,"pav_exterior")},
+ {id:"8.2",cap:"8",n:"Áreas verdes y paisajismo",u:"m2",pu:0.7,q:m=>null,cond:s=>has(s.urb,"areas_verdes")},
+ {id:"8.3",cap:"8",n:"Cierros perimetrales definitivos",u:"ml",pu:4.0,q:m=>null,cond:s=>has(s.urb,"cierros")},
+ {id:"8.4",cap:"8",n:"Evacuación de aguas lluvias exteriores",u:"glob",pu:50,q:m=>1,cond:s=>has(s.urb,"aguas_lluvia")},
+];
+
+/* estado editable de cantidades y PU por id; proforma; */
+let qty={}, puOverride={}, proforma=[], pfid=0;
+
+function readState(){
+  const vals=id=>[...document.querySelectorAll('#'+id+' input:checked')].map(i=>i.value);
+  return {
+    nombre:document.getElementById('p_nombre').value||"Casa Arboleda",
+    comuna:document.getElementById('p_comuna').value||"Las Condes",
+    region:document.getElementById('p_region').value||"Metropolitana",
+    m2:parseFloat(document.getElementById('p_m2').value)||180,
+    nat:document.querySelector('input[name="nat"]:checked').value,
+    est:vals('g_estructura'),
+    fund:document.getElementById('t_fund').checked,
+    radier:document.getElementById('t_radier').checked,
+    sobrelosa:document.getElementById('t_sobrelosa').checked,
+    demo:document.getElementById('t_demo').checked,
+    tech:document.getElementById('t_tech').checked,
+    tab:document.getElementById('t_tab').checked,
+    pint:document.getElementById('t_pint').checked,
+    banos:document.getElementById('t_banos').checked,
+    mob:document.getElementById('t_mob').checked,
+    termica:document.getElementById('t_termica').checked,
+    fuego:document.getElementById('t_fuego').checked,
+    cielo:vals('g_cielo'),rev:vals('g_revmuros'),pisos:vals('g_pisos'),
+    puertas:vals('g_puertas'),ventanas:vals('g_ventanas'),
+    inst:vals('g_inst'),urb:vals('g_urb'),
+    uf:parseFloat(document.getElementById('x_uf').value)||39000,
+    gg:parseFloat(document.getElementById('x_gg').value)||0,
+    ut:parseFloat(document.getElementById('x_ut').value)||0,
+    iva:parseFloat(document.getElementById('x_iva').value)||0,
+  };
+}
+
+const fUF=v=>v.toLocaleString('es-CL',{minimumFractionDigits:2,maximumFractionDigits:2});
+const fCLP=v=>"$"+Math.round(v).toLocaleString('es-CL');
+
+function render(){
+  const s=readState();
+  document.querySelectorAll('[data-hide-on]').forEach(el=>{el.style.display=(el.dataset.hideOn===s.nat)?'none':''});
+
+  document.getElementById('sh_nombre').textContent=s.nombre;
+  document.getElementById('sh_sub').textContent=`${s.comuna} · ${s.m2} m² · ${NAT_LABEL[s.nat]}`;
+
+  const active=CATALOG.filter(p=>p.cond(s));
+  const byCap={}; CAPS.forEach(([n])=>byCap[n]=[]);
+  active.forEach(p=>byCap[p.cap].push(p));
+
+  let rows=""; let costoDirecto=0;
+  CAPS.forEach(([num,title])=>{
+    const items=byCap[num]; if(!items.length) return;
+    let capSum=0; let inner="";
+    items.forEach(p=>{
+      const pu = (puOverride[p.id]!==undefined)?puOverride[p.id]:p.pu;
+      let q = (qty[p.id]!==undefined)?qty[p.id]:p.q(s.m2);
+      const sub = (q!=null? q*pu : 0);
+      capSum+=sub;
+      const subUF = q!=null? fUF(sub) : "—";
+      const subCLP= q!=null? fCLP(sub*s.uf) : "<span style='color:#bbb'>ingresar cant.</span>";
+      inner+=`<tr>
+        <td class="l">${p.id} · ${p.n}</td>
+        <td class="unit">${p.u}</td>
+        <td><input class="qty" data-q="${p.id}" value="${q!=null?q:''}" placeholder="0"></td>
+        <td class="pu"><input class="pu-edit" data-pu="${p.id}" value="${pu}"></td>
+        <td class="uf">${subUF}</td>
+        <td class="clp">${subCLP}</td><td></td></tr>`;
+    });
+    costoDirecto+=capSum;
+    rows+=`<tr class="cap-row"><td colspan="7">Cap. ${num} · ${title}<span class="csum">${fUF(capSum)} UF · ${fCLP(capSum*s.uf)}</span></td></tr>`+inner;
+  });
+
+  // proforma
+  if(proforma.length){
+    rows+=`<tr class="cap-row"><td colspan="7">Proforma · Líneas manuales</td></tr>`;
+    proforma.forEach(pf=>{
+      const montoUF = pf.unidad==="$" ? (pf.monto/s.uf) : pf.monto;
+      costoDirecto+=montoUF;
+      rows+=`<tr class="proforma">
+        <td class="l"><input class="glosa" data-pf="${pf.key}" data-f="glosa" value="${(pf.glosa||'').replace(/"/g,'&quot;')}" placeholder="Glosa (ej. Climatización HVAC cotizada)"></td>
+        <td class="unit">
+          <select data-pf="${pf.key}" data-f="unidad" style="font-family:var(--mono);font-size:10px;border:1px solid var(--line)">
+            <option value="UF" ${pf.unidad==="UF"?"selected":""}>UF</option>
+            <option value="$" ${pf.unidad==="$"?"selected":""}>$</option>
+          </select></td>
+        <td colspan="2"><input class="qty" style="width:110px" data-pf="${pf.key}" data-f="monto" value="${pf.monto||''}" placeholder="monto"></td>
+        <td class="uf">${fUF(montoUF)}</td>
+        <td class="clp">${fCLP(montoUF*s.uf)}</td>
+        <td><button class="del" data-delpf="${pf.key}">✕</button></td></tr>`;
+    });
+  }
+
+  document.getElementById('bud_body').innerHTML=rows;
+
+  // resumen
+  const gg=costoDirecto*s.gg/100;
+  const ut=(costoDirecto+gg)*s.ut/100;
+  const neto=costoDirecto+gg+ut;
+  const iva=neto*s.iva/100;
+  const total=neto+iva;
+  const T=(lab,uf,clp,cls="")=>`<div class="tr ${cls}"><span class="lab">${lab}</span><span class="vals"><span class="vuf">${fUF(uf)} UF</span><span class="vclp">${fCLP(clp)}</span></span></div>`;
+
+  document.getElementById('totals').innerHTML=
+    `<div class="tr sub"><span class="lab">A · Costo directo</span><span class="vals"><span class="vuf">${fUF(costoDirecto)} UF</span><span class="vclp">${fCLP(costoDirecto*s.uf)}</span></span></div>`+
+    `<div class="tr"><span class="lab">B · Gastos generales <input class="pct" id="e_gg" value="${s.gg}">%</span><span class="vals"><span class="vuf">${fUF(gg)} UF</span><span class="vclp">${fCLP(gg*s.uf)}</span></span></div>`+
+    `<div class="tr"><span class="lab">C · Utilidades <input class="pct" id="e_ut" value="${s.ut}">%</span><span class="vals"><span class="vuf">${fUF(ut)} UF</span><span class="vclp">${fCLP(ut*s.uf)}</span></span></div>`+
+    `<div class="tr sub"><span class="lab">D · Costo neto</span><span class="vals"><span class="vuf">${fUF(neto)} UF</span><span class="vclp">${fCLP(neto*s.uf)}</span></span></div>`+
+    `<div class="tr"><span class="lab">E · IVA <input class="pct" id="e_iva" value="${s.iva}">%</span><span class="vals"><span class="vuf">${fUF(iva)} UF</span><span class="vclp">${fCLP(iva*s.uf)}</span></span></div>`+
+    `<div class="tr grand"><span class="lab">F · Total presupuesto</span><span class="vals"><span class="vuf">${fUF(total)} UF</span><span class="vclp">${fCLP(total*s.uf)}</span></span></div>`;
+
+  const perm2 = s.m2>0 ? total/s.m2 : 0;
+  document.getElementById('perm2').innerHTML=`Costo por m²: <b>${fUF(perm2)} UF/m²</b> · ${fCLP(perm2*s.uf)}/m²`;
+
+  // sincronizar los % editables del resumen con los de arriba
+  ['gg','ut','iva'].forEach(k=>{
+    const el=document.getElementById('e_'+k);
+    if(el) el.oninput=()=>{document.getElementById('x_'+k).value=el.value;render();};
+  });
+}
+
+/* listeners */
+document.addEventListener('input',e=>{
+  const t=e.target;
+  if(t.dataset.q!==undefined){const v=t.value.trim();qty[t.dataset.q]=v===''?null:parseFloat(v)||0;render();return;}
+  if(t.dataset.pu!==undefined){puOverride[t.dataset.pu]=parseFloat(t.value)||0;render();return;}
+  if(t.dataset.pf!==undefined){const pf=proforma.find(x=>x.key==t.dataset.pf);if(pf){pf[t.dataset.f]=(t.dataset.f==="monto")?(parseFloat(t.value)||0):t.value;render();}return;}
+  render();
+});
+document.addEventListener('change',e=>{ if(e.target.dataset.pf!==undefined){const pf=proforma.find(x=>x.key==e.target.dataset.pf);if(pf){pf[e.target.dataset.f]=e.target.value;render();}} else render();});
+document.addEventListener('click',e=>{
+  if(e.target.dataset.delpf!==undefined){proforma=proforma.filter(x=>x.key!=e.target.dataset.delpf);render();}
+});
+document.getElementById('add_pf').onclick=()=>{pfid++;proforma.push({key:pfid,glosa:"",monto:0,unidad:"UF"});render();};
+
+render();
+</script>
+</body>
+</html>

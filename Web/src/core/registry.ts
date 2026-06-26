@@ -72,6 +72,8 @@ export const LAZY_COMPONENTS: Record<string, LazyTool> = {
   'listado-dom': lazy(() => import('../tools/ListadoDocumentosView')),
   // F5 · Emisor de Estado de Pago (T-44) — Seguimiento e ITO / Financiero.
   'estados-pago': lazy(() => import('../tools/EmisorEstadoPagoView')),
+  // F5 · Registro RDI (Requerimientos de Información) — Seguimiento e ITO.
+  rdi: lazy(() => import('../tools/RegistroRdiView')),
   // Fase 0 · MOCKUP — Informe de Subsuelo (Informes especiales). En memoria, sin BD.
   'informe-suelo': lazy(() => import('../tools/InformeSubsueloView')),
   // Fase 0 · MOCKUP — Memoria de Ruta Accesible (Informes especiales). En memoria.
@@ -82,6 +84,11 @@ export const LAZY_COMPONENTS: Record<string, LazyTool> = {
   'libro-obras': lazy(() => import('../tools/LibroObrasDigitalView')),
   // Fase 0 · MOCKUP Premium — Carpeta Digital (árbol por contrato, versiones, archivado).
   'carpeta-digital': lazy(() => import('../tools/CarpetaDigitalView')),
+
+  // Construcción · EETT + Presupuesto (catálogos generados desde .md).
+  'eett-generador': lazy(() => import('../tools/GeneradorEETTView')),
+  presupuesto: lazy(() => import('../tools/PresupuestoObraView')),
+  gantt: lazy(() => import('../tools/GanttView')),
   // DOM-Formularios · 5 trámites (data-driven, pdf-lib lazy). UNA vista; el slot
   // (toolId) define el trámite y el 'Tipo de proyecto' resuelve el PDF.
   'solicitud-permiso': lazy(() => import('../tools/FormulariosDOMView')),

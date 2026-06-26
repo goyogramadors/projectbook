@@ -19,11 +19,8 @@ import {
   cargarLibro, cargarMasFolios, putFolio, guardarMeta, nextFolioNumero,
 } from './obra/libroStore';
 import { subirAdjunto, borrarAdjunto, AdjuntoDemasiadoGrande } from './obra/storageUpload';
+import { TEMAS_LOD, TEMAS_KEYS, USERS, CURRENT_USER, localAdj } from './obra/temas';
 import type { ToolProps, ObraAdjunto } from '../core/types';
-
-/* ── usuarios / permisos ── */
-const CURRENT_USER = 'M. Soto (IF)';
-const USERS = ['M. Soto (IF)', 'J. Pérez', 'C. Rojas', 'P. Díaz', 'Contratista'];
 type Nivel = 'sin' | 'lectura' | 'escritura' | 'edicion';
 const NIVELES: Nivel[] = ['sin', 'lectura', 'escritura', 'edicion'];
 const NIV_LABEL: Record<Nivel, string> = { sin: 'sin acceso', lectura: 'lectura', escritura: 'escritura', edicion: 'edición' };
@@ -34,23 +31,23 @@ const FORMATOS = [
   { id: 'comunicacion', label: 'Comunicación (1.1–1.5)' },
   { id: 'incidente', label: 'Incidente (2.1)' },
   { id: 'ejecutivo', label: 'Rep. Ejecutivo (2.2)' },
+  { id: 'rdi', label: 'RDI (Req. de Información)' },
   { id: 'libre', label: 'Formato libre' },
 ] as const;
 type FormatoId = typeof FORMATOS[number]['id'];
 
-/* subtemas por tema (Libro de Obra · puntos 1.1–1.5) */
-const TEMAS_LOD: Record<string, string[]> = {
-  '1.1 Gestión de la Calidad': ['Plan de Calidad: Plan inicial y modificaciones.', 'Acta de exposición y reuniones de Calidad', 'Calidad de los materiales', 'Auditorías Internas'],
-  '1.2 Prevención de Riesgos': ['Reunión de inicio de prevención de riesgos', 'Aviso de inicio al Organismo administrador del Seguro', 'Plan y Programa: Plan y programa inicial, modificaciones', 'Informes Cumplimiento Programa', 'Comité Paritario', 'Accidentes', 'Fiscalizaciones'],
-  '1.3 Medio Ambiente': ['Plan de Gestión Ambiental', 'Presentación del Planes de Manejo', 'Fiscalizaciones'],
-  '1.4 Participación Ciudadana': ['Plan de Participación Ciudadana', 'Actas reuniones participación Ciudadana y/o Indígena', 'Material Informativo', 'Sugerencias y Reclamos'],
-  '1.5 Otras Comunicaciones': ['Letrero de identificación', 'Señalización y Medidas de Seguridad', 'Programa de trabajo, inversiones y mano de obra', 'Permisos para la ejecución de la obra', 'Gestión del Personal', 'Carpeta Laboral', 'Estados de Pago', 'Garantías', 'Canje de Retenciones', 'Modificación de Obra', 'Subcontratos', 'Valores proforma', 'Informes mensuales', 'Recepción de Etapas', 'Término de Obra'],
-};
-const TEMAS_KEYS = Object.keys(TEMAS_LOD);
+/* Temas/subtemas LOD (1.1–1.5) compartidos con el Registro RDI → ./obra/temas */
 const INCID_TIPOS = ['Accidente', 'Paralización', 'Problema de suministros', 'Derrumbe', 'Otro'];
 const ESTADO_CONTRATO = ['ejecución', 'terminado', 'terminado anticipado', 'paralizado'];
 /* tema por defecto según el tipo de libro */
-const LIBRO_TEMA: Record<string, string> = { calidad: '1.1 Gestión de la Calidad', pr: '1.2 Prevención de Riesgos', ma: '1.3 Medio Ambiente', pc: '1.4 Participación Ciudadana' };
+const LIBRO_TEMA: Record<string, string> = {
+  maestro: '1.0 Libro de Obras Maestro',
+  comunic: '1.5 Otras Comunicaciones',
+  calidad: '1.1 Gestión de la Calidad',
+  pr: '1.2 Prevención de Riesgos',
+  ma: '1.3 Medio Ambiente',
+  pc: '1.4 Participación Ciudadana',
+};
 
 /* ── catálogo "agregar libro" ── */
 const TEMATICOS: { tipo: string; nombre: string }[] = [
@@ -75,12 +72,6 @@ const LIBROS_SEED: Libro[] = [
   { id: 'pr', nombre: 'Prevención de Riesgos', tipo: 'pr', abierto: false },
 ];
 const hoy = () => new Date().toISOString().slice(0, 10);
-
-/** Adjunto sin subida real (modo Free/local o degradación): solo metadato. */
-const localAdj = (f: File): ObraAdjunto => ({
-  uuid: `local-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`,
-  name: f.name, size: f.size, type: f.type, url: '', path: '',
-});
 
 /** Normaliza adjuntos legados (string[] de nombres) al contrato ObraAdjunto[]. */
 function normalizeFolio(f: Folio): Folio {
@@ -163,6 +154,15 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
     return () => { alive = false; };
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [projectId, isCloud]);
+
+  // Sincroniza tema/subtema por defecto al seleccionar otro sub-libro
+  useEffect(() => {
+    const tipo = libros.find(l => l.id === sel)?.tipo ?? '';
+    const tema = LIBRO_TEMA[tipo] ?? TEMAS_KEYS[0] ?? '';
+    setNeTema(tema);
+    setNeSubtema(TEMAS_LOD[tema]?.[0] ?? '');
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [sel]);
 
   /** Persiste meta + (cloud) el folio tocado por su doc, y refleja el avance S7. */
   const persistir = async (
@@ -270,6 +270,11 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
     if (neFormato === 'comunicacion') { tema = neTema.split(' ').slice(0, 2).join(' '); subtema = neSubtema; texto = neTitulo.trim() || neSubtema; }
     else if (neFormato === 'incidente') { tema = '2.1 Inc.'; subtema = neIncidTipo; texto = neTexto.trim() || 'Sin detalle'; }
     else if (neFormato === 'ejecutivo') { tema = '2.2 Ejec.'; subtema = 'Reporte Ejecutivo Mensual'; texto = 'Estado: ' + neEstado; }
+    else if (neFormato === 'rdi') {
+      tema = 'RDI ' + neTema.split(' ').slice(0, 2).join(' '); subtema = neSubtema;
+      const t = neTitulo.trim(); const c = neTexto.trim();
+      texto = t ? (c ? `${t} — ${c}` : t) : (c || 'Requerimiento de información');
+    }
     else { tema = 'Libre'; subtema = neTitulo.trim() || 'Entrada libre'; texto = neTexto.trim() || neTitulo.trim(); }
     const { numero, counters: c2 } = nextFolioNumero(counters);
     const f: Folio = {
@@ -601,6 +606,22 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
                         </div>
                       </>
                     )}
+                    {neFormato === 'rdi' && (
+                      <>
+                        <div className="tech-input-group"><label>Tema (1.1–1.5)</label>
+                          <select className="tech-select" value={neTema} disabled={readOnly} onChange={e => cambiarTema(e.target.value)}>
+                            {TEMAS_KEYS.map(t => <option key={t} value={t}>{t}</option>)}
+                          </select></div>
+                        <div className="tech-input-group"><label>Sub-tema</label>
+                          <select className="tech-select" value={neSubtema} disabled={readOnly} onChange={e => setNeSubtema(e.target.value)}>
+                            {(TEMAS_LOD[neTema] ?? []).map(s => <option key={s} value={s}>{s}</option>)}
+                          </select></div>
+                        <div className="tech-input-group col-span-full"><label>Título del RDI</label>
+                          <input className="tech-input" value={neTitulo} disabled={readOnly} onChange={e => setNeTitulo(e.target.value)} placeholder="Título del requerimiento de información" /></div>
+                        <div className="tech-input-group col-span-full"><label>Contenido</label>
+                          <textarea rows={2} className="tech-input" value={neTexto} disabled={readOnly} onChange={e => setNeTexto(e.target.value)} placeholder="Detalle del requerimiento de información…" /></div>
+                      </>
+                    )}
                     {neFormato === 'libre' && (
                       <>
                         <div className="tech-input-group col-span-full"><label>Título</label>
@@ -677,6 +698,7 @@ export default function LibroObrasDigitalView({ projectId, access = 'edit' }: To
 
                   <p style={{ fontSize: 10, opacity: 0.6, display: 'flex', alignItems: 'center', gap: 5, margin: '8px 0 6px' }}>
                     <Icons.Lock size={11} /> Autor ({CURRENT_USER}) y fecha se registran automáticamente. Premium: el binario sube a Storage con nombre UUID; Free: queda como metadato local.
+                  
                   </p>
                   <button type="button" className="technical-btn" disabled={readOnly} onClick={nuevaEntrada}>+ [ GUARDAR ENTRADA / FOLIO ]</button>
                   <p style={{ fontSize: 10, opacity: 0.55, marginTop: 8 }}>Los folios registrados aparecen en la columna «FOLIOS» (arriba a la derecha), filtrables por mes desde el índice.</p>

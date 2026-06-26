@@ -23,7 +23,7 @@ import {
   updateProfile,
   type User as FbUser,
 } from 'firebase/auth';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc, collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
 import { auth, googleProvider, db } from '../firebase';
 import type { AuthState, User, Plan, Theme } from '../types';
 
@@ -60,12 +60,35 @@ async function resolveUser(fb: FbUser): Promise<User> {
       // (isPremium/isActive hacen get() de este doc). Escritura NO bloqueante
       // (fire-and-forget): no demora el render; si red/reglas fallan, la sesión
       // continúa con los valores por defecto y se reintenta en el próximo login.
+      // Verificar si existe una invitación Premium pendiente para este correo
+      let isPendingPremium = false;
+      if (fb.email) {
+        try {
+          const invSnap = await getDocs(
+            query(
+              collection(db, 'premiumInvitations'),
+              where('email', '==', fb.email),
+              where('pendiente', '==', true),
+            )
+          );
+          if (!invSnap.empty) {
+            isPendingPremium = true;
+            compPremium = true;
+            // Marcar todas las invitaciones de este correo como aceptadas
+            await Promise.all(
+              invSnap.docs.map((d) =>
+                updateDoc(d.ref, { pendiente: false, acceptedBy: fb.uid, acceptedAt: Date.now() })
+              )
+            );
+          }
+        } catch { /* offline / reglas: continúa sin Premium */ }
+      }
       void setDoc(doc(db, 'users', fb.uid), {
         uid: fb.uid,
         email: fb.email,
-        plan: 'Free',
+        plan: isPendingPremium ? 'Premium' : 'Free',
         estado: 'Activo',
-        compPremium: false,
+        compPremium: isPendingPremium,
         createdAt: Date.now(),
       }).catch(() => { /* offline / reglas: se reintenta en el próximo login */ });
     }

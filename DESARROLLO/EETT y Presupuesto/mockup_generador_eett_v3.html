@@ -1,0 +1,599 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Generador EETT · v2 · Especificaciones Técnicas Resumidas</title>
+<style>
+:root{
+  --ink:#16191d;--ink-soft:#4a5159;--line:#c9cdd2;--line-strong:#3a3f45;
+  --paper:#f6f4ef;--field:#ffffff;--stamp:#1d4e89;--stamp-soft:#e7eef6;
+  --accent:#9a3b22;--ok:#2f6b3a;--warn-bg:#fbf3e6;--warn-line:#c79a4a;
+  --mono:"SFMono-Regular",ui-monospace,"Cascadia Mono","Consolas",monospace;
+  --serif:"Iowan Old Style","Palatino Linotype",Palatino,Georgia,serif;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,Helvetica,Arial,sans-serif;
+}
+*{box-sizing:border-box}
+body{margin:0;background:var(--paper);color:var(--ink);font-family:var(--sans);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+@media (prefers-reduced-motion:reduce){*{transition:none!important}}
+
+.masthead{border-bottom:2px solid var(--line-strong);background:var(--paper);padding:18px 28px 14px;display:flex;justify-content:space-between;align-items:flex-end;gap:24px}
+.masthead .kicker{font-family:var(--mono);font-size:11px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-soft)}
+.masthead h1{font-family:var(--serif);font-weight:600;font-size:25px;margin:0;letter-spacing:-.01em;line-height:1.05}
+.masthead .meta{font-family:var(--mono);font-size:11px;color:var(--ink-soft);text-align:right;line-height:1.7;border-left:1px solid var(--line);padding-left:18px;white-space:nowrap}
+.masthead .meta b{color:var(--stamp)}
+
+.shell{display:grid;grid-template-columns:minmax(430px,1fr) minmax(440px,1.05fr)}
+.config{padding:22px 28px 90px;border-right:1px solid var(--line);overflow-x:hidden}
+.preview-wrap{background:#eceae4;padding:22px 24px 60px}
+
+.section{margin-bottom:24px}
+.section-head{display:flex;align-items:baseline;gap:10px;margin-bottom:9px;border-bottom:1px solid var(--line);padding-bottom:6px}
+.section-head .num{font-family:var(--mono);font-size:11px;color:var(--accent);font-weight:600}
+.section-head h2{font-size:13px;font-weight:700;margin:0;text-transform:uppercase;letter-spacing:.04em}
+.section-head .hint{font-family:var(--mono);font-size:10px;color:var(--ink-soft);margin-left:auto;letter-spacing:.04em}
+.fieldnote{font-size:12px;color:var(--ink-soft);margin:-2px 0 10px}
+
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.f-label{display:block;font-family:var(--mono);font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--ink-soft);margin:10px 0 4px}
+.f-input{width:100%;background:var(--field);border:1px solid var(--line);padding:7px 9px;font-family:var(--sans);font-size:13px;color:var(--ink)}
+.f-input:focus{outline:2px solid var(--stamp);outline-offset:-1px;border-color:var(--stamp)}
+textarea.f-input{resize:vertical;min-height:62px;font-family:var(--sans)}
+
+.chips{display:flex;flex-wrap:wrap;gap:7px;align-items:center}
+.chip{position:relative;cursor:pointer;user-select:none}
+.chip input{position:absolute;opacity:0;pointer-events:none}
+.chip .face{display:inline-block;border:1px solid var(--line);background:var(--field);padding:6px 11px;font-size:12.5px;color:var(--ink-soft);transition:.12s;line-height:1.2}
+.chip:hover .face{border-color:var(--line-strong);color:var(--ink)}
+.chip input:checked + .face{border-color:var(--stamp);background:var(--stamp-soft);color:var(--ink);box-shadow:inset 0 0 0 1px var(--stamp)}
+.chip input:focus-visible + .face{outline:2px solid var(--accent);outline-offset:2px}
+.chip.single input:checked + .face{border-color:var(--accent);background:#f6e9e4;box-shadow:inset 0 0 0 1px var(--accent)}
+
+.btn-other{font-family:var(--mono);font-size:11px;border:1px dashed var(--line-strong);background:transparent;color:var(--ink-soft);padding:6px 11px;cursor:pointer;letter-spacing:.03em}
+.btn-other:hover{border-color:var(--accent);color:var(--accent)}
+
+.others{margin-top:9px;display:flex;flex-direction:column;gap:8px}
+.other-card{border:1px solid var(--line);border-left:3px solid var(--accent);background:#fff;padding:9px 10px}
+.other-card .row{display:flex;gap:8px;align-items:center;margin-bottom:6px}
+.other-card .row input{flex:1}
+.other-card .del{border:none;background:none;color:var(--accent);cursor:pointer;font-family:var(--mono);font-size:15px;line-height:1;padding:0 4px}
+
+.toggles{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.toggle{display:flex;align-items:center;justify-content:space-between;border:1px solid var(--line);background:var(--field);padding:7px 10px}
+.toggle span{font-size:12.5px}
+.toggle .sw{width:34px;height:18px;border:1px solid var(--line-strong);background:#ddd;position:relative;flex:none;transition:.15s;cursor:pointer}
+.toggle .sw::after{content:"";position:absolute;top:1px;left:1px;width:14px;height:14px;background:#fff;border:1px solid var(--line-strong);transition:.15s}
+.toggle input{display:none}
+.toggle input:checked + .sw{background:var(--stamp);border-color:var(--stamp)}
+.toggle input:checked + .sw::after{left:17px;border-color:var(--stamp)}
+
+.cond{max-height:0;overflow:hidden;transition:max-height .25s ease}
+.cond.open{max-height:900px}
+.cond-inner{padding-top:10px}
+
+.optbar{display:flex;align-items:center;gap:10px;margin-bottom:14px;padding:8px 11px;background:#fff;border:1px solid var(--line)}
+.optbar label{display:flex;align-items:center;gap:7px;font-size:12px;color:var(--ink-soft);cursor:pointer}
+.optbar .sw{width:30px;height:16px;border:1px solid var(--line-strong);background:#ddd;position:relative;transition:.15s}
+.optbar .sw::after{content:"";position:absolute;top:1px;left:1px;width:12px;height:12px;background:#fff;border:1px solid var(--line-strong);transition:.15s}
+.optbar input{display:none}
+.optbar input:checked + .sw{background:var(--stamp);border-color:var(--stamp)}
+.optbar input:checked + .sw::after{left:15px;border-color:var(--stamp)}
+
+.preview-bar{display:flex;align-items:center;gap:12px;margin-bottom:14px;font-family:var(--mono);font-size:11px;color:var(--ink-soft)}
+.preview-bar .dot{width:7px;height:7px;background:var(--accent);border-radius:50%}
+.preview-bar .count{margin-left:auto}
+.preview-bar .count b{color:var(--stamp);font-size:13px}
+
+.doc{background:#fff;border:1px solid var(--line);box-shadow:0 1px 0 rgba(0,0,0,.04),0 14px 34px -22px rgba(0,0,0,.4);padding:44px 50px 60px;font-family:var(--serif);color:#1a1d21;max-width:680px;margin:0 auto}
+.doc .doc-head{text-align:center;border-bottom:2px solid #1a1d21;padding-bottom:14px;margin-bottom:20px}
+.doc .doc-head .org{font-family:var(--mono);font-size:10px;letter-spacing:.2em;text-transform:uppercase;color:#555}
+.doc .doc-head h3{font-size:19px;margin:8px 0 3px;font-weight:600;letter-spacing:-.01em}
+.doc .doc-head .sub{font-family:var(--mono);font-size:10.5px;color:#666;letter-spacing:.04em}
+.doc .doc-head .nat{display:inline-block;margin-top:9px;font-family:var(--mono);font-size:10px;border:1px solid var(--accent);color:var(--accent);padding:2px 9px;letter-spacing:.08em;text-transform:uppercase}
+
+/* índice */
+.toc{border:1px solid #d6d6d6;background:#fafafa;padding:16px 20px;margin-bottom:26px}
+.toc .toc-t{font-family:var(--sans);font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:.1em;color:#555;margin-bottom:9px;border-bottom:1px solid #e0e0e0;padding-bottom:6px}
+.toc ul{list-style:none;margin:0;padding:0;column-count:1}
+.toc li{display:flex;align-items:baseline;font-size:12.5px;margin:3px 0;color:#2a2d31}
+.toc li .tnum{font-family:var(--mono);font-size:11px;color:var(--accent);width:34px;flex:none}
+.toc li .dots{flex:1;border-bottom:1px dotted #bbb;margin:0 7px;transform:translateY(-3px)}
+.toc li .tpg{font-family:var(--mono);font-size:11px;color:#888}
+
+.doc h4{font-family:var(--sans);font-size:12.5px;font-weight:700;text-transform:uppercase;letter-spacing:.05em;color:#1a1d21;margin:32px 0 14px;border-bottom:1px solid #d0d0d0;padding-bottom:5px}
+.doc h4 .ch{font-family:var(--mono);color:var(--accent);font-size:11px;margin-right:8px}
+.doc .part{margin:22px 0}
+.doc .part .pname{font-weight:600;font-size:14px;display:flex;align-items:baseline;gap:7px;margin-bottom:9px}
+.doc .part .pname .pn{font-family:var(--mono);color:#1a1d21;font-size:13px}
+.doc .part .pname .ref{margin-left:auto;font-family:var(--mono);font-size:9.5px;color:#aaa;font-weight:400;letter-spacing:.05em}
+.doc .part p{margin:0 0 9px;font-size:12.5px;line-height:1.62;color:#23262b;text-align:justify;text-justify:inter-word}
+.doc .part p:last-child{margin-bottom:0}
+.doc .part.custom .pname .pn{color:var(--accent)}
+.doc .ph{background:#fff6d6;border-bottom:1px dotted #c79a4a;padding:0 1px;font-style:italic}
+
+.doc .warn{background:var(--warn-bg);border:1px solid var(--warn-line);border-left-width:3px;padding:12px 14px;margin:15px 0;font-family:var(--sans);font-size:12px;color:#5a4520;line-height:1.55;text-align:justify}
+.doc .warn b{color:#7a3410}
+.doc .compl{font-family:var(--sans);font-size:12px;background:#f4f6f9;border:1px solid #dbe2ea;padding:10px 13px;margin-top:4px;text-align:justify}
+.doc .compl .lbl{font-family:var(--mono);font-size:9.5px;letter-spacing:.06em;text-transform:uppercase;color:#5a6a7a;display:block;margin-bottom:3px}
+
+.actions{position:sticky;bottom:0;display:flex;gap:10px;margin-top:20px;padding-top:14px;border-top:1px solid var(--line);background:#eceae4}
+.btn{font-family:var(--mono);font-size:11px;letter-spacing:.06em;text-transform:uppercase;border:1px solid var(--line-strong);background:#fff;padding:9px 16px;cursor:pointer;color:var(--ink)}
+.btn.primary{background:var(--stamp);color:#fff;border-color:var(--stamp)}
+.btn.primary:hover{background:#163d6b}
+.btn:hover{border-color:var(--ink)}
+
+/* tabla anexo */
+.doc table.anexo{width:100%;border-collapse:collapse;font-family:var(--sans);font-size:11.5px;margin-top:4px}
+.doc table.anexo th{background:#f0f0ec;border:1px solid #c9cdd2;text-align:left;padding:6px 9px;font-size:10px;text-transform:uppercase;letter-spacing:.05em;color:#444;font-weight:700}
+.doc table.anexo td{border:1px solid #d8dadf;padding:6px 9px;color:#2a2d31;vertical-align:top}
+.doc table.anexo td.cmono{font-family:var(--mono);font-size:11px;color:var(--accent);white-space:nowrap}
+.doc .firma{margin-top:56px;padding-top:8px;text-align:center}
+.doc .firma-line{width:300px;max-width:70%;border-top:1px solid #1a1d21;margin:46px auto 7px}
+.doc .firma-cap{font-family:var(--sans);font-size:12px;font-weight:700;color:#1a1d21;letter-spacing:.02em}
+.doc .firma-sub{font-family:var(--mono);font-size:10px;color:#888;margin-top:3px;letter-spacing:.04em}
+@media print{
+  body{background:#fff}
+  .masthead,.config,.preview-bar,.optbar,.actions{display:none!important}
+  .shell{display:block}
+  .preview-wrap{background:#fff;padding:0}
+  .doc{box-shadow:none;border:none;max-width:none;margin:0;padding:0 14mm}
+  @page{margin:20mm 16mm 18mm;
+    @bottom-right{content:"Página " counter(page) " de " counter(pages);font-family:Calibri,Arial,sans-serif;font-size:9pt;color:#666}}
+  .doc h4{page-break-after:avoid}
+  .doc .part,.doc .warn,.doc .firma,.doc table.anexo{page-break-inside:avoid}
+}
+@media (max-width:980px){.shell{grid-template-columns:1fr}.config{border-right:none;border-bottom:1px solid var(--line)}.masthead{flex-direction:column;align-items:flex-start;gap:8px}.masthead .meta{text-align:left;border-left:none;padding-left:0}}
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <div>
+    <span class="kicker">Oficina Técnica · Chile · NCh 1150 / OGUC</span>
+    <h1>Generador de Especificaciones Técnicas Resumidas</h1>
+  </div>
+  <div class="meta">DOC · <b>EETT-GEN-ARQ</b><br>Versión 2.0 · Borrador<br>Alcance · Arquitectura y construcción</div>
+</header>
+
+<div class="shell">
+  <div class="config">
+
+    <div class="section">
+      <div class="section-head"><span class="num">00</span><h2>Identificación del proyecto</h2></div>
+      <div class="grid2">
+        <div><label class="f-label" style="margin-top:0">Nombre del proyecto</label><input class="f-input" id="p_nombre" placeholder="Casa Arboleda"></div>
+        <div><label class="f-label" style="margin-top:0">Comuna</label><input class="f-input" id="p_comuna" placeholder="Las Condes"></div>
+        <div><label class="f-label" style="margin-top:0">Dirección</label><input class="f-input" id="p_dir" placeholder="Av. Las Hualtatas 5400"></div>
+        <div><label class="f-label" style="margin-top:0">Región</label><input class="f-input" id="p_region" placeholder="Metropolitana"></div>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">01</span><h2>Naturaleza de la intervención</h2><span class="hint">elige una · DOM</span></div>
+      <p class="fieldnote">Coincidente con los permisos de la DOM. Define el esqueleto de capítulos.</p>
+      <div class="chips" id="g_naturaleza">
+        <label class="chip single"><input type="radio" name="nat" value="obra_nueva" checked><span class="face">Obra nueva</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="ampliacion_mayor"><span class="face">Ampliación &gt; 100 m²</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="alteracion"><span class="face">Alteración</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="reconstruccion"><span class="face">Reconstrucción</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="reparacion"><span class="face">Reparación</span></label>
+        <label class="chip single"><input type="radio" name="nat" value="obra_menor"><span class="face">Obra menor</span></label>
+      </div>
+      <p class="fieldnote" style="margin-top:8px">«Remodelación / reforma» se asimilan a <b>Alteración</b> o <b>Ampliación</b>. «Obra menor» emite esqueleto mínimo.</p>
+    </div>
+
+    <div class="section" data-hide-on="obra_menor">
+      <div class="section-head"><span class="num">02</span><h2>Sistema estructural</h2><span class="hint">una o más</span></div>
+      <div class="chips" id="g_estructura" data-other="estructura">
+        <label class="chip"><input type="checkbox" value="hormigon"><span class="face">Hormigón armado</span></label>
+        <label class="chip"><input type="checkbox" value="albanileria"><span class="face">Albañilería</span></label>
+        <label class="chip"><input type="checkbox" value="metalica"><span class="face">Estructura metálica</span></label>
+        <label class="chip"><input type="checkbox" value="madera"><span class="face">Madera</span></label>
+        <label class="chip"><input type="checkbox" value="tabiqueria_liviana"><span class="face">Tabiquería liviana</span></label>
+        <label class="chip"><input type="checkbox" value="prefabricado_sip"><span class="face">Prefabricado / SIP</span></label>
+      </div>
+    </div>
+
+    <div class="section" data-hide-on="obra_menor">
+      <div class="section-head"><span class="num">03</span><h2>Componentes de obra gruesa</h2></div>
+      <div class="toggles">
+        <label class="toggle"><span>Fundaciones</span><input type="checkbox" id="t_fund"><i class="sw"></i></label>
+        <label class="toggle"><span>Radier / sobrecimiento</span><input type="checkbox" id="t_radier"><i class="sw"></i></label>
+        <label class="toggle"><span>Sobrelosas</span><input type="checkbox" id="t_sobrelosa"><i class="sw"></i></label>
+        <label class="toggle"><span>Demoliciones / desarmes</span><input type="checkbox" id="t_demo"><i class="sw"></i></label>
+        <label class="toggle"><span>Techumbre y cubierta</span><input type="checkbox" id="t_tech"><i class="sw"></i></label>
+      </div>
+      <div class="cond" id="cond_tech"><div class="cond-inner">
+        <label class="f-label">Estructura de techumbre <span style="color:var(--stamp)">· una o más</span></label>
+        <div class="chips" id="g_techest">
+          <label class="chip"><input type="checkbox" value="madera" checked><span class="face">Madera</span></label>
+          <label class="chip"><input type="checkbox" value="metalica"><span class="face">Metálica</span></label>
+          <label class="chip"><input type="checkbox" value="cercha_industrial"><span class="face">Cercha industrial</span></label>
+          <label class="chip"><input type="checkbox" value="losa_hormigon"><span class="face">Losa hormigón</span></label>
+        </div>
+        <label class="f-label">Material de cubierta</label>
+        <div class="chips" id="g_cubierta">
+          <label class="chip single"><input type="radio" name="cub" value="zincalum" checked><span class="face">Zinc-Alum</span></label>
+          <label class="chip single"><input type="radio" name="cub" value="teja"><span class="face">Teja</span></label>
+          <label class="chip single"><input type="radio" name="cub" value="membrana"><span class="face">Membrana</span></label>
+          <label class="chip single"><input type="radio" name="cub" value="policarbonato"><span class="face">Policarbonato</span></label>
+        </div>
+      </div></div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">04</span><h2>Terminaciones</h2></div>
+      <div class="toggles" style="margin-bottom:10px">
+        <label class="toggle"><span>Tabiquería interior</span><input type="checkbox" id="t_tab"><i class="sw"></i></label>
+        <label class="toggle"><span>Pinturas</span><input type="checkbox" id="t_pint"><i class="sw"></i></label>
+        <label class="toggle"><span>Baños / húmedos</span><input type="checkbox" id="t_banos"><i class="sw"></i></label>
+        <label class="toggle"><span>Mobiliario en obra</span><input type="checkbox" id="t_mob"><i class="sw"></i></label>
+        <label class="toggle"><span>Cumplir norma térmica</span><input type="checkbox" id="t_termica"><i class="sw"></i></label>
+        <label class="toggle"><span>Resist. fuego / incendio</span><input type="checkbox" id="t_fuego"><i class="sw"></i></label>
+      </div>
+
+      <div class="cond" id="cond_mob"><div class="cond-inner">
+        <label class="f-label">Mobiliario en obra</label>
+        <div class="chips" id="g_mob" data-other="mobiliario">
+          <label class="chip"><input type="checkbox" value="cocina"><span class="face">Muebles de cocina</span></label>
+          <label class="chip"><input type="checkbox" value="banos"><span class="face">Muebles de baño</span></label>
+          <label class="chip"><input type="checkbox" value="closets"><span class="face">Clósets / repisas</span></label>
+          <label class="chip"><input type="checkbox" value="mesones"><span class="face">Mesones</span></label>
+        </div>
+      </div></div>
+
+      <label class="f-label">Cielos <span style="color:var(--stamp)">· una o más</span></label>
+      <div class="chips" id="g_cielo" data-other="cielo">
+        <label class="chip"><input type="checkbox" value="modular"><span class="face">Modular americano</span></label>
+        <label class="chip"><input type="checkbox" value="volcanita"><span class="face">Volcanita junta invisible</span></label>
+        <label class="chip"><input type="checkbox" value="enlucido"><span class="face">Enlucido y pintado</span></label>
+        <label class="chip"><input type="checkbox" value="obra_gruesa"><span class="face">Obra gruesa (sin term.)</span></label>
+      </div>
+
+      <label class="f-label">Revestimiento de muros</label>
+      <div class="chips" id="g_revmuros" data-other="revmuros">
+        <label class="chip"><input type="checkbox" value="pintura"><span class="face">Pintura</span></label>
+        <label class="chip"><input type="checkbox" value="ceramico"><span class="face">Cerámico</span></label>
+        <label class="chip"><input type="checkbox" value="revest_madera"><span class="face">Entablado madera</span></label>
+        <label class="chip"><input type="checkbox" value="obra_gruesa"><span class="face">Obra gruesa (sin term.)</span></label>
+      </div>
+
+      <label class="f-label">Pisos / pavimentos</label>
+      <div class="chips" id="g_pisos" data-other="pisos">
+        <label class="chip"><input type="checkbox" value="porcelanato"><span class="face">Porcelanato</span></label>
+        <label class="chip"><input type="checkbox" value="ceramico"><span class="face">Cerámico</span></label>
+        <label class="chip"><input type="checkbox" value="vinilico"><span class="face">Vinílico</span></label>
+        <label class="chip"><input type="checkbox" value="flotante"><span class="face">Flotante</span></label>
+        <label class="chip"><input type="checkbox" value="hormigon_pulido"><span class="face">Hormigón pulido</span></label>
+        <label class="chip"><input type="checkbox" value="alfombra"><span class="face">Alfombra</span></label>
+        <label class="chip"><input type="checkbox" value="obra_gruesa"><span class="face">Obra gruesa (sin term.)</span></label>
+      </div>
+
+      <label class="f-label">Puertas</label>
+      <div class="chips" id="g_puertas" data-other="puertas">
+        <label class="chip"><input type="checkbox" value="madera_mdf"><span class="face">Madera / MDF</span></label>
+        <label class="chip"><input type="checkbox" value="metalica"><span class="face">Metálica</span></label>
+        <label class="chip"><input type="checkbox" value="cristal_templado"><span class="face">Cristal templado</span></label>
+        <label class="chip"><input type="checkbox" value="aluminio"><span class="face">Aluminio</span></label>
+      </div>
+
+      <label class="f-label">Ventanas</label>
+      <div class="chips" id="g_ventanas" data-other="ventanas">
+        <label class="chip"><input type="checkbox" value="aluminio"><span class="face">Aluminio</span></label>
+        <label class="chip"><input type="checkbox" value="pvc"><span class="face">PVC</span></label>
+        <label class="chip"><input type="checkbox" value="madera"><span class="face">Madera</span></label>
+        <label class="chip"><input type="checkbox" value="fierro"><span class="face">Fierro</span></label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">05</span><h2>Instalaciones presentes</h2><span class="hint">coordinación arq.</span></div>
+      <p class="fieldnote">Partidas de coordinación. El diseño prima desde la EETT de cada especialidad.</p>
+      <div class="chips" id="g_inst" data-other="instalaciones">
+        <label class="chip"><input type="checkbox" value="electrica"><span class="face">Eléctrica</span></label>
+        <label class="chip"><input type="checkbox" value="sanitaria"><span class="face">Sanitaria</span></label>
+        <label class="chip"><input type="checkbox" value="climatizacion"><span class="face">Climatización</span></label>
+        <label class="chip"><input type="checkbox" value="gas"><span class="face">Gas</span></label>
+        <label class="chip"><input type="checkbox" value="corrientes_debiles"><span class="face">Corrientes débiles</span></label>
+        <label class="chip"><input type="checkbox" value="incendio"><span class="face">Incendio</span></label>
+        <label class="chip"><input type="checkbox" value="transporte_vertical"><span class="face">Transporte vertical</span></label>
+      </div>
+    </div>
+
+    <div class="section" data-hide-on="obra_menor">
+      <div class="section-head"><span class="num">06</span><h2>Urbanización y exteriores</h2></div>
+      <div class="chips" id="g_urb" data-other="urbanizacion">
+        <label class="chip"><input type="checkbox" value="pav_exterior"><span class="face">Pavimentos exteriores</span></label>
+        <label class="chip"><input type="checkbox" value="areas_verdes"><span class="face">Áreas verdes</span></label>
+        <label class="chip"><input type="checkbox" value="cierros"><span class="face">Cierros perimetrales</span></label>
+        <label class="chip"><input type="checkbox" value="aguas_lluvia"><span class="face">Aguas lluvias</span></label>
+      </div>
+    </div>
+
+    <div class="section">
+      <div class="section-head"><span class="num">07</span><h2>EETT complementarias del proyecto</h2><span class="hint">declara · no genera</span></div>
+      <p class="fieldnote">Se citan en el Cap. 0 como documentos que prevalecen en su materia.</p>
+      <div class="chips" id="g_compl">
+        <label class="chip"><input type="checkbox" value="estructuras"><span class="face">Estructuras</span></label>
+        <label class="chip"><input type="checkbox" value="climatizacion"><span class="face">Climatización</span></label>
+        <label class="chip"><input type="checkbox" value="sanitarias"><span class="face">Sanitarias</span></label>
+        <label class="chip"><input type="checkbox" value="electricidad"><span class="face">Electricidad</span></label>
+        <label class="chip"><input type="checkbox" value="accesibilidad"><span class="face">Accesibilidad universal</span></label>
+        <label class="chip"><input type="checkbox" value="eficiencia_energetica"><span class="face">Eficiencia energética</span></label>
+        <label class="chip"><input type="checkbox" value="gas"><span class="face">Gas</span></label>
+        <label class="chip"><input type="checkbox" value="corrientes_debiles"><span class="face">Corrientes débiles</span></label>
+        <label class="chip"><input type="checkbox" value="paisajismo"><span class="face">Paisajismo</span></label>
+        <label class="chip"><input type="checkbox" value="incendio"><span class="face">Incendio</span></label>
+      </div>
+    </div>
+
+  </div>
+
+  <div class="preview-wrap">
+    <div class="optbar">
+      <label><input type="checkbox" id="opt_nch" checked><i class="sw"></i> Mostrar trazabilidad NCh 1150</label>
+      <label style="margin-left:auto"><input type="checkbox" id="opt_toc" checked><i class="sw"></i> Índice</label>
+    </div>
+    <div class="preview-bar"><span class="dot"></span> VISTA PREVIA EN VIVO · «Página X de Y» se rotula al imprimir/exportar PDF <span class="count">Partidas: <b id="count">0</b></span></div>
+    <div class="doc" id="doc"></div>
+    <div class="actions">
+      <button class="btn primary" onclick="alert('Versión final: exporta .docx con Calibri y tablas sin relleno.')">Generar .docx</button>
+      <button class="btn" onclick="window.print()">Imprimir</button>
+    </div>
+  </div>
+</div>
+
+<script>
+const NAT_LABEL={obra_nueva:"Obra nueva",ampliacion_mayor:"Ampliación > 100 m²",alteracion:"Alteración",reconstruccion:"Reconstrucción",reparacion:"Reparación",obra_menor:"Obra menor"};
+const COMPL_LABEL={estructuras:"Estructuras",climatizacion:"Climatización",sanitarias:"Sanitarias",electricidad:"Electricidad",accesibilidad:"Accesibilidad Universal",eficiencia_energetica:"Eficiencia Energética",gas:"Gas",corrientes_debiles:"Corrientes Débiles",paisajismo:"Paisajismo",incendio:"Incendio"};
+const has=(a,v)=>a.includes(v);
+const PH=s=>s.replace(/\{([^}]+)\}/g,'<span class="ph">{$1}</span>');
+
+const CAPS=[
+ ["0","Antecedentes Generales y Marco Normativo"],
+ ["1","Obras Preliminares e Instalación de Faenas"],
+ ["2","Obras de Habilitación del Terreno"],
+ ["3","Demoliciones, Desarmes y Obras Previas"],
+ ["4","Obra Gruesa"],
+ ["5","Terminaciones"],
+ ["6","Instalaciones (Especialidades)"],
+ ["7","Eficiencia Térmica y Seguridad contra Incendio"],
+ ["8","Obras de Urbanización y Exteriores"],
+ ["9","Aseo, Entrega y Recepción"],
+];
+
+/* mapa de qué grupo "Otro" cae en qué capítulo del documento */
+const OTHER_TO_CAP={estructura:"4",mobiliario:"5",cielo:"5",revmuros:"5",pisos:"5",puertas:"5",ventanas:"5",instalaciones:"6",urbanizacion:"8"};
+
+const CATALOG=[
+ // ===== CAP 0 =====
+ {id:"0.1",cap:"0",ref:"0/GEN",name:"Alcance y naturaleza del documento",f:s=>`El presente documento corresponde a las <b>Especificaciones Técnicas Generales de Arquitectura y Construcción</b> del proyecto «{nombre}», emplazado en {dir}, comuna de {comuna}, Región {region}. Su objeto es definir los estándares mínimos de los materiales, los procedimientos de ejecución y las condiciones de terminación y recepción de las partidas de arquitectura y obra civil que componen la obra. Estas especificaciones tienen carácter <b>general y complementario</b>: regulan las materias propias de arquitectura y construcción y se entienden sin perjuicio de las especificaciones técnicas de las demás especialidades del proyecto, las que prevalecen en sus respectivas materias. La intervención se clasifica como <b>${NAT_LABEL[s.nat]}</b> conforme a la Ordenanza General de Urbanismo y Construcciones. Todo lo que en estas especificaciones no esté expresamente tratado deberá resolverse aplicando la reglamentación vigente, las normas técnicas chilenas pertinentes y las reglas del arte de la construcción.`},
+ {id:"0.2",cap:"0",ref:"0/OGUC",name:"Marco normativo obligatorio",f:s=>`La totalidad de la obra deberá ejecutarse en estricto cumplimiento de la <b>Ley General de Urbanismo y Construcciones (LGUC)</b> y su <b>Ordenanza General (OGUC)</b>, así como del Instrumento de Planificación Territorial vigente en la comuna. \n\nSerán igualmente obligatorias las normas del Instituto Nacional de Normalización (INN) que correspondan, entre ellas la <b>NCh 1150</b> sobre clasificación de partidas, las normas estructurales y de materiales asociadas al sistema constructivo empleado, las normas de instalaciones, y las disposiciones sobre prevención de riesgos y condiciones sanitarias del trabajo contenidas en la <b>Ley N° 16.744</b> y el <b>D.S. N° 594</b>. Asimismo regirán la <b>Ley N° 20.422 y su D.S. N° 50</b> sobre accesibilidad universal, y la reglamentación térmica establecida en el artículo 4.1.10 de la OGUC. \n\nEl contratista declara conocer dichos cuerpos normativos y se obliga a su cumplimiento íntegro, siendo de su exclusiva responsabilidad cualquier ejecución que los contravenga.`},
+ {id:"0.3",cap:"0",ref:"0/DOC",name:"Especificaciones complementarias del proyecto",f:s=>{const l=s.compl.map(c=>COMPL_LABEL[c]).join(", ");return `Las presentes especificaciones se entienden <b>complementarias</b> a las especificaciones técnicas de especialidad que forman parte del proyecto, las que prevalecen en su materia respectiva. Para esta obra se declaran las siguientes especialidades complementarias: <b>${l||"(ninguna declarada)"}</b>. En caso de vacío, omisión o discrepancia en una materia propia de alguna especialidad, regirá la especificación técnica de la especialidad correspondiente y, en subsidio, la reglamentación y normativa técnica aplicable.`}},
+ {id:"0.4",cap:"0",ref:"0/DOC",name:"Prelación de documentos e interpretación",cond:s=>s.nat!=="obra_menor",f:s=>`Ante cualquier discrepancia entre los antecedentes del proyecto, el orden de prelación para su interpretación será el siguiente: en primer lugar los planos de detalle, luego los planos generales, a continuación las presentes especificaciones técnicas y, finalmente, el cuadro de cubicaciones. Toda duda, contradicción u omisión que se presente durante la ejecución será resuelta por la Inspección Técnica de la Obra (ITO), cuyas instrucciones el contratista deberá acatar. Lo que no estuviere expresamente especificado se ejecutará conforme a la regla del arte, las buenas prácticas de la construcción y las recomendaciones técnicas de los fabricantes de los materiales empleados.`},
+ {id:"0.5",cap:"0",ref:"0/QC",name:"Calidad de los materiales y control",cond:s=>s.nat!=="obra_menor",f:s=>`Todos los materiales que se incorporen a la obra serán nuevos, de primera calidad y de procedencia conocida, y contarán con la certificación o los ensayos que la normativa exija para su uso. El contratista mantendrá en obra los certificados de calidad y las fichas técnicas de los materiales relevantes, los que pondrá a disposición de la ITO cuando ésta lo requiera. La Inspección Técnica estará facultada para rechazar materiales o ejecuciones que no se ajusten a lo especificado o que presenten defectos, debiendo el contratista reponerlos o rehacerlos a su entero cargo, sin derecho a aumento de plazo ni de precio. La recepción de cada partida quedará condicionada a la conformidad expresa de la ITO y a la entrega de los certificados y pruebas que correspondan.`},
+ {id:"0.6",cap:"0",ref:"0/GEN",name:"Advertencia de uso y responsabilidad profesional",warn:true,f:s=>`<b>Este documento constituye una base general de carácter referencial, generada de forma asistida.</b> Debe ser revisado, complementado, ajustado a las particularidades del proyecto y firmado por el profesional competente, quien asume la plena responsabilidad sobre su contenido, su completitud y su coherencia con los planos y demás antecedentes técnicos. La herramienta generadora no sustituye el juicio técnico del proyectista ni la firma profesional exigida por la Ley General de Urbanismo y Construcciones, y no garantiza por sí sola el cumplimiento normativo de la obra.`},
+
+ // ===== CAP 1 =====
+ {id:"1.1",cap:"1",ref:"A/PROV",name:"Instalación de faenas",f:s=>`El contratista proveerá, instalará y mantendrá durante todo el desarrollo de la obra las construcciones e instalaciones provisorias necesarias para el correcto funcionamiento de la faena, comprendiendo bodegas de materiales y herramientas, oficina técnica de obra, comedor, camarines y servicios higiénicos para el personal, dimensionados conforme a la dotación de trabajadores y a las exigencias del D.S. N° 594. Estas instalaciones se ubicarán dentro del predio en lugares que no interfieran con el avance de la obra y se mantendrán en condiciones de aseo y seguridad permanentes. Al término de los trabajos, todas las instalaciones provisorias serán retiradas, dejando el área que ocuparon completamente limpia y libre de escombros.`},
+ {id:"1.2",cap:"1",ref:"A/PROV",name:"Empalmes provisorios de servicios",cond:s=>["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat),f:s=>`Se gestionarán ante las empresas distribuidoras y se ejecutarán los empalmes provisorios de agua potable y de energía eléctrica que requiera la faena, incluyendo sus medidores, tableros provisorios, protecciones y la red de distribución interna necesaria para alimentar herramientas, iluminación y equipos. Los trámites, derechos y consumos asociados a estos servicios serán de cargo del contratista hasta la recepción de la obra. Las instalaciones provisorias cumplirán las exigencias de seguridad eléctrica vigentes y serán retiradas una vez concluidos los trabajos.`},
+ {id:"1.3",cap:"1",ref:"A/PROV",name:"Cierro provisorio y letrero de obra",cond:s=>s.nat!=="obra_menor",f:s=>`Se proveerá e instalará un cierro provisorio perimetral que aísle por completo el área de faena del tránsito de público, ejecutado en materiales resistentes y de altura adecuada, de modo de impedir el ingreso de personas ajenas a la obra y de resguardar la seguridad de terceros. Se instalará además el letrero de obra con la información que exijan la Dirección de Obras Municipales y el mandante, en la ubicación y dimensiones reglamentarias. Tanto el cierro como el letrero se mantendrán en buen estado de conservación durante toda la ejecución y se retirarán al término de la obra.`},
+ {id:"1.4",cap:"1",ref:"A/PREL",name:"Trazado, niveles y replanteo",f:s=>`Con anterioridad al inicio de las excavaciones o demoliciones, el contratista ejecutará el trazado y replanteo general de la obra a partir de los puntos de referencia, deslindes y niveles indicados en los planos, materializando en terreno los ejes principales, las líneas de fundación y las cotas de nivel mediante niveletas, estacas y puntos de control debidamente protegidos. La ITO verificará y aprobará el trazado y los niveles antes de autorizar el inicio de las obras, siendo de responsabilidad del contratista la exactitud de la materialización y la conservación de los puntos de referencia durante toda la obra.`},
+ {id:"1.5",cap:"1",ref:"A/PREL",name:"Seguridad, prevención de riesgos y protección ambiental",cond:s=>s.nat!=="obra_menor",f:s=>`El contratista implementará y mantendrá las medidas de prevención de riesgos exigidas por la Ley N° 16.744 y el D.S. N° 594, dotando al personal de los elementos de protección personal y disponiendo la señalética, protecciones colectivas y procedimientos de trabajo seguro que correspondan. Asimismo adoptará las medidas necesarias para controlar la emisión de polvo, ruido y vibraciones, y para el manejo, acopio y disposición de los residuos de la construcción, protegiendo a los trabajadores, a los terceros y a las edificaciones e instalaciones colindantes. Cualquier daño causado a terceros o a propiedades vecinas será de exclusiva responsabilidad del contratista.`},
+
+ // ===== CAP 2 =====
+ {id:"2.1",cap:"2",ref:"B/DESH",name:"Despeje y limpieza del terreno",cond:s=>["obra_nueva","reconstruccion"].includes(s.nat)||s.urb.length>0,f:s=>`Comprende el despeje y limpieza de la superficie a intervenir, incluyendo el retiro de vegetación, malezas, raíces, escombros y elementos sueltos existentes, así como la remoción de la capa de suelo vegetal en las áreas destinadas a fundaciones, radieres y pavimentos. Los materiales y excedentes producto del despeje se cargarán y transportarán a botadero autorizado, con la documentación que la autoridad exija. La superficie quedará en condiciones de recibir las obras de movimiento de tierra y fundaciones.`},
+ {id:"2.2",cap:"2",ref:"B/MOV",name:"Movimiento de tierras",cond:s=>s.fund&&["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat),f:s=>`Comprende las excavaciones, rellenos, terraplenes y compactaciones necesarios para alcanzar los niveles y plataformas de proyecto. Las excavaciones se ejecutarán hasta el sello de fundación indicado en el proyecto de cálculo, perfilando taludes estables y adoptando las entibaciones y agotamientos que se requieran. \n\nLos rellenos estructurales se ejecutarán por capas de espesor controlado, compactadas mecánicamente hasta alcanzar la densidad exigida y verificada mediante ensayos. El material excedente no apto se retirará a botadero autorizado. La ITO verificará el sello de fundación y los grados de compactación antes de autorizar el avance.`},
+ {id:"2.3",cap:"2",ref:"B/MURO",name:"Muros de contención y estabilización de taludes",cond:s=>s.fund&&["obra_nueva","reconstruccion"].includes(s.nat),f:s=>`Donde los planos lo indiquen se ejecutarán muros de contención y obras de estabilización de taludes, conforme al proyecto de cálculo estructural respectivo, el que prevalece en cuanto a dimensiones, hormigones, armaduras y sistema de drenaje. Estas obras incluirán los drenes, filtros y barbacanas necesarios para evitar la acumulación de presiones hidrostáticas tras el muro, así como la impermeabilización de las caras en contacto con el terreno.`},
+
+ // ===== CAP 3 =====
+ {id:"3.1",cap:"3",ref:"B/DESH",name:"Demoliciones y desarmes",cond:s=>s.demo,f:s=>`Comprende la demolición y/o desarme de los elementos existentes señalados en los planos, tales como tabiques, muros no estructurales, revestimientos, cielos, pavimentos y carpinterías, ejecutados de manera controlada y selectiva a fin de no comprometer la estabilidad ni dañar los elementos que deben permanecer. Antes de iniciar las demoliciones se verificará la desconexión de las instalaciones que pudieran resultar afectadas. Los trabajos se realizarán adoptando las medidas de seguridad y de control de polvo y ruido correspondientes, y privilegiando la segregación de materiales para su reutilización o reciclaje cuando sea posible.`},
+ {id:"3.2",cap:"3",ref:"B/DESH",name:"Retiro de artefactos e instalaciones existentes",cond:s=>s.demo&&(s.banos||s.inst.length>0),f:s=>`Comprende el retiro de los artefactos sanitarios, griferías, redes eléctricas, luminarias, ductos y demás instalaciones que queden fuera de uso producto de la intervención. Las acometidas y puntos de conexión que no se reutilicen se sellarán y dejarán seguros para evitar fugas, filtraciones o riesgos eléctricos durante la obra. Los elementos retirados que conserven valor o utilidad se entregarán al mandante cuando éste lo indique; el resto se dispondrá conforme a la normativa de residuos.`},
+ {id:"3.3",cap:"3",ref:"A/PROV",name:"Retiro de escombros",cond:s=>s.demo,f:s=>`Los escombros y desechos producto de las demoliciones y desarmes se acopiarán en obra en forma ordenada y segregada, y se cargarán y transportarán a botadero autorizado con la periodicidad necesaria para mantener la faena despejada y segura. El contratista mantendrá la documentación que acredite la disposición final de los residuos en sitios autorizados, conforme lo exija la autoridad competente.`},
+
+ // ===== CAP 4 =====
+ {id:"4.1",cap:"4",ref:"C/FUND",name:"Fundaciones",cond:s=>s.fund,f:s=>`Las fundaciones se ejecutarán según el proyecto de cálculo estructural, el que prevalece en cuanto a tipo, dimensiones, hormigones y armaduras. Para el sistema constructivo {sistema} se considerarán fundaciones de tipo {tipo_fundación}, apoyadas sobre el sello de fundación verificado y aprobado por la ITO. \n\nEl hormigón cumplirá la resistencia especificada y se colocará y compactará evitando segregación y juntas frías; las armaduras cumplirán las normas NCh 204 y NCh 211 en cuanto a calidad, recubrimientos y traslapos. Se incluyen el emplantillado de nivelación, las barreras de humedad y la impermeabilización de los elementos en contacto con el terreno que el proyecto indique.`},
+ {id:"4.2",cap:"4",ref:"C/SOBR",name:"Sobrecimientos y radier",cond:s=>s.radier||s.fund,f:s=>`Sobre las fundaciones se ejecutarán los sobrecimientos de hormigón de las dimensiones indicadas en el proyecto, dejando las pasadas y refuerzos que correspondan. \n\nEl radier se ejecutará con un espesor de {espesor}, sobre una base granular estabilizada y compactada y una barrera de humedad de polietileno de 0,2 mm con traslapos sellados, incorporando malla de retracción donde el proyecto lo indique. La superficie del radier quedará nivelada y afinada de acuerdo con el tipo de pavimento de terminación previsto, con las pendientes necesarias hacia los puntos de evacuación en recintos húmedos.`},
+ {id:"4.3",cap:"4",ref:"C/SOBL",name:"Sobrelosas",cond:s=>s.sobrelosa,f:s=>`Sobre las losas estructurales se ejecutarán sobrelosas de nivelación y/o de relleno de espesor {espesor}, destinadas a alojar instalaciones embutidas, corregir niveles, dar pendientes en recintos húmedos y conformar la base de los pavimentos de terminación. Se ejecutarán en mortero u hormigón liviano según el caso, sobre la losa previamente limpia e imprimada, garantizando adherencia y ausencia de fisuras. En recintos húmedos la sobrelosa incorporará las pendientes hacia los desagües y recibirá la impermeabilización antes del pavimento. Su peso propio será considerado en el proyecto de cálculo, que prevalece.`},
+ {id:"4.4",cap:"4",ref:"C/ERV",name:"Estructura resistente vertical",cond:s=>["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat),f:s=>`Los elementos estructurales verticales, esto es muros y pilares, se ejecutarán en {sistema} conforme al proyecto de cálculo, el que prevalece en cuanto a dimensiones, armaduras y detalles. \n\nSegún el sistema empleado regirán las normas correspondientes: hormigón armado conforme a NCh 430 y NCh 170; albañilería confinada o armada conforme a NCh 2123; estructuras de acero conforme a NCh 427; y estructuras de madera conforme a NCh 1198. Se cuidará la verticalidad, el aplome y la correcta materialización de los encuentros, juntas y anclajes, así como la disposición de refuerzos en vanos y esquinas según el detalle estructural.`},
+ {id:"4.5",cap:"4",ref:"C/ERH",name:"Estructura resistente horizontal — losas y entrepisos",cond:s=>["obra_nueva","ampliacion_mayor","reconstruccion"].includes(s.nat)&&(has(s.est,"hormigon")||has(s.est,"metalica")),f:s=>`Las losas y entrepisos se ejecutarán de acuerdo con el proyecto de cálculo, ya sea en hormigón armado o mediante sistema colaborante sobre estructura metálica, según corresponda. Comprende el moldaje, las armaduras, el hormigonado y el descimbre en los plazos que la norma establece, así como la incorporación de la aislación térmica, la barrera de vapor y las pasadas de instalaciones que el proyecto indique. Las superficies quedarán niveladas y aptas para recibir las sobrelosas y los pavimentos de terminación.`},
+ {id:"4.6",cap:"4",ref:"C/TECH",name:"Estructura de techumbre",cond:s=>s.tech,f:s=>{const m={madera:"un entramado o cerchas de madera estructural, conforme a NCh 1198, con sus piezas, conectores y arriostramientos",metalica:"perfilería metálica conforme a NCh 427, con sus uniones soldadas o apernadas y la protección anticorrosiva correspondiente",cercha_industrial:"cerchas industrializadas certificadas, montadas según las especificaciones e instrucciones del fabricante",losa_hormigon:"una losa de hormigón armado inclinada, conforme al proyecto de cálculo"};const sel=(s.techest.length?s.techest:["madera"]).map(x=>m[x]);const desc=sel.length===1?sel[0]:sel.slice(0,-1).join("; ")+"; y "+sel.slice(-1);return `La estructura de techumbre se ejecutará mediante <b>${desc}</b>, según las zonas y soluciones indicadas en el proyecto. \n\nSu dimensionamiento responderá al proyecto de cálculo y considerará las cargas de peso propio, sobrecargas de uso y las solicitaciones de viento y nieve aplicables a la zona, conforme a las normas NCh 431 y NCh 432. Se incluyen los apoyos, anclajes y arriostramientos necesarios para garantizar la estabilidad del conjunto, así como el tratamiento o protección del material estructural frente a la humedad, los agentes biológicos o la corrosión, según corresponda.`}},
+ {id:"4.7",cap:"4",ref:"C/CUB",name:"Cubierta y hojalatería",cond:s=>s.tech,f:s=>{const m={zincalum:"plancha de acero zinc-aluminio",teja:"teja",membrana:"membrana asfáltica o impermeabilizante",policarbonato:"plancha de policarbonato"}[s.cub];return `\n\nLa cubierta se ejecutará en <b>${m}</b> sobre la estructura de techumbre especificada, incorporando el fieltro o membrana hidrófuga, los costaneros o entablado de apoyo, y la totalidad de la hojalatería: forros, cumbreras, limahoyas, canales y bajadas de aguas lluvias. \n\nLas pendientes, traslapos y fijaciones se ejecutarán conforme a las recomendaciones del fabricante de modo de garantizar la completa estanqueidad del conjunto. Las aguas lluvias se conducirán hasta el sistema de evacuación previsto, evitando descargas sobre superficies no protegidas.`}},
+
+ // ===== CAP 5 =====
+ {id:"5.1",cap:"5",ref:"D/TAB",name:"Tabiquería interior",cond:s=>s.tab,f:s=>`Los tabiques divisorios interiores se ejecutarán con estructura de perfilería metálica galvanizada o de madera, según corresponda, revestida en ambas caras con planchas de yeso-cartón, empleando placa resistente a la humedad (RH) en recintos húmedos y, donde el proyecto lo exija, placa resistente al fuego (RF). Se incorporará aislación interior cuando se requiera control acústico o térmico. \n\nLos tabiques quedarán a plomo y nivel, con encuentros, esquineros y juntas tratados, y con los refuerzos interiores necesarios para soportar artefactos, mobiliario adosado o equipos. Las superficies se entregarán empastadas y aptas para recibir la terminación especificada.`},
+ {id:"5.2",cap:"5",ref:"D/REV",name:"Revestimiento de muros",cond:s=>s.rev.length>0,f:s=>{const m={pintura:"terminación de pintura sobre empaste, con la superficie preparada, lijada y libre de imperfecciones",ceramico:"revestimiento cerámico o porcelanato en zonas húmedas, asentado con adhesivo y con fragüe en sus juntas",revest_madera:"entablado o revestimiento de madera, con su estructura de apoyo y tratamiento de protección",obra_gruesa:"sin revestimiento, entregándose el muro a nivel de obra gruesa según lo indicado en el proyecto"};const t=s.rev.map(x=>m[x]).join("; ");return `Los paramentos verticales recibirán las siguientes terminaciones según los recintos indicados en los planos: ${t}. Las superficies terminadas quedarán parejas, a plomo y libres de fisuras, grietas o desniveles visibles, en condiciones de uso. Donde se especifique entrega a nivel de obra gruesa, el muro se entregará con su superficie regularizada pero sin revestimiento de terminación.`}},
+ {id:"5.3",cap:"5",ref:"D/CIE",name:"Cielos",cond:s=>s.cielo.length>0,f:s=>{const m={modular:"cielo modular tipo americano, montado sobre estructura metálica suspendida, con sus placas removibles, registros y perfilería vista",volcanita:"cielo de planchas de yeso-cartón con junta invisible, sobre estructura suspendida, con tratamiento de juntas y superficie continua",enlucido:"cielo enlucido y pintado, con su superficie regularizada, empastada y terminada en pintura",obra_gruesa:"cielo a nivel de obra gruesa, sin terminación, dejando la losa o estructura a la vista según el proyecto"};const t=s.cielo.map(x=>m[x]).join("; ");return `Los cielos se ejecutarán según los recintos indicados en los planos, considerando las siguientes soluciones: ${t}. En todos los casos los cielos quedarán nivelados y contemplarán los registros, pasadas y recortes necesarios para alojar luminarias, difusores, detectores y demás elementos de las instalaciones. En recintos húmedos se empleará placa resistente a la humedad. Donde se especifique entrega a nivel de obra gruesa, no se ejecutará revestimiento de cielo.`}},
+ {id:"5.4",cap:"5",ref:"D/PISO",name:"Pavimentos y pisos",cond:s=>s.pisos.length>0,f:s=>{const m={porcelanato:"porcelanato",ceramico:"cerámico esmaltado",vinilico:"piso vinílico en rollo o palmeta",flotante:"piso flotante laminado",hormigon_pulido:"hormigón pulido o afinado",alfombra:"alfombra",obra_gruesa:"entrega a nivel de obra gruesa, sin pavimento de terminación"};const t=s.pisos.map(x=>m[x]).join(", ");return `Los pavimentos se ejecutarán según los recintos indicados en los planos, considerando las siguientes terminaciones: ${t}. Los pavimentos se colocarán sobre superficie firme, nivelada y limpia, respetando las juntas de dilatación y los niveles de proyecto, y se complementarán con el guardapolvo o esquinero sanitario que corresponda a cada recinto. En zonas húmedas se asegurará la pendiente hacia los desagües y la continuidad de la impermeabilización. Donde se especifique entrega a nivel de obra gruesa, la superficie se entregará afinada pero sin pavimento de terminación.`}},
+ {id:"5.5",cap:"5",ref:"D/PTA",name:"Puertas y carpintería de acceso",cond:s=>s.puertas.length>0,f:s=>{const m={madera_mdf:"puertas de madera o MDF enchapado, con su marco, bisagras y cerradura",metalica:"puertas metálicas, con su marco y quincallería, y protección anticorrosiva",cristal_templado:"puertas de cristal templado, con sus herrajes, pivotes y cierres",aluminio:"puertas de aluminio, con su marco, burletes y quincallería"};const t=s.puertas.map(x=>m[x]).join("; ");return `Se proveerán e instalarán las siguientes puertas según los recintos y el cuadro de vanos del proyecto: ${t}. Cada puerta se entregará con la totalidad de su quincallería operativa, correctamente aplomada, nivelada y con holguras uniformes. Los anchos libres de paso de las puertas que sirvan a rutas accesibles cumplirán las exigencias de accesibilidad universal del D.S. N° 50, garantizando el paso y la operación por parte de todos los usuarios.`}},
+ {id:"5.6",cap:"5",ref:"D/VEN",name:"Ventanas y cristales",cond:s=>s.ventanas.length>0,f:s=>{const m={aluminio:"perfilería de aluminio",pvc:"perfilería de PVC",madera:"perfilería de madera",fierro:"perfilería de fierro"};const t=s.ventanas.map(x=>m[x]).join(", ");return `Las ventanas se ejecutarán en ${t}, según el cuadro de vanos del proyecto, e incorporarán el cristal que corresponda a la exigencia térmica y de seguridad de cada recinto, empleando cristal con cámara o termopanel donde la reglamentación térmica lo requiera. Las ventanas se instalarán a plomo y nivel, perfectamente selladas en su perímetro contra filtraciones de agua y aire, con sus burletes, felpas y quincallería operativa. Se incluyen los sellos elásticos perimetrales y los forros o terminaciones de jamba y antepecho que el proyecto indique.`}},
+ {id:"5.7",cap:"5",ref:"D/PINT",name:"Pinturas y terminaciones de superficie",cond:s=>s.pint,f:s=>`Se aplicará el esquema de pinturas y protecciones de superficie correspondiente a cada elemento y recinto. En muros y cielos interiores se aplicará pintura látex sobre superficie empastada, lijada e imprimada; en recintos húmedos se empleará esmalte al agua o pintura con propiedades fungicidas; en elementos metálicos se aplicará esmalte sintético sobre imprimante anticorrosivo; y en elementos de madera, los barnices, óleos o protectores que correspondan. \n\nToda pintura se aplicará en un mínimo de dos manos sobre superficie debidamente preparada, obteniéndose una terminación pareja, de tono uniforme, sin descuelgues, marcas de pincel ni zonas sin cubrir.`},
+ {id:"5.8",cap:"5",ref:"D/HIDR",name:"Impermeabilización de recintos húmedos",cond:s=>s.banos,f:s=>`En baños, cocinas, logias y demás recintos húmedos se aplicará una impermeabilización continua de los pavimentos y de los faldones de muro previo a la colocación de los revestimientos, mediante membrana líquida o lámina impermeabilizante, o bien mortero hidrófugo, según el caso. \n\nLa impermeabilización subirá por los muros la altura que indique el proyecto y resolverá con especial cuidado la estanqueidad en encuentros piso-muro, esquinas, rincones y pasadas de instalaciones. Se verificará su continuidad antes de ejecutar los revestimientos, mediante prueba de estanqueidad cuando corresponda.`},
+ {id:"5.9",cap:"5",ref:"D/MOB",name:"Mobiliario en obra",cond:s=>s.mob&&s.mobv.length>0,f:s=>{const m={cocina:"muebles de cocina, base y aéreos, con sus cubiertas o mesones, cajonería, bisagras y quincallería",banos:"muebles de baño y vanitorios, con sus cubiertas y herrajes",closets:"clósets, repisas y estanterías fijas, con sus puertas, divisiones y quincallería",mesones:"mesones de trabajo y cubiertas, con su estructura de apoyo y terminación"};const t=s.mobv.map(x=>m[x]).join("; ");return `Se proveerá y ejecutará en obra el mobiliario fijo indicado en el proyecto, comprendiendo: ${t}. \n\nEl mobiliario se construirá con materiales de primera calidad, en tableros y revestimientos resistentes a la humedad en los recintos que lo requieran, con cantos sellados y terminaciones que aseguren su durabilidad e higiene. Se entregará firmemente fijado a muros o pavimentos, nivelado, aplomado y con la totalidad de su quincallería ajustada y operativa, de acuerdo con las dimensiones y el diseño de detalle del proyecto.`}},
+
+ // ===== CAP 6 =====
+ {id:"6.1",cap:"6",ref:"E/ELEC",name:"Instalación eléctrica",cond:s=>has(s.inst,"electrica"),f:s=>`La instalación eléctrica se ejecutará conforme al proyecto eléctrico aprobado y a la normativa vigente de la Superintendencia de Electricidad y Combustibles. La presente partida comprende la coordinación arquitectónica de la instalación, esto es, la disposición de canalizaciones embutidas, cajas, ductos y las alturas y ubicaciones de tableros, enchufes, interruptores y artefactos, de modo que resulten coherentes con los revestimientos, tabiques y cielos. El diseño, el cálculo de cargas, los diagramas y la memoria de la instalación priman desde la especificación técnica de Electricidad, la que regula la materia.`},
+ {id:"6.2",cap:"6",ref:"E/SAN",name:"Instalación sanitaria",cond:s=>has(s.inst,"sanitaria")||s.banos,f:s=>`Las redes de agua potable fría y caliente, las redes de alcantarillado y aguas servidas, y los artefactos sanitarios se ejecutarán de acuerdo con el proyecto sanitario aprobado y la normativa vigente. La presente partida comprende la provisión e instalación de los artefactos, griferías, fittings y fijaciones, así como la coordinación de las pasadas, nichos y registros con la arquitectura. El dimensionamiento de las redes, las pendientes y el cálculo hidráulico priman desde la especificación técnica Sanitaria, la que regula la materia. Se ejecutarán las pruebas de presión y estanqueidad que correspondan antes de cerrar muros y losas.`},
+ {id:"6.3",cap:"6",ref:"E/CLIM",name:"Climatización y ventilación",cond:s=>has(s.inst,"climatizacion"),f:s=>`Los sistemas de climatización, ventilación y extracción forzada se ejecutarán según el proyecto de la especialidad. La presente partida comprende la coordinación arquitectónica de la instalación, esto es, las pasadas, soportes, nichos y la integración de difusores, rejillas y equipos con los cielos, tabiques y fachadas. El diseño térmico, la selección de equipos, los ductos y la memoria de cálculo priman desde la especificación técnica de Climatización, la que regula la materia.`},
+ {id:"6.4",cap:"6",ref:"E/GAS",name:"Instalación de gas",cond:s=>has(s.inst,"gas"),f:s=>`La instalación de gas se ejecutará conforme al proyecto aprobado y a la normativa vigente de la Superintendencia de Electricidad y Combustibles, e incluirá su certificación de inspección por organismo competente antes de la puesta en servicio. La presente partida comprende la coordinación de trazados, pasadas y ventilaciones con la arquitectura. El diseño de la instalación prima desde la especificación técnica de Gas, la que regula la materia.`},
+ {id:"6.5",cap:"6",ref:"E/CD",name:"Corrientes débiles",cond:s=>has(s.inst,"corrientes_debiles"),f:s=>`Las redes de corrientes débiles, comprendiendo datos, telefonía, CCTV, control de acceso e intercomunicación, se canalizarán según el proyecto de la especialidad. La presente partida comprende las canalizaciones, cajas y la coordinación de puntos con la arquitectura. El diseño, la topología de redes y los equipos priman desde la especificación técnica respectiva, la que regula la materia.`},
+ {id:"6.6",cap:"6",ref:"E/INC",name:"Instalaciones de incendio",cond:s=>has(s.inst,"incendio"),f:s=>`Las instalaciones de seguridad contra incendios, comprendiendo red húmeda, red seca, rociadores, detección, alarma y señalética, se ejecutarán según el proyecto de la especialidad y conforme a las exigencias de la OGUC. La presente partida comprende la coordinación de trazados, gabinetes y dispositivos con la arquitectura. El diseño y el dimensionamiento priman desde la especificación técnica de Incendio, la que regula la materia.`},
+ {id:"6.7",cap:"6",ref:"F/TV",name:"Transporte vertical",cond:s=>has(s.inst,"transporte_vertical"),f:s=>`Los ascensores, montacargas y/o plataformas elevadoras se proveerán e instalarán conforme al proyecto de la especialidad y a la normativa vigente, incluyendo la obra civil del foso, el recinto de máquinas y los apoyos y refuerzos estructurales requeridos. La presente partida comprende la coordinación de la obra civil con el equipo y la arquitectura. El diseño, la selección y la certificación del equipo priman desde la especificación técnica de Transporte Vertical, la que regula la materia.`},
+
+ // ===== CAP 7 (térmica / fuego) =====
+ {id:"7.1",cap:"7",ref:"OGUC 4.1.10",name:"Cumplimiento de la reglamentación térmica",cond:s=>s.termica,f:s=>`La obra considera la ejecución de la totalidad de las partidas necesarias para dar cumplimiento al informe de cumplimiento de la reglamentación térmica exigida por el artículo 4.1.10 de la OGUC. \n\nPara ello se emplearán materiales y soluciones constructivas cuyas propiedades de transmitancia térmica y resistencia se encuentren respaldadas por los ensayes y certificaciones requeridos por la normativa, comprendiendo las aislaciones térmicas de complejos de techumbre, muros perimetrales y pisos ventilados, la incorporación de cristales con la prestación térmica exigida en los vanos, y el tratamiento de los puentes térmicos y de la infiltración de aire. \n\nEl contratista deberá entregar los certificados de los materiales aislantes y de los elementos transparentes que acrediten el cumplimiento de los valores exigidos, los que formarán parte de la documentación de recepción de la obra.`},
+ {id:"7.2",cap:"7",ref:"OGUC 4.3",name:"Resistencia al fuego y seguridad contra incendios",cond:s=>s.fuego,f:s=>`La obra considera la ejecución de las partidas necesarias para dar cumplimiento a las exigencias de resistencia al fuego y de seguridad contra incendios establecidas en la OGUC para el destino y la carga de ocupación del edificio. \n\nLos elementos de construcción que deban cumplir una determinada clase de resistencia al fuego se ejecutarán con materiales y soluciones constructivas que cuenten con los ensayes y certificaciones que acrediten dicha clase, comprendiendo, según corresponda, el revestimiento de elementos estructurales, el uso de placas y selladores resistentes al fuego en tabiques y pasadas, el tratamiento de las vías de evacuación y la sectorización de incendio. Asimismo se ejecutarán las obras de soporte de la señalización, la iluminación de emergencia y los elementos de protección activa y pasiva que el proyecto contemple. \n\nEl contratista entregará los certificados que acrediten la resistencia al fuego de los elementos y materiales empleados, los que formarán parte de la documentación de recepción.`},
+
+ // ===== CAP 8 =====
+ {id:"8.1",cap:"8",ref:"H/I PAV",name:"Pavimentos exteriores",cond:s=>has(s.urb,"pav_exterior"),f:s=>`Los pavimentos exteriores, comprendiendo accesos, circulaciones peatonales, patios y estacionamientos, se ejecutarán en hormigón, adoquín, baldosa o asfalto según lo indicado en los planos, sobre una base granular estabilizada y compactada. Se ejecutarán las juntas de dilatación y de construcción que correspondan, así como las pendientes necesarias para la evacuación de las aguas lluvias hacia los puntos de captación. Las superficies de circulación peatonal serán antideslizantes y resolverán los desniveles mediante rampas accesibles conforme al D.S. N° 50 donde corresponda.`},
+ {id:"8.2",cap:"8",ref:"H/VEG",name:"Áreas verdes y paisajismo",cond:s=>has(s.urb,"areas_verdes"),f:s=>`Las áreas verdes comprenden la preparación y el mejoramiento del suelo, la provisión de tierra vegetal, la plantación de césped, arbustos y especies indicadas, y la ejecución del sistema de riego correspondiente. Las especies, las densidades de plantación y el diseño paisajístico priman desde la especificación técnica de Paisajismo cuando ésta exista. El contratista asegurará el prendimiento de las especies durante el período que establezca el contrato, reponiendo las que no prosperen.`},
+ {id:"8.3",cap:"8",ref:"I/MUR",name:"Cierros perimetrales definitivos",cond:s=>has(s.urb,"cierros"),f:s=>`Los cierros perimetrales definitivos se ejecutarán según los planos, ya sea en albañilería, paneles de hormigón, reja metálica u otra solución especificada, sobre sus fundaciones y machones correspondientes. Se incluyen los portones de acceso peatonal y vehicular con su estructura, quincallería, automatización cuando corresponda, y la protección anticorrosiva y terminación de los elementos metálicos.`},
+ {id:"8.4",cap:"8",ref:"I/ALL",name:"Evacuación de aguas lluvias exteriores",cond:s=>has(s.urb,"aguas_lluvia"),f:s=>`Se ejecutará el sistema de captación y evacuación de aguas lluvias del terreno, comprendiendo sumideros, canaletas, rejillas, cámaras y la red de drenes y tuberías necesaria para conducir las aguas hasta la red pública o el punto de descarga autorizado, evitando empozamientos y el escurrimiento hacia las edificaciones o predios vecinos. Las pendientes y secciones se ajustarán al proyecto, garantizando la evacuación en los eventos de precipitación de diseño.`},
+
+ // ===== CAP 9 =====
+ {id:"9.1",cap:"9",ref:"A/ASEO",name:"Aseo de entrega",f:s=>`Previo a la recepción de la obra, el contratista ejecutará el aseo general y la limpieza fina de todos los recintos y superficies, retirando escombros, sobrantes de materiales, etiquetas, manchas y protecciones provisorias, y dejando los pavimentos, revestimientos, artefactos, cristales y carpinterías limpios y en condiciones de uso inmediato. Se verificará el correcto funcionamiento de puertas, ventanas, griferías y artefactos.`},
+ {id:"9.2",cap:"9",ref:"0/REC",name:"Pruebas, certificados y recepción",cond:s=>s.nat!=="obra_menor",f:s=>`\n\nCon anterioridad a la recepción, el contratista entregará la totalidad de los certificados de calidad de los materiales, los protocolos de las pruebas de instalaciones, los certificados de las especialidades y los planos definitivos conforme a obra (as-built) que correspondan. La recepción municipal y la recepción por parte del mandante se gestionarán conforme a la Ley General de Urbanismo y Construcciones, debiendo la obra encontrarse íntegramente terminada, probada y en condiciones de uso. Cualquier observación que se formule en la recepción será subsanada por el contratista dentro del plazo que se fije.`},
+ {id:"9.3",cap:"9",ref:"0/GAR",name:"Garantía de la obra",cond:s=>s.nat!=="obra_menor",f:s=>`El contratista garantizará la obra ejecutada durante el período que establezca el contrato, respondiendo por los defectos de materiales, de ejecución o de funcionamiento que se manifiesten dentro de dicho plazo y que le sean imputables, debiendo repararlos o reponerlos a su cargo. Lo anterior es sin perjuicio de las responsabilidades que la legislación vigente establece para el constructor y demás partícipes de la obra.`},
+];
+
+function readState(){
+  const vals=id=>[...document.querySelectorAll('#'+id+' input:checked')].map(i=>i.value);
+  return {
+    nombre:document.getElementById('p_nombre').value||"Casa Arboleda",
+    comuna:document.getElementById('p_comuna').value||"Las Condes",
+    region:document.getElementById('p_region').value||"Metropolitana",
+    dir:document.getElementById('p_dir').value||"Av. Las Hualtatas 5400",
+    nat:document.querySelector('input[name="nat"]:checked').value,
+    est:vals('g_estructura'),
+    fund:document.getElementById('t_fund').checked,
+    radier:document.getElementById('t_radier').checked,
+    sobrelosa:document.getElementById('t_sobrelosa').checked,
+    demo:document.getElementById('t_demo').checked,
+    tech:document.getElementById('t_tech').checked,
+    techest:vals('g_techest'),
+    cub:document.querySelector('input[name="cub"]:checked').value,
+    tab:document.getElementById('t_tab').checked,
+    pint:document.getElementById('t_pint').checked,
+    banos:document.getElementById('t_banos').checked,
+    mob:document.getElementById('t_mob').checked,
+    mobv:vals('g_mob'),
+    termica:document.getElementById('t_termica').checked,
+    fuego:document.getElementById('t_fuego').checked,
+    cielo:vals('g_cielo'),
+    rev:vals('g_revmuros'),
+    pisos:vals('g_pisos'),
+    puertas:vals('g_puertas'),
+    ventanas:vals('g_ventanas'),
+    inst:vals('g_inst'),
+    urb:vals('g_urb'),
+    compl:vals('g_compl'),
+    showNch:document.getElementById('opt_nch').checked,
+    showToc:document.getElementById('opt_toc').checked,
+  };
+}
+
+/* ====== partidas "Otro" en memoria ====== */
+let customs=[]; let cid=0;
+
+function addOther(group){
+  cid++;
+  customs.push({key:cid,group,cap:OTHER_TO_CAP[group]||"5",title:"",text:""});
+  renderOthers(group);
+  render();
+}
+function renderOthers(group){
+  const cont=document.querySelector('.others[data-for="'+group+'"]');
+  if(!cont) return;
+  cont.innerHTML="";
+  customs.filter(c=>c.group===group).forEach(c=>{
+    const card=document.createElement('div');card.className='other-card';
+    card.innerHTML=`<div class="row"><input class="f-input" placeholder="Título de la partida" value="${c.title.replace(/"/g,'&quot;')}" data-k="${c.key}" data-f="title"><button class="del" data-del="${c.key}" title="Eliminar">✕</button></div>
+      <textarea class="f-input" placeholder="Texto de la partida…" data-k="${c.key}" data-f="text">${c.text}</textarea>`;
+    cont.appendChild(card);
+  });
+}
+document.addEventListener('input',e=>{
+  const k=e.target.dataset.k, f=e.target.dataset.f;
+  if(k&&f){const c=customs.find(x=>x.key==k);if(c){c[f]=e.target.value;render();}}
+});
+document.addEventListener('click',e=>{
+  if(e.target.dataset.del){const k=e.target.dataset.del;const c=customs.find(x=>x.key==k);customs=customs.filter(x=>x.key!=k);if(c)renderOthers(c.group);render();}
+});
+
+/* inyecta botón + contenedor "Otro" en cada grupo marcado data-other */
+document.querySelectorAll('[data-other]').forEach(g=>{
+  const group=g.dataset.other;
+  const btn=document.createElement('button');btn.type='button';btn.className='btn-other';btn.textContent='+ Otro (especificar)';
+  btn.onclick=()=>addOther(group);
+  g.appendChild(btn);
+  const others=document.createElement('div');others.className='others';others.dataset.for=group;
+  g.parentNode.insertBefore(others,g.nextSibling);
+});
+
+const PHfill=(t,s)=>PH(t.replace(/\{nombre\}/g,s.nombre).replace(/\{comuna\}/g,s.comuna).replace(/\{region\}/g,s.region).replace(/\{dir\}/g,s.dir));
+const toParas=html=>html.split(/\n\n+/).map(x=>x.trim()).filter(Boolean).map(x=>`<p>${x}</p>`).join("");
+
+function render(){
+  const s=readState();
+  document.querySelectorAll('[data-hide-on]').forEach(el=>{el.style.display=(el.dataset.hideOn===s.nat)?'none':''});
+  document.getElementById('cond_tech').classList.toggle('open',s.tech);
+  document.getElementById('cond_mob').classList.toggle('open',s.mob);
+
+  const active=CATALOG.filter(p=>!p.cond||p.cond(s));
+
+  // construir estructura cap -> [partidas base + customs], numerando inline
+  const byCap={};
+  CAPS.forEach(([n])=>byCap[n]=[]);
+  active.forEach(p=>byCap[p.cap]&&byCap[p.cap].push({...p,custom:false}));
+  customs.forEach(c=>{ if(c.title||c.text){ byCap[c.cap]&&byCap[c.cap].push({custom:true,name:c.title||"(sin título)",text:c.text||"(sin contenido)",ref:"OTRO"}); }});
+
+  let chapNum=0; const tocItems=[]; let total=0;
+  let body="";
+  CAPS.forEach(([num,title])=>{
+    const items=byCap[num];
+    if(!items.length) return;
+    chapNum++;
+    tocItems.push({n:num,t:title});
+    body+=`<h4><span class="ch">${num}</span>${title}</h4>`;
+    let sub=0;
+    items.forEach(p=>{
+      sub++; total++;
+      const pn=`${num}.${sub}`;
+      if(p.warn){
+        body+=`<div class="warn"><b>⚠ ${pn} · ${p.name}</b><br>${PHfill(p.f(s),s)}</div>`;
+      }else if(p.id==="0.3"){
+        body+=`<div class="part"><div class="pname"><span class="pn">${pn}</span>${p.name}${s.showNch?`<span class="ref">${p.ref}</span>`:""}</div><div class="compl"><span class="lbl">Documentos complementarios citados</span>${PHfill(p.f(s),s)}</div></div>`;
+      }else{
+        const raw=p.custom?PH(p.text):PHfill(p.f(s),s);
+        body+=`<div class="part ${p.custom?'custom':''}"><div class="pname"><span class="pn">${pn}</span>${p.name}${s.showNch?`<span class="ref">${p.ref}</span>`:""}</div>${toParas(raw)}</div>`;
+      }
+    });
+  });
+
+  let toc="";
+  if(s.showToc){
+    toc=`<div class="toc"><div class="toc-t">Índice</div><ul>`;
+    tocItems.forEach(it=>{toc+=`<li><span class="tnum">${it.n}</span>${it.t}<span class="dots"></span><span class="tpg">—</span></li>`;});
+    toc+=`</ul></div>`;
+  }
+
+  const head=`<div class="doc-head">
+      <div class="org">Especificaciones Técnicas Generales de Arquitectura y Construcción</div>
+      <h3>${s.nombre}</h3>
+      <div class="sub">${s.comuna!=="—"?s.comuna+" · ":""}Región ${s.region}</div>
+      <span class="nat">${NAT_LABEL[s.nat]}</span></div>`;
+
+  // anexo de trazabilidad: acrónimos efectivamente presentes
+  const refsUsed=new Set();
+  CAPS.forEach(([num])=>byCap[num].forEach(p=>{if(p.ref&&p.ref!=="OTRO")refsUsed.add(p.ref);}));
+  let anexo="";
+  if(s.showNch && refsUsed.size){
+    const GLOS={"0":"Generalidades","A":"Gastos adicionales y obras preliminares","B":"Obras de habilitación del terreno","C":"Obra gruesa","D":"Terminaciones","E":"Instalaciones","F":"Sistemas mecánicos de transporte","H":"Obras de urbanización","I":"Obras complementarias en el terreno propio"};
+    const ELEM={GEN:"Generalidades",OGUC:"Cumplimiento OGUC",DOC:"Documentos del proyecto",QC:"Medidas de control de calidad",PROV:"Obras provisorias",PREL:"Trabajos preliminares",DESH:"Deshabilitación del terreno",MOV:"Movimiento de tierra",MURO:"Muro de contención",FUND:"Fundaciones",SOBR:"Sobrecimientos",SOBL:"Sobrelosas",ERV:"Estructura resistente vertical",ERH:"Estructura resistente horizontal",TECH:"Estructura de techumbre",CUB:"Cubierta",TAB:"Tabiquería",REV:"Revestimientos",CIE:"Cielos",PISO:"Pavimentos",PTA:"Puertas",VEN:"Ventanas",PINT:"Pinturas",HIDR:"Hidrorrepelente / impermeabilización",MOB:"Mobiliario adosado",ELEC:"Instalación eléctrica",SAN:"Instalación sanitaria",CLIM:"Instalación de climatización",GAS:"Instalación de gas",CD:"Instalación de comunicaciones (corrientes débiles)",INC:"Instalación contra incendio",TV:"Transporte vertical (ascensor / montacarga)",PAV:"Pavimentación",VEG:"Material vegetal / áreas verdes",REC:"Recepción",GAR:"Garantía",ASEO:"Aseo"};
+    let rows="";
+    [...refsUsed].sort().forEach(r=>{
+      const [sec,el]=r.split("/");
+      const secN=GLOS[sec.trim()]||(/OGUC/.test(r)?"Reglamentación OGUC":"—");
+      const elN= el?(ELEM[el.trim()]||el.trim()):"—";
+      rows+=`<tr><td class="cmono">${r}</td><td>${secN}</td><td>${elN}</td></tr>`;
+    });
+    anexo=`<h4><span class="ch">A1</span>Anexo · Tabla de trazabilidad NCh 1150</h4>
+      <p style="margin-bottom:12px">Los códigos que acompañan a cada partida identifican su correspondencia con la norma chilena NCh 1150 de clasificación de partidas. El primer término indica la Sección de la norma y el segundo el Elemento. La siguiente tabla detalla los acrónimos empleados en este documento:</p>
+      <table class="anexo"><thead><tr><th>Código</th><th>Sección NCh 1150</th><th>Elemento</th></tr></thead><tbody>${rows}</tbody></table>`;
+  }
+
+  const firma=`<div class="firma">
+      <div class="firma-line"></div>
+      <div class="firma-cap">Arquitecto · Profesional competente</div>
+      <div class="firma-sub">Nombre · RUT · Patente profesional</div>
+    </div>`;
+
+  document.getElementById('doc').innerHTML=head+toc+body+anexo+firma;
+  document.getElementById('count').textContent=total;
+}
+
+document.addEventListener('change',render);
+render();
+</script>
+</body>
+</html>

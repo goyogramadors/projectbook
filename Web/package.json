@@ -9,7 +9,10 @@
   },
   "dependencies": {
     "@googlemaps/js-api-loader": "^2.1.1",
-    "@turf/turf": "^7.3.5",
+    "@turf/area": "^7.3.5",
+    "@turf/boolean-point-in-polygon": "^7.3.5",
+    "@turf/helpers": "^7.3.5",
+    "@turf/point-to-polygon-distance": "^7.3.5",
     "firebase": "^12.14.0",
     "framer-motion": "^12.40.0",
     "lucide-react": "^1.18.0",

@@ -75,11 +75,6 @@ export function getRegionesSorted(): string[] {
   return regionesYComunas.map(r => r.region).sort((a, b) => a.localeCompare(b));
 }
 
-// Deprecated because city field is eliminated, left as compatibility stub returning empty list
-export function getCiudadesPorRegionSorted(_regionName: string): string[] {
-  return [];
-}
-
 export function getComunasPorRegionSorted(regionName: string): string[] {
   const norm = regionName.trim().toLowerCase();
   
@@ -110,107 +105,13 @@ export function getComunasPorRegionSorted(regionName: string): string[] {
   return [...reg.comunas].sort((a, b) => a.localeCompare(b));
 }
 
-// Map standard Chilean comunas to provinces for visual location logic
-const COMUNA_PROVINCIA_DATABASE: { [key: string]: string } = {
-  // Region Metropolitana de Santiago
-  "cerrillos": "Santiago", "cerro navia": "Santiago", "conchalí": "Santiago", "el bosque": "Santiago",
-  "estación central": "Santiago", "huechuraba": "Santiago", "independencia": "Santiago", "la cisterna": "Santiago",
-  "la florida": "Santiago", "la granja": "Santiago", "la pintana": "Santiago", "la reina": "Santiago",
-  "las condes": "Santiago", "lo barnechea": "Santiago", "lo espejo": "Santiago", "lo prado": "Santiago",
-  "macul": "Santiago", "maipú": "Santiago", "ñuñoa": "Santiago", "pedro aguirre cerda": "Santiago",
-  "peñalolén": "Santiago", "providencia": "Santiago", "pudahuel": "Santiago", "quilicura": "Santiago",
-  "quinta normal": "Santiago", "recoleta": "Santiago", "renca": "Santiago", "santiago": "Santiago",
-  "san joaquín": "Santiago", "san miguel": "Santiago", "san ramón": "Santiago", "vitacura": "Santiago",
-  "puente alto": "Cordillera", "pirque": "Cordillera", "san josé de maipo": "Cordillera",
-  "colina": "Chacabuco", "lampa": "Chacabuco", "tiltil": "Chacabuco",
-  "san bernardo": "Maipo", "buin": "Maipo", "calera de tango": "Maipo", "paine": "Maipo",
-  "melipilla": "Melipilla", "alhué": "Melipilla", "curacaví": "Melipilla", "maría pinto": "Melipilla", "san pedro": "Melipilla",
-  "talagante": "Talagante", "el monte": "Talagante", "isla de maipo": "Talagante", "padre hurtado": "Talagante", "peñaflor": "Talagante",
-
-  // Valparaíso
-  "valparaíso": "Valparaíso", "casablanca": "Valparaíso", "concón": "Valparaíso", "juan fernández": "Valparaíso",
-  "puchuncaví": "Valparaíso", "quintero": "Valparaíso", "viña del mar": "Valparaíso",
-  "isla de pascua": "Isla de Pascua",
-  "los andes": "Los Andes", "alle larga": "Los Andes", "rinconada": "Los Andes", "san esteban": "Los Andes",
-  "la ligua": "Petorca", "cabildo": "Petorca", "papudo": "Petorca", "petorca": "Petorca", "zapallar": "Petorca",
-  "quillota": "Quillota", "calera": "Quillota", "hijuelas": "Quillota", "la cruz": "Quillota", "nogales": "Quillota",
-  "san antonio": "San Antonio", "algarrobo": "San Antonio", "cartagena": "San Antonio", "el quisco": "San Antonio", "el tabo": "San Antonio", "santo domingo": "San Antonio",
-  "san felipe": "San Felipe de Aconcagua", "catemu": "San Felipe de Aconcagua", "llaillay": "San Felipe de Aconcagua", "panquehue": "San Felipe de Aconcagua", "putaendo": "San Felipe de Aconcagua", "santa maría": "San Felipe de Aconcagua",
-  "quilpué": "Marga Marga", "limache": "Marga Marga", "olmué": "Marga Marga", "villa alemana": "Marga Marga",
-
-  // O'Higgins
-  "rancagua": "Cachapoal", "codegua": "Cachapoal", "coinco": "Cachapoal", "coltauco": "Cachapoal", "doñihue": "Cachapoal", "graneros": "Cachapoal", "las cabras": "Cachapoal", "machalí": "Cachapoal", "malloa": "Cachapoal", "mostazal": "Cachapoal", "olivar": "Cachapoal", "peumo": "Cachapoal", "pichidegua": "Cachapoal", "quinta de tilcoco": "Cachapoal", "rengo": "Cachapoal", "requínoa": "Cachapoal", "san vicente": "Cachapoal",
-  "pichilemu": "Cardenal Caro", "la estrella": "Cardenal Caro", "litueche": "Cardenal Caro", "marchihue": "Cardenal Caro", "navidad": "Cardenal Caro", "paredones": "Cardenal Caro",
-  "san fernando": "Colchagua", "chépica": "Colchagua", "chimbarongo": "Colchagua", "lolol": "Colchagua", "nancagua": "Colchagua", "palmilla": "Colchagua", "peralillo": "Colchagua", "placilla": "Colchagua", "pumanque": "Colchagua", "santa cruz": "Colchagua",
-
-  // Maule
-  "talca": "Talca", "constitución": "Talca", "curepto": "Talca", "empedrado": "Talca", "maule": "Talca", "pelarco": "Talca", "pencahue": "Talca", "río claro": "Talca", "san clemente": "Talca", "san rafael": "Talca",
-  "cauquenes": "Cauquenes", "chanco": "Cauquenes", "pelluhue": "Cauquenes",
-  "curicó": "Curicó", "hualañé": "Curicó", "licantén": "Curicó", "molina": "Curicó", "rauco": "Curicó", "romeral": "Curicó", "sagrada familia": "Curicó", "teno": "Curicó", "vichuquén": "Curicó",
-  "linares": "Linares", "colbún": "Linares", "longaví": "Linares", "parral": "Linares", "retiro": "Linares", "san javier": "Linares", "villa alegre": "Linares", "yerbas buenas": "Linares",
-
-  // Biobío
-  "concepción": "Concepción", "coronel": "Concepción", "chiguayante": "Concepción", "florida": "Concepción", "hualqui": "Concepción", "lota": "Concepción", "penco": "Concepción", "san pedro de la paz": "Concepción", "santa juana": "Concepción", "talcahuano": "Concepción", "tomé": "Concepción", "hualpén": "Concepción",
-  "lebu": "Arauco", "arauco": "Arauco", "cañete": "Arauco", "contulmo": "Arauco", "curanilahue": "Arauco", "los álamos": "Arauco", "tirúa": "Arauco",
-  "los ángeles": "Biobío", "antuco": "Biobío", "cabrero": "Biobío", "laja": "Biobío", "mulchén": "Biobío", "nacimiento": "Biobío", "negrete": "Biobío", "quilaco": "Biobío", "quilleco": "Biobío", "san rosendo": "Biobío", "santa bárbara": "Biobío", "tucapel": "Biobío", "yumbel": "Biobío", "alto biobío": "Biobío",
-
-  // Ñuble
-  "cobquecura": "Itata", "coelemu": "Itata", "ninhue": "Itata", "portezuelo": "Itata", "quirihue": "Itata", "ránquil": "Itata", "treguaco": "Itata",
-  "bulnes": "Diguillín", "chillán viejo": "Diguillín", "chillán": "Diguillín", "el carmen": "Diguillín", "pemuco": "Diguillín", "pinto": "Diguillín", "quillón": "Diguillín", "san ignacio": "Diguillín", "yungay": "Diguillín",
-  "coihueco": "Punilla", "ñiquén": "Punilla", "san carlos": "Punilla", "san fabián": "Punilla", "san nicolás": "Punilla",
-
-  // Araucanía
-  "temuco": "Cautín", "carahue": "Cautín", "cunco": "Cautín", "curarrehue": "Cautín", "freire": "Cautín", "galvarino": "Cautín", "gorbea": "Cautín", "lautaro": "Cautín", "loncoche": "Cautín", "melipeuco": "Cautín", "nueva imperial": "Cautín", "padre las casas": "Cautín", "perquenco": "Cautín", "pitrufquén": "Cautín", "pucón": "Cautín", "saavedra": "Cautín", "teodoro schmidt": "Cautín", "toltén": "Cautín", "vilcún": "Cautín", "villarrica": "Cautín", "cholchol": "Cautín",
-  "angol": "Malleco", "collipulli": "Malleco", "curacautín": "Malleco", "ercilla": "Malleco", "lonquimay": "Malleco", "los sauces": "Malleco", "lumaco": "Malleco", "purén": "Malleco", "renaico": "Malleco", "traiguén": "Malleco", "victoria": "Malleco",
-
-  // Los Ríos
-  "valdivia": "Valdivia", "corral": "Valdivia", "lanco": "Valdivia", "los lagos": "Valdivia", "máfil": "Valdivia", "mariquina": "Valdivia", "paillaco": "Valdivia", "panguipulli": "Valdivia",
-  "la unión": "Ranco", "futrono": "Ranco", "lago ranco": "Ranco", "rio bueno": "Ranco", "río bueno": "Ranco",
-
-  // Los Lagos
-  "puerto montt": "Llanquihue", "calbuco": "Llanquihue", "cochamó": "Llanquihue", "fresia": "Llanquihue", "frutillar": "Llanquihue", "los muermos": "Llanquihue", "llanquihue": "Llanquihue", "maullín": "Llanquihue", "puerto varas": "Llanquihue",
-  "castro": "Chiloé", "ancud": "Chiloé", "chonchi": "Chiloé", "curaco de vélez": "Chiloé", "dalcahue": "Chiloé", "puqueldón": "Chiloé", "queilén": "Chiloé", "quellón": "Chiloé", "quemchi": "Chiloé", "quinchao": "Chiloé",
-  "osorno": "Osorno", "puerto octay": "Osorno", "purranque": "Osorno", "puyehue": "Osorno", "río negro": "Osorno", "san juan de la costa": "Osorno", "san pablo": "Osorno",
-  "chaitén": "Palena", "futaleufú": "Palena", "hualaihué": "Palena", "palena": "Palena",
-
-  // Aysén
-  "coihaique": "Coyhaique", "coyhaique": "Coyhaique", "lago verde": "Coyhaique",
-  "aisén": "Aysén", "aysén": "Aysén", "cisnes": "Aysén", "guaitecas": "Aysén",
-  "cochrane": "Capitán Prat", "o’higgins": "Capitán Prat", "o'higgins": "Capitán Prat", "tortel": "Capitán Prat",
-  "chile chico": "General Carrera", "río ibáñez": "General Carrera",
-
-  // Magallanes
-  "punta arenas": "Magallanes", "laguna blanca": "Magallanes", "río verde": "Magallanes", "san gregorio": "Magallanes",
-  "cabo de hornos (ex navarino)": "Antártica Chilena", "antártica": "Antártica Chilena",
-  "porvenir": "Tierra del Fuego", "primavera": "Tierra del Fuego", "timaukel": "Tierra del Fuego",
-  "natales": "Última Esperanza", "torres del paine": "Última Esperanza",
-
-  // Arica y Parinacota
-  "arica": "Arica", "camarones": "Arica",
-  "putre": "Parinacota", "general lagos": "Parinacota",
-
-  // Tarapacá
-  "iquique": "Iquique", "alto hospicio": "Iquique",
-  "pozo almonte": "Tamarugal", "camiña": "Tamarugal", "colchane": "Tamarugal", "huara": "Tamarugal", "pica": "Tamarugal",
-
-  // Antofagasta
-  "antofagasta": "Antofagasta", "mejillones": "Antofagasta", "sierra gorda": "Antofagasta", "taltal": "Antofagasta",
-  "calama": "El Loa", "ollagüe": "El Loa", "san pedro de atacama": "El Loa",
-  "tocopilla": "Tocopilla", "maría elena": "Tocopilla",
-
-  // Atacama
-  "copiapó": "Copiapó", "caldera": "Copiapó", "tierra amarilla": "Copiapó",
-  "chañaral": "Chañaral", "diego de almagro": "Chañaral",
-  "vallenar": "Huasco", "alto del carmen": "Huasco", "freirina": "Huasco", "huasco": "Huasco",
-
-  // Coquimbo
-  "la serena": "Elqui", "coquimbo": "Elqui", "andacollo": "Elqui", "la higuera": "Elqui", "paiguano": "Elqui", "vicuña": "Elqui",
-  "illapel": "Choapa", "canela": "Choapa", "los vilos": "Choapa", "salamanca": "Choapa",
-  "ovalle": "Limarí", "combarbalá": "Limarí", "monte patria": "Limarí", "punitaqui": "Limarí", "río hurtado": "Limarí"
-};
-
-export function findProvinciaPorComuna(comunaName: string): string {
+/** Reverse: región a la que pertenece una comuna (no manual). '' si no se halla. */
+export function getRegionDeComuna(comunaName: string): string {
   if (!comunaName) return '';
-  const key = comunaName.trim().toLowerCase();
-  return COMUNA_PROVINCIA_DATABASE[key] || '';
+  const norm = (s: string) => s.trim().toLocaleLowerCase('es');
+  const target = norm(comunaName);
+  for (const r of regionesYComunas) {
+    if (r.comunas.some((c) => norm(c) === target)) return r.region;
+  }
+  return '';
 }

@@ -1,0 +1,153 @@
+<!--
+  Libro de Obra Digital — Block REDUCIDO (archivo SEPARADO de archiblocks-scene.html).
+  Conserva el EDIFICIO central + solo dos objetos flotantes ISOMÉTRICOS:
+    · db    → pila isométrica (Carpeta Digital) — acceso directo al workspace.
+    · libro → libro isométrico (Libro de Obras) — acceso directo al workspace.
+  Líneas conectoras isométricas y etiqueta 3D del nodo activo (igual que el Block completo).
+  Inyectado como ?raw por ArchiblocksNav.tsx (mismo #ab-nav-root, mismas clases .ab-*).
+-->
+<svg id="ab-nav-scene" viewBox="150 66 900 336" preserveAspectRatio="xMidYMid meet" xmlns="http://www.w3.org/2000/svg" role="img" aria-label="Block Libro de Obra (edificio + carpeta + libro)">
+
+    <!-- Conectores isométricos (solo los dos que quedan) -->
+    <g class="ab-lines" fill="none">
+      <path id="line-db" class="ab-line" d="M 462.6 249.1 L 321.6 167.7 L 340.7 156.7"/>
+      <path id="line-libro" class="ab-line" d="M 390.2 295.3 L 283.5 233.7 L 226.4 266.7"/>
+    </g>
+    <g class="ab-pins">
+      <circle class="ab-pin" cx="462.6" cy="249.1" r="2.6"/>
+      <circle class="ab-pin" cx="340.7" cy="156.7" r="2.6"/>
+      <circle class="ab-pin" cx="390.2" cy="295.3" r="2.6"/>
+      <circle class="ab-pin" cx="226.4" cy="266.7" r="2.6"/>
+    </g>
+
+    <!-- EDIFICIO (seleccionable) con 3 plantas que se arman/desarman -->
+    <g id="node-edificio" class="ab-node ab-plate" data-node="edificio" tabindex="0" role="button">
+      <g class="ab-floor ab-floor0">
+        <polygon class="ab-fill-soft ab-stroke" points="458.8,217.0 542.6,265.4 466.4,309.4 382.6,261.0"/>
+            <polygon class="ab-fill-dark ab-stroke" points="382.6,305.0 466.4,353.4 466.4,309.4 382.6,261.0"/>
+            <polygon class="ab-fill-mid ab-stroke" points="542.6,309.4 466.4,353.4 466.4,309.4 542.6,265.4"/>
+            <polygon class="ab-glass ab-stroke" points="535.0,304.1 508.3,319.5 508.3,294.0 535.0,278.6"/>
+            <polygon class="ab-glass ab-stroke" points="500.7,323.9 474.1,339.3 474.1,313.8 500.7,298.4"/>
+            <polygon class="ab-glass ab-stroke" points="391.0,300.2 420.3,317.1 420.3,291.6 391.0,274.6"/>
+            <polygon class="ab-accent-fill ab-stroke" points="430.2,332.5 455.0,346.8 455.0,302.8 430.2,288.5"/>
+      </g>
+      <g class="ab-floor ab-floor1">
+        <polygon class="ab-fill-soft ab-stroke" points="432.1,170.8 523.6,223.6 455.0,263.2 363.5,210.4"/>
+            <polygon class="ab-fill-dark ab-stroke" points="363.5,254.4 455.0,307.2 455.0,263.2 363.5,210.4"/>
+            <polygon class="ab-fill-mid ab-stroke" points="523.6,267.6 455.0,307.2 455.0,263.2 523.6,223.6"/>
+            <polygon class="ab-glass ab-stroke" points="516.7,261.9 492.7,275.7 492.7,250.2 516.7,236.4"/>
+            <polygon class="ab-glass ab-stroke" points="485.9,279.7 461.9,293.6 461.9,268.0 485.9,254.2"/>
+            <polygon class="ab-glass ab-stroke" points="372.7,250.0 391.0,260.6 391.0,235.0 372.7,224.5"/>
+            <polygon class="ab-glass ab-stroke" points="400.1,265.8 418.4,276.4 418.4,250.9 400.1,240.3"/>
+            <polygon class="ab-glass ab-stroke" points="427.6,281.7 445.9,292.2 445.9,266.7 427.6,256.2"/>
+      </g>
+      <g class="ab-floor ab-floor2">
+        <polygon class="ab-fill-soft ab-stroke" points="477.9,122.4 561.7,170.8 485.5,214.8 401.7,166.4"/>
+            <polygon class="ab-fill-dark ab-stroke" points="401.7,210.4 485.5,258.8 485.5,214.8 401.7,166.4"/>
+            <polygon class="ab-fill-mid ab-stroke" points="561.7,214.8 485.5,258.8 485.5,214.8 561.7,170.8"/>
+            <polygon class="ab-glass ab-stroke" points="554.1,209.5 527.4,224.9 527.4,199.4 554.1,184.0"/>
+            <polygon class="ab-glass ab-stroke" points="519.8,229.3 493.1,244.7 493.1,219.2 519.8,203.8"/>
+            <polygon class="ab-glass ab-stroke" points="410.0,205.6 439.4,222.5 439.4,197.0 410.0,180.0"/>
+            <polygon class="ab-glass ab-stroke" points="447.8,227.3 477.1,244.3 477.1,218.8 447.8,201.8"/>
+      </g>
+    </g>
+
+    
+    <g id="node-db" class="ab-node ab-float" data-node="db" tabindex="0" role="button" style="--d:0s;--fx:5.58px;--fy:4.23px">
+          <g transform="translate(340.7,156.7)">
+            <g class="ab-lift">
+            <polygon class="ab-fill-mid ab-stroke" points="0.0,-6.0 48.6,22.0 15.0,41.5 -33.7,13.4"/>
+            <polygon class="ab-fill-dark ab-stroke" points="-33.7,19.4 15.0,47.5 15.0,41.5 -33.7,13.4"/>
+            <polygon class="ab-fill-mid ab-stroke" points="48.6,28.1 15.0,47.5 15.0,41.5 48.6,22.0"/>
+            <polygon class="ab-accent-fill ab-stroke" points="0.0,-9.3 45.8,17.2 15.0,35.0 -30.9,8.5"/>
+            <polygon class="ab-accent-dark ab-stroke" points="-30.9,15.0 15.0,41.5 15.0,35.0 -30.9,8.5"/>
+            <polygon class="ab-accent-side ab-stroke" points="45.8,23.7 15.0,41.5 15.0,35.0 45.8,17.2"/>
+            <polygon class="ab-fill-soft ab-stroke" points="0.0,-18.1 48.6,9.9 15.0,29.4 -33.7,1.3"/>
+            <polygon class="ab-fill-dark ab-stroke" points="-33.7,6.9 15.0,35.0 15.0,29.4 -33.7,1.3"/>
+            <polygon class="ab-fill-mid ab-stroke" points="48.6,15.6 15.0,35.0 15.0,29.4 48.6,9.9"/>
+            <polygon class="ab-fill-soft ab-stroke" points="-31.8,3.2 -13.1,14.0 -20.6,18.4 -39.3,7.6"/>
+            <polygon class="ab-fill-dark ab-stroke" points="-39.3,12.3 -20.6,23.1 -20.6,18.4 -39.3,7.6"/>
+            <polygon class="ab-fill-mid ab-stroke" points="-13.1,18.8 -20.6,23.1 -20.6,18.4 -13.1,14.0"/>
+            </g>
+          </g>
+        </g>
+    <g id="node-libro" class="ab-node ab-float" data-node="libro" tabindex="0" role="button" style="--d:2.6s;--fx:6.90px;--fy:1.20px">
+          <g transform="translate(226.4,266.7)">
+            <g class="ab-lift">
+            <polygon class="ab-fill-mid ab-stroke" points="0.0,-3.6 43.8,21.7 12.3,39.9 -31.6,14.6"/>
+            <polygon class="ab-fill-dark ab-stroke" points="-31.6,18.2 12.3,43.5 12.3,39.9 -31.6,14.6"/>
+            <polygon class="ab-fill-mid ab-stroke" points="43.8,25.3 12.3,43.5 12.3,39.9 43.8,21.7"/>
+            <polygon class="ab-fill-soft ab-stroke" points="0.0,-8.5 41.7,15.6 12.3,32.6 -29.5,8.5"/>
+            <polygon class="ab-fill-dark ab-stroke" points="-29.5,14.6 12.3,38.7 12.3,32.6 -29.5,8.5"/>
+            <polygon class="ab-fill-soft ab-stroke" points="41.7,21.7 12.3,38.7 12.3,32.6 41.7,15.6"/>
+            <polygon class="ab-fill-soft ab-stroke" points="0.0,-13.0 43.8,12.4 12.3,30.6 -31.6,5.3"/>
+            <polygon class="ab-fill-dark ab-stroke" points="-31.6,8.5 12.3,33.8 12.3,30.6 -31.6,5.3"/>
+            <polygon class="ab-fill-mid ab-stroke" points="43.8,15.6 12.3,33.8 12.3,30.6 43.8,12.4"/>
+            <polygon class="ab-accent-fill ab-stroke" points="0.0,-13.0 3.9,-10.7 -27.7,7.5 -31.6,5.3"/>
+            <polygon class="ab-accent-dark ab-stroke" points="-31.6,18.2 -27.7,20.5 -27.7,7.5 -31.6,5.3"/>
+            <polygon class="ab-accent-side ab-stroke" points="3.9,2.2 -27.7,20.5 -27.7,7.5 3.9,-10.7"/>
+            <polygon class="ab-bar2" points="1.8,1.2 29.8,17.4 28.1,18.4 -0.0,2.2"/>
+            <polygon class="ab-bar2" points="-4.4,4.8 23.7,21.0 21.9,22.0 -6.1,5.8"/>
+            <polygon class="ab-bar2" points="-10.5,8.3 17.5,24.5 15.8,25.5 -12.3,9.3"/>
+            </g>
+          </g>
+        </g>
+
+    <!-- ETIQUETA ISOMETRICA 3D (plano fachada derecha) -->
+    <g id="ab-label" transform="matrix(0.866,-0.5,0,1,560,340)">
+      <rect class="ab-label-rule" id="ab-label-rule" x="160" y="20" width="300" height="5"/>
+      <g id="lab-line1" transform="translate(460,-38)"><text class="ab-3d-sil" x="-6.6" y="-6.6"></text><text class="ab-3d-sil" x="-5.5" y="-5.5"></text><text class="ab-3d-sil" x="-4.4" y="-4.4"></text><text class="ab-3d-sil" x="-3.3" y="-3.3"></text><text class="ab-3d-sil" x="-2.2" y="-2.2"></text><text class="ab-3d-sil" x="-1.1" y="-1.1"></text><text class="ab-3d-sil" x="-0.0" y="-0.0"></text><text class="ab-3d-vol" x="-6.6" y="-6.6"></text><text class="ab-3d-vol" x="-5.5" y="-5.5"></text><text class="ab-3d-vol" x="-4.4" y="-4.4"></text><text class="ab-3d-vol" x="-3.3" y="-3.3"></text><text class="ab-3d-vol" x="-2.2" y="-2.2"></text><text class="ab-3d-vol" x="-1.1" y="-1.1"></text><text class="ab-3d-vol" x="-0.0" y="-0.0"></text><text class="ab-3d-face" x="0" y="0"></text></g>
+      <g id="lab-line2" transform="translate(460,0)"><text class="ab-3d-sil" x="-6.6" y="-6.6"></text><text class="ab-3d-sil" x="-5.5" y="-5.5"></text><text class="ab-3d-sil" x="-4.4" y="-4.4"></text><text class="ab-3d-sil" x="-3.3" y="-3.3"></text><text class="ab-3d-sil" x="-2.2" y="-2.2"></text><text class="ab-3d-sil" x="-1.1" y="-1.1"></text><text class="ab-3d-sil" x="-0.0" y="-0.0"></text><text class="ab-3d-vol" x="-6.6" y="-6.6"></text><text class="ab-3d-vol" x="-5.5" y="-5.5"></text><text class="ab-3d-vol" x="-4.4" y="-4.4"></text><text class="ab-3d-vol" x="-3.3" y="-3.3"></text><text class="ab-3d-vol" x="-2.2" y="-2.2"></text><text class="ab-3d-vol" x="-1.1" y="-1.1"></text><text class="ab-3d-vol" x="-0.0" y="-0.0"></text><text class="ab-3d-face" x="0" y="0"></text></g>
+    </g>
+  </svg>
+
+<style>
+  /* Paleta RESPONSIVA: hereda el color de la barra (currentColor = --bar-foreground)
+     y el fondo de la barra (--bar). Funciona en todos los temas sin variantes. */
+  #ab-nav-root{--accent:var(--destructive,#D9381E);--font-body:'Inter',system-ui,sans-serif;
+    position:relative;font-family:var(--font-body);background:transparent;display:flex;width:100%;height:100%;
+    color:var(--bar-foreground);}
+  #ab-nav-scene{width:100%;height:100%;overflow:visible;display:block;}
+
+  #ab-nav-root .ab-fill-soft{fill:currentColor;fill-opacity:.10;}
+  #ab-nav-root .ab-fill-mid{fill:currentColor;fill-opacity:.20;}
+  #ab-nav-root .ab-fill-dark{fill:currentColor;fill-opacity:.34;}
+  #ab-nav-root .ab-glass{fill:currentColor;fill-opacity:.06;}
+  #ab-nav-root .ab-ground-top{fill:currentColor;fill-opacity:.08;}
+  #ab-nav-root .ab-ground-side{fill:currentColor;fill-opacity:.24;}
+  #ab-nav-root .ab-ground-side2{fill:currentColor;fill-opacity:.15;}
+  #ab-nav-root .ab-bar2{fill:currentColor;fill-opacity:.30;}
+  #ab-nav-root .ab-accent-fill{fill:var(--accent);} #ab-nav-root .ab-accent-side{fill:#B22D17;} #ab-nav-root .ab-accent-dark{fill:#9E2814;}
+  #ab-nav-root .ab-pin{fill:currentColor;fill-opacity:.6;}
+  #ab-nav-root .ab-stroke{stroke:currentColor;stroke-width:1.5;stroke-linejoin:round;stroke-linecap:round;}
+  #ab-nav-root .ab-glass.ab-stroke{stroke-width:1;}
+
+  #ab-nav-root .ab-line{stroke:currentColor;stroke-width:1.5;stroke-linecap:round;stroke-linejoin:round;
+    stroke-dasharray:5 6;opacity:.45;transition:stroke .3s,opacity .3s;}
+  #ab-nav-root .ab-line.active{stroke:var(--accent);opacity:1;animation:ab-nav-flow .7s linear infinite;}
+  @keyframes ab-nav-flow{to{stroke-dashoffset:-22;}}
+
+  #ab-nav-root .ab-float{animation:ab-nav-bob 6s ease-in-out infinite;animation-delay:var(--d,0s);}
+  @keyframes ab-nav-bob{
+    0%,100%{transform:translate(calc(var(--fx,0px)*-1),calc(var(--fy,0px)*-1));}
+    50%{transform:translate(var(--fx,0px),var(--fy,0px));}
+  }
+  #ab-nav-root .ab-node{cursor:pointer;}
+  #ab-nav-root .ab-node .ab-lift{transition:transform .25s ease;}
+  #ab-nav-root .ab-node:hover .ab-lift,#ab-nav-root .ab-node:focus .ab-lift{transform:translateY(-7px);}
+  #ab-nav-root .ab-node:focus{outline:none;}
+  #ab-nav-root .ab-node:hover .ab-stroke,#ab-nav-root .ab-node:focus .ab-stroke{stroke:var(--accent);}
+  #ab-nav-root .ab-node.active .ab-stroke{stroke:var(--accent);stroke-width:2;}
+  #ab-nav-root .ab-plate{cursor:pointer;}
+
+  #ab-nav-root .ab-floor1{animation:ab-nav-exp1 7s ease-in-out infinite;}
+  #ab-nav-root .ab-floor2{animation:ab-nav-exp2 7s ease-in-out infinite;}
+  @keyframes ab-nav-exp1{0%,22%{transform:translateY(0);}50%{transform:translateY(-18px);}78%,100%{transform:translateY(0);}}
+  @keyframes ab-nav-exp2{0%,22%{transform:translateY(0);}50%{transform:translateY(-40px);}78%,100%{transform:translateY(0);}}
+
+  #ab-nav-root .ab-3d-sil,#ab-nav-root .ab-3d-vol,#ab-nav-root .ab-3d-face{font-family:var(--font-body);font-size:58px;font-weight:700;text-anchor:end;}
+  #ab-nav-root .ab-3d-sil{fill:currentColor;stroke:currentColor;stroke-width:2.6;stroke-linejoin:round;}
+  #ab-nav-root .ab-3d-vol{fill:currentColor;fill-opacity:.45;}
+  #ab-nav-root .ab-3d-face{fill:var(--accent);stroke:currentColor;stroke-width:1.2;stroke-linejoin:round;paint-order:stroke;}
+  #ab-nav-root .ab-label-rule{fill:var(--accent);}
+</style>

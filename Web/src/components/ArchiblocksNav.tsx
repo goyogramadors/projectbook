@@ -12,11 +12,12 @@
    libro=Libro de Obra · galvano=Admin.
    ============================================================================= */
 import { useCallback, useEffect, useRef } from 'react';
-import sceneHtml from './archiblocks-scene.html?raw';
+import sceneArchiblocks from './archiblocks-scene.html?raw';
+import sceneLibroDeObra from './librodeobra-scene.html?raw';
 
 export const NODE_LABEL: Record<string, string> = {
   edificio: 'Inicio', terreno: 'Terreno', permisos: 'Permisos', carpeta: 'Carpeta Digital',
-  botonera: 'Datos Proyecto', ductos: 'Obra', galvano: 'Admin', archivador: 'Proyecto', libro: 'Libro de Obra',
+  botonera: 'Datos Proyecto', ductos: 'Obra', galvano: 'Admin', archivador: 'Proyecto', libro: 'Libro de Obra', db: 'Carpeta Digital',
 };
 
 /** Nodo más cercano (el <g data-node>) a partir del objetivo del evento. */
@@ -26,12 +27,17 @@ function nodeKeyFrom(target: EventTarget | null): string | null {
   return g ? g.getAttribute('data-node') : null;
 }
 
-export default function ArchiblocksNav({ active, dark = true, onSelect }: {
+export default function ArchiblocksNav({ active, dark = true, onSelect, allowed, scene = 'archiblocks' }: {
   active?: string;
   dark?: boolean;
   onSelect?: (node: string) => void;
+  /** Lista blanca de nodos visibles (F-LDO 3). undefined = todos los de la escena. */
+  allowed?: string[];
+  /** Qué Block (escena) inyectar: completo (Archiblocks) o reducido (Libro de Obra). */
+  scene?: 'archiblocks' | 'librodeobra';
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const sceneHtml = scene === 'librodeobra' ? sceneLibroDeObra : sceneArchiblocks;
 
   /** Pinta el nodo/línea activos y la etiqueta isométrica con el nombre de sección. */
   const paint = useCallback((k?: string) => {
@@ -57,6 +63,13 @@ export default function ArchiblocksNav({ active, dark = true, onSelect }: {
   useEffect(() => {
     const root = ref.current;
     if (root && !root.firstChild) root.innerHTML = sceneHtml;
+    // F-LDO 3 · navegador reducido: oculta los nodos fuera de la lista blanca.
+    if (root && allowed) {
+      root.querySelectorAll<HTMLElement>('[data-node]').forEach((g) => {
+        const k = g.getAttribute('data-node') ?? '';
+        g.style.display = allowed.includes(k) ? '' : 'none';
+      });
+    }
     paint(active);
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);

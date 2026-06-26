@@ -1,0 +1,26 @@
+/* Estilos de las herramientas de Construcción (EETT · Presupuesto). Scoped cx-*. */
+/* Apilado en una sola columna: el formulario arriba y la vista de impresión PDF
+   abajo a ancho completo (en 2 columnas la previa quedaba demasiado apretada). */
+.cx-2col{ display:flex; flex-direction:column; gap:22px; align-items:stretch; }
+.cx-form{ min-width:0; }
+.cx-sec{ margin:18px 0 8px; font-size:12px; font-weight:800; text-transform:uppercase; letter-spacing:.04em; color:var(--foreground); border-bottom:1px solid var(--border); padding-bottom:5px; }
+.cx-sub{ display:block; margin:12px 0 5px; font-size:11px; font-weight:700; text-transform:uppercase; letter-spacing:.03em; color:var(--muted-foreground); }
+.cx-chips{ display:flex; flex-wrap:wrap; gap:6px; }
+.cx-chip{ background:var(--card); color:var(--foreground); border:var(--bw,1px) solid var(--border); padding:6px 11px; font-size:12px; font-weight:600; cursor:pointer; font-family:inherit; transition:.12s; }
+.cx-chip:hover{ border-color:var(--destructive); }
+.cx-chip.active{ background:var(--destructive); color:var(--destructive-foreground); border-color:var(--destructive); }
+.cx-chip:disabled{ opacity:.5; cursor:not-allowed; }
+.cx-sw-grid{ display:grid; grid-template-columns:1fr 1fr; gap:6px 14px; margin-top:6px; }
+.cx-sw-row{ display:flex; align-items:center; gap:8px; font-size:12.5px; cursor:pointer; }
+.cx-sw-row input{ accent-color:var(--destructive); }
+.cx-preview{ min-width:0; }
+.cx-prevbar{ display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:10px; font-size:12px; font-weight:700; color:var(--muted-foreground); }
+.cx-prevbar > span{ display:inline-flex; align-items:center; gap:6px; }
+/* Tabla del presupuesto */
+.cx-tbl{ width:100%; border-collapse:collapse; font-size:11px; }
+.cx-tbl th, .cx-tbl td{ border:1px solid var(--border); padding:4px 7px; text-align:left; }
+.cx-tbl th{ background:var(--muted); font-weight:800; text-transform:uppercase; font-size:10px; }
+.cx-tbl td.num, .cx-tbl th.num{ text-align:right; font-variant-numeric:tabular-nums; }
+.cx-tot{ display:flex; justify-content:space-between; padding:3px 0; font-size:12px; }
+.cx-tot.grand{ font-weight:800; border-top:2px solid var(--foreground); margin-top:4px; padding-top:6px; font-size:13px; }
+@media print{ .cx-form, .cx-prevbar{ display:none !important; } .cx-2col{ display:block; } }

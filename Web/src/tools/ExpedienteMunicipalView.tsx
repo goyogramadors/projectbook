@@ -3,13 +3,15 @@
    -----------------------------------------------------------------------------
    Genera tres documentos imprimibles DOM (Declaración Jurada Art. 1.2.2,
    Solicitud de Permiso F2-3.1 e INE) sembrados desde el ProjectMaster activo.
-   Los datos propios del trámite (arquitecto, RUT) se archivan en localStorage
-   bajo ab-expediente-dom-${projectId}. Exporta vía window.print() (PDF/impresora).
+   Los datos propios del trámite (arquitecto, RUT) se persisten vía useToolData:
+   Premium → Firestore projects/{pid}/toolData/expediente-dom; Free → localStorage
+   ab-expediente-dom-${projectId}. Exporta vía window.print() (PDF/impresora).
    ============================================================================= */
-import { useEffect, useState } from 'react';
+import { useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { useProjects } from '../core/db/ProjectProvider';
+import { useToolData } from '../hooks/useToolData';
 import { superficieProyecto, type ToolProps } from '../core/types';
 
 /* ── tipos locales ─────────────────────────────────────────────────────────── */
@@ -17,7 +19,7 @@ type DocId = 'declaracion' | 'f231' | 'ine';
 interface DatosTramite { arquitecto: string; rutArquitecto: string; }
 
 /* ── constantes ────────────────────────────────────────────────────────────── */
-const STORAGE_KEY = (pid: string) => `ab-expediente-dom-${pid}`;
+const EXPEDIENTE_DEFAULT: DatosTramite = { arquitecto: '', rutArquitecto: '' };
 
 /* ── componente principal ──────────────────────────────────────────────────── */
 export default function ExpedienteMunicipalView({ projectId, access = 'edit' }: ToolProps) {
@@ -26,23 +28,23 @@ export default function ExpedienteMunicipalView({ projectId, access = 'edit' }: 
   const project = getProject(projectId);
 
   const [selectedDoc, setSelectedDoc] = useState<DocId>('declaracion');
-  const [arquitecto, setArquitecto] = useState('');
-  const [rutArquitecto, setRutArquitecto] = useState('');
 
-  /* ── carga de datos propios del trámite ── */
-  useEffect(() => {
-    if (!project) return;
-    const raw = localStorage.getItem(STORAGE_KEY(project.id));
-    if (raw) {
-      try {
-        const d = JSON.parse(raw) as DatosTramite;
-        setArquitecto(d.arquitecto ?? '');
-        setRutArquitecto(d.rutArquitecto ?? '');
-      } catch {
-        // datos corruptos — ignorar
-      }
-    }
-  }, [project?.id]);
+  // Persistencia gobernada: Premium → Firestore projects/{pid}/toolData/expediente-dom;
+  // Free/offline → localStorage `ab-expediente-dom-{pid}` (misma clave de antes, retro-compatible).
+  const { data: tramite, setData: setTramite, save } = useToolData<DatosTramite>(
+    'expediente-dom', projectId, EXPEDIENTE_DEFAULT,
+  );
+  const arquitecto = tramite.arquitecto;
+  const rutArquitecto = tramite.rutArquitecto;
+
+  // Guardado con debounce para no escribir en la nube en cada tecla.
+  const saveTimer = useRef<number | undefined>(undefined);
+  const scheduleSave = (next: DatosTramite) => {
+    if (readOnly) return;
+    setTramite(next);
+    window.clearTimeout(saveTimer.current);
+    saveTimer.current = window.setTimeout(() => { void save(next); }, 600);
+  };
 
   if (!project) return (
     <div><p className="tech-quote">Selecciona un proyecto para gestionar el Expediente Municipal.</p></div>
@@ -55,12 +57,8 @@ export default function ExpedienteMunicipalView({ projectId, access = 'edit' }: 
   const superficie = superficieProyecto(project) || '';
   const presupuesto = project.presupuestoUF || '';
 
-  const persistTramite = (next: DatosTramite) => {
-    if (readOnly) return;
-    localStorage.setItem(STORAGE_KEY(project.id), JSON.stringify(next));
-  };
-  const onArquitecto = (v: string) => { setArquitecto(v); persistTramite({ arquitecto: v, rutArquitecto }); };
-  const onRut = (v: string) => { setRutArquitecto(v); persistTramite({ arquitecto, rutArquitecto: v }); };
+  const onArquitecto = (v: string) => scheduleSave({ arquitecto: v, rutArquitecto });
+  const onRut = (v: string) => scheduleSave({ arquitecto, rutArquitecto: v });
 
   const docBtn = (id: DocId, label: string, last = false) => (
     <button onClick={() => setSelectedDoc(id)} className="technical-btn secondary" style={{ justifyContent: 'flex-start', border: 'none', borderBottom: last ? 'none' : '1.5px solid var(--border)', background: selectedDoc === id ? 'var(--muted)' : 'transparent', fontSize: 11, padding: 15 }}>

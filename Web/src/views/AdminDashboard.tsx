@@ -18,21 +18,6 @@ import { CATALOG, TOP_TOOLS_DEFAULT } from '../core/catalog';
 /** Fila local: extiende AdminUserRow con la marca de "invitado" (alta desde panel). */
 type Row = AdminUserRow & { invitado?: boolean };
 
-/* MOCK (temporal) — Invitación Premium. En el futuro se reemplaza por la llamada
-   real (p.ej. Cloud Function `inviteUserPremium`) que cree el usuario, le asigne
-   el claim Premium y dispare el correo de invitación. La firma se mantiene. */
-async function inviteUserPremiumMock(email: string): Promise<Row> {
-  return {
-    uid: `invited-${Date.now()}`,
-    email,
-    nombre: email.split('@')[0] ?? email,
-    plan: 'Premium',
-    estado: 'Activo',
-    compPremium: true,
-    invitado: true,
-  };
-}
-
 export default function AdminDashboard() {
   const navigate = useNavigate();
   const { user } = useAuth();
@@ -69,26 +54,26 @@ export default function AdminDashboard() {
     if (!email || inviting) return;
     setInviting(true);
     try {
-      // Simulación visual (agrega la fila con badge PREMIUM).
-      const nuevo = await inviteUserPremiumMock(email);
-      setRows((prev) => [nuevo, ...prev]);
       // Elevación REAL: si el correo ya existe en Firestore, cambia su plan a Premium.
       let existia = false;
       try { existia = await promoteByEmail(email); }
-      catch { /* offline / reglas — solo queda la simulación visual */ }
-      // Envío REAL del correo vía Cloud Function (SendGrid). Requiere la función
-      // desplegada y el secreto SENDGRID_API_KEY configurado; si falla, degrada.
+      catch { /* offline / reglas */ }
+      // Envío REAL del correo vía Cloud Function. La función también crea el doc
+      // users/{uid} si el usuario ya existe en Auth, o registra la invitación
+      // pendiente en premiumInvitations si aún no se registró.
       let correoEnviado = false;
       try {
         await httpsCallable(functions, 'sendPremiumInviteEmail')({ email });
         correoEnviado = true;
       } catch { /* función no desplegada / SendGrid sin configurar — no rompe el flujo */ }
       setInviteMsg(
-        `${existia ? `Usuario ${email} elevado a Premium en la base de datos.` : `Premium activado para ${email} (se aplicará al registrarse).`} ` +
+        `${existia ? `Usuario ${email} elevado a Premium en la base de datos.` : `Premium activado para ${email} (pendiente de primer login).`} ` +
         (correoEnviado ? 'Correo de invitación enviado.' : 'Aviso: el correo NO se envió (revisa el despliegue de Functions y SENDGRID_API_KEY).'),
       );
       setInviteEmail('');
       triggerToast(correoEnviado ? 'Invitación Premium enviada por correo.' : 'Premium aplicado (sin correo).');
+      // Recargar la tabla para mostrar la fila real (registrado o pendiente)
+      void recargar();
     } finally {
       setInviting(false);
     }
@@ -247,15 +232,21 @@ export default function AdminDashboard() {
                   </td>
                   <td style={td}>{r.email}</td>
                   <td style={td}><span style={{ fontWeight: 700, color: r.plan === 'Premium' ? 'var(--primary)' : 'inherit' }}>{r.plan}</span></td>
-                  <td style={td}><span style={{ fontWeight: 700, color: r.estado === 'Suspendido' ? 'var(--destructive)' : 'inherit' }}>{r.estado}</span></td>
+                  <td style={td}><span style={{ fontWeight: 700, color: r.estado === 'Suspendido' ? 'var(--destructive)' : r.estado === 'Pendiente' ? 'var(--muted-foreground)' : 'inherit' }}>{r.estado}</span></td>
                   <td style={td}>
                     <div style={{ display: 'flex', gap: 6, flexWrap: 'wrap' }}>
-                      <button className="ab-btn sec sm" disabled={busyUid === r.uid} onClick={() => toggleEstado(r)}>
-                        {r.estado === 'Suspendido' ? 'Reactivar' : 'Suspender'}
-                      </button>
-                      <button className="ab-btn sec sm" disabled={busyUid === r.uid} onClick={() => togglePremium(r)}>
-                        {r.compPremium ? 'Quitar Premium' : 'Dar Premium'}
-                      </button>
+                      {r.estado === 'Pendiente' ? (
+                        <span style={{ fontSize: 10, opacity: 0.5, alignSelf: 'center' }}>Esperando registro</span>
+                      ) : (
+                        <>
+                          <button className="ab-btn sec sm" disabled={busyUid === r.uid} onClick={() => toggleEstado(r)}>
+                            {r.estado === 'Suspendido' ? 'Reactivar' : 'Suspender'}
+                          </button>
+                          <button className="ab-btn sec sm" disabled={busyUid === r.uid} onClick={() => togglePremium(r)}>
+                            {r.compPremium ? 'Quitar Premium' : 'Dar Premium'}
+                          </button>
+                        </>
+                      )}
                     </div>
                   </td>
                 </tr>

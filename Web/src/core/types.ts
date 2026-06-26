@@ -56,11 +56,6 @@ export interface AuthState {
 }
 
 /* CEREBRO NORMATIVO (GEO ESPACIAL) */
-export interface Coordenada {
-  lat: number;
-  lng: number;
-}
-
 export interface NormativaPRC {
   alturaMaxima: string | number;
   constructibilidad: string | number;
@@ -118,6 +113,10 @@ export interface ProjectMaster extends SuperficieModel {
   rol: string;
   direccion: string;
   comuna: string;
+  /** Región (no manual): derivada de la comuna / geocode en UbicacionView. */
+  region?: string;
+  /** Ciudad/localidad (no manual): del geocode en UbicacionView; fallback comuna. */
+  ciudad?: string;
   destino: string;
   /** Tipo de proyecto (OGUC). Determina los formularios DOM visibles. */
   tipoProyecto?: TipoProyecto;
@@ -257,7 +256,7 @@ export interface ObraAdjunto {
 
 /* Obra Digital · Libro de Obras (libro-obras · premium · subcolección libroObras) */
 export type LibroNivel = 'sin' | 'lectura' | 'escritura' | 'edicion';
-export type LibroFormatoId = 'comunicacion' | 'incidente' | 'ejecutivo' | 'libre';
+export type LibroFormatoId = 'comunicacion' | 'incidente' | 'ejecutivo' | 'libre' | 'rdi';
 export type LibroEstadoFolio = 'activo' | 'archivado';
 export interface LibroFolio {
   folio: string; fecha: string; libroId: string; formato: LibroFormatoId; incid: boolean;

@@ -1,4 +1,5 @@
 import { initializeApp } from "firebase/app";
+import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 import { getAuth, GoogleAuthProvider } from "firebase/auth";
 import { initializeFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
@@ -14,6 +15,20 @@ const firebaseConfig = {
 };
 
 const app = initializeApp(firebaseConfig);
+
+// App Check (reCAPTCHA v3) — verifica que las solicitudes provienen de la app
+// real, no de scripts/bots. Protege Firestore, Storage y las Cloud Functions
+// callable (que aplican enforceAppCheck). Solo se activa si hay site key
+// configurada (VITE_RECAPTCHA_V3_SITE_KEY), para no romper dev local.
+// En desarrollo, define window.FIREBASE_APPCHECK_DEBUG_TOKEN antes de cargar.
+const appCheckSiteKey = import.meta.env.VITE_RECAPTCHA_V3_SITE_KEY;
+if (appCheckSiteKey) {
+  initializeAppCheck(app, {
+    provider: new ReCaptchaV3Provider(appCheckSiteKey),
+    isTokenAutoRefreshEnabled: true,
+  });
+}
+
 export const auth = getAuth(app);
 export const googleProvider = new GoogleAuthProvider();
 export const storage = getStorage(app);

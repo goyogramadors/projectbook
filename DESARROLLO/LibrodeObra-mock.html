@@ -1,0 +1,292 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>LibrodeObra · Mockup</title>
+<link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700;800&display=swap" rel="stylesheet" />
+<style>
+  /* ===== Tokens (tema CAD / default de Archiblocks) ===== */
+  :root{
+    --background:#FAF8F6; --foreground:#2E2E2E; --card:#FFFFFF; --card-foreground:#2E2E2E;
+    --destructive:#D32F2F; --destructive-foreground:#FFFFFF;
+    --muted:#E8E6E1; --muted-foreground:#6f6c66; --success:#15803d;
+    --border:#C9C5BE; --bw:1px;
+    --bar:#242424; --bar-foreground:#F4F4F4; --bar-accent:#1A1A1A; --bar-border:#5A5A5A; --bar-muted:#B5B5B5;
+    --mono:'JetBrains Mono','Fira Code','Courier New',ui-monospace,monospace;
+  }
+  *{box-sizing:border-box;}
+  body{margin:0;background:var(--background);color:var(--foreground);font-family:var(--mono);font-size:13px;}
+  button{font-family:inherit;cursor:pointer;}
+
+  /* ===== Barra superior ===== */
+  .top{display:flex;align-items:stretch;background:var(--bar);color:var(--bar-foreground);border-bottom:var(--bw) solid var(--bar-border);}
+  .top-nav{flex:0 0 200px;display:flex;align-items:center;justify-content:center;padding:10px;border-right:var(--bw) solid var(--bar-border);}
+  .blocks{display:grid;grid-template-columns:repeat(3,14px);grid-template-rows:repeat(2,14px);gap:3px;transform:skewX(-12deg);}
+  .blocks i{background:var(--bar-muted);display:block;}
+  .blocks i:nth-child(2),.blocks i:nth-child(4){background:var(--destructive);}
+  .top-bar{flex:1;display:flex;align-items:flex-end;gap:8px;flex-wrap:wrap;padding:0 14px 10px;}
+  .tbtn{display:inline-flex;align-items:center;gap:6px;padding:6px 11px;font-size:10px;font-weight:800;text-transform:uppercase;background:transparent;color:var(--bar-foreground);border:var(--bw) solid var(--bar-border);}
+  .tbtn:hover{background:var(--bar-accent);}
+  .tsel{display:inline-flex;align-items:center;gap:6px;padding:5px 10px;border:var(--bw) solid var(--bar-border);font-size:10px;font-weight:800;}
+  .tsel .pin{color:var(--destructive);}
+  .sysok{display:inline-flex;align-items:center;gap:5px;font-size:11px;font-weight:700;}
+  .blink{color:#4ade80;}
+  .brand{display:flex;align-items:center;padding:4px 24px;margin-left:auto;}
+  .brand b{font-size:2.4rem;font-weight:800;letter-spacing:.12em;}
+  .brand b .pro{color:var(--destructive);}
+  .brand small{display:block;font-size:8px;letter-spacing:.18em;color:var(--bar-muted);text-transform:uppercase;text-align:right;margin-top:2px;}
+
+  /* ===== Barra inferior ===== */
+  .bottom{display:flex;align-items:center;justify-content:space-between;background:var(--bar);color:var(--bar-muted);border-top:var(--bw) solid var(--bar-border);padding:8px 16px;font-size:10px;letter-spacing:.05em;}
+  .bottom a{color:var(--bar-muted);text-decoration:none;}
+
+  /* ===== LANDING ===== */
+  .wrap{min-height:calc(100vh - 96px);}
+  .hero{max-width:1100px;margin:0 auto;padding:54px 28px 30px;}
+  .kicker{font-size:11px;font-weight:700;letter-spacing:.18em;text-transform:uppercase;color:var(--muted-foreground);}
+  .h1{font-size:4.2rem;font-weight:800;letter-spacing:-2px;line-height:.95;margin:6px 0 2px;}
+  .h1 .pro{color:var(--destructive);}
+  .h1-sub{font-size:11px;letter-spacing:.16em;text-transform:uppercase;color:var(--muted-foreground);}
+  .proj-line{margin:26px 0 6px;font-size:1.5rem;font-weight:700;border-left:4px solid var(--destructive);padding-left:14px;}
+  .howto{font-size:.95rem;line-height:1.6;max-width:680px;color:var(--foreground);opacity:.9;}
+  .howto b{color:var(--destructive);}
+  .cta{display:flex;gap:12px;margin:28px 0 8px;flex-wrap:wrap;}
+  .btn-red{display:inline-flex;align-items:center;gap:9px;background:var(--destructive);color:#fff;border:var(--bw) solid var(--destructive);padding:13px 24px;font-size:13px;font-weight:800;text-transform:uppercase;}
+  .btn-red:hover{filter:brightness(1.08);}
+  .btn-gray{display:inline-flex;align-items:center;gap:9px;background:var(--muted);color:var(--foreground);border:var(--bw) solid var(--border);padding:13px 24px;font-size:13px;font-weight:800;text-transform:uppercase;}
+  .btn-gray:hover{background:#dcd9d2;}
+
+  .shortcuts{max-width:1100px;margin:0 auto;padding:10px 28px 60px;}
+  .sh-head{font-size:13px;font-weight:800;text-transform:uppercase;letter-spacing:.08em;border-bottom:2px solid var(--foreground);padding-bottom:7px;margin-bottom:16px;}
+  .sh-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(230px,1fr));gap:14px;}
+  .obra-card{background:var(--card);border:var(--bw) solid var(--border);padding:15px;display:flex;flex-direction:column;gap:9px;transition:.12s;}
+  .obra-card:hover{border-color:var(--destructive);transform:translateY(-2px);}
+  .obra-card .nm{font-weight:800;font-size:14px;}
+  .obra-card .meta{font-size:10px;color:var(--muted-foreground);}
+  .chip{align-self:flex-start;font-size:9px;font-weight:800;text-transform:uppercase;padding:2px 7px;border:1px solid var(--success);color:var(--success);}
+  .obra-card.new{border-style:dashed;align-items:center;justify-content:center;text-align:center;color:var(--muted-foreground);min-height:118px;cursor:pointer;}
+  .obra-card.new:hover{color:var(--destructive);}
+
+  /* ===== HERRAMIENTA (3 columnas) ===== */
+  .tool{max-width:1320px;margin:0 auto;padding:18px 22px 50px;}
+  .tool-top{display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:12px;margin-bottom:14px;}
+  .tool-title{font-size:1.5rem;font-weight:800;}
+  .tool-title small{font-size:10px;letter-spacing:.16em;color:var(--muted-foreground);text-transform:uppercase;display:block;}
+  .toggle{display:inline-flex;border:var(--bw) solid var(--border);}
+  .toggle button{padding:9px 16px;font-size:11px;font-weight:800;text-transform:uppercase;background:var(--card);color:var(--muted-foreground);border:none;border-right:var(--bw) solid var(--border);}
+  .toggle button:last-child{border-right:none;}
+  .toggle button.on{background:var(--destructive);color:#fff;}
+
+  .grid3{display:grid;grid-template-columns:200px 1fr 1fr;gap:14px;align-items:start;}
+  .module{background:var(--card);border:var(--bw) solid var(--border);}
+  .module-header{background:var(--muted);font-size:11px;font-weight:800;text-transform:uppercase;letter-spacing:.05em;padding:9px 12px;border-bottom:var(--bw) solid var(--border);}
+  .module-header .rc{color:var(--destructive);}
+  .module-body{padding:12px;min-height:300px;}
+
+  .row{display:flex;align-items:center;gap:9px;padding:9px 10px;border:var(--bw) solid var(--border);margin-bottom:7px;background:var(--background);font-size:12px;cursor:pointer;}
+  .row:hover{border-color:var(--destructive);}
+  .row.sel{border-left:4px solid var(--destructive);background:#fff;}
+  .row .ic{color:var(--muted-foreground);}
+  .row .grow{flex:1;}
+  .row .tag{font-size:9px;color:var(--muted-foreground);}
+  .tree .row{margin-left:0;}
+  .tree .row.child{margin-left:18px;font-size:11px;}
+  .folio{display:flex;gap:10px;padding:10px;border:var(--bw) solid var(--border);margin-bottom:8px;background:var(--background);}
+  .folio .num{font-weight:800;color:var(--destructive);min-width:42px;}
+  .folio .ft{flex:1;}
+  .folio .ft small{display:block;color:var(--muted-foreground);font-size:10px;margin-top:3px;}
+  .folio .dt{font-size:10px;color:var(--muted-foreground);}
+
+  /* franja AGREGAR bajo columnas 2 y 3 */
+  .addbar{grid-column:2 / 4;background:var(--card);border:var(--bw) solid var(--border);margin-top:2px;}
+  .addbar .module-header{background:#2E2E2E;color:#fff;}
+  .add-body{padding:14px;display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px;align-items:end;}
+  .fld{display:flex;flex-direction:column;gap:5px;}
+  .fld label{font-size:9px;font-weight:800;text-transform:uppercase;color:var(--muted-foreground);}
+  .fld input,.fld textarea,.fld select{font-family:inherit;border:var(--bw) solid var(--border);padding:8px;font-size:12px;background:#fff;width:100%;}
+  .add-actions{grid-column:1 / -1;display:flex;justify-content:flex-end;}
+  .btn-add{background:var(--destructive);color:#fff;border:none;padding:11px 22px;font-size:12px;font-weight:800;text-transform:uppercase;}
+
+  .hidden{display:none;}
+  @media(max-width:900px){.grid3{grid-template-columns:1fr;}.addbar{grid-column:1;}.brand{display:none;}}
+</style>
+</head>
+<body>
+
+<!-- ===================== BARRA SUPERIOR ===================== -->
+<div class="top">
+  <div class="top-nav"><div class="blocks"><i></i><i></i><i></i><i></i><i></i><i></i></div></div>
+  <div class="top-bar">
+    <button class="tbtn" onclick="showLanding()">⌂ Inicio</button>
+    <button class="tbtn">♛ Gregorio · Premium ▾</button>
+    <button class="tbtn">▦ Tema: CAD</button>
+    <span class="tsel"><span class="pin">▣</span> OBRA: CASA 47 GUAYLANDIA ▾</span>
+    <span class="sysok"><span class="blink">●</span> SYSTEM_OK</span>
+  </div>
+  <div class="brand"><div><b>Libro de Obra <span class="pro">Digital</span></b><small>un producto de Archiblocks</small></div></div>
+</div>
+
+<!-- ===================== LANDING ===================== -->
+<div id="landing" class="wrap">
+  <div class="hero">
+    <div class="kicker">Plataforma de respaldo documental de obra</div>
+    <div class="h1">Librode<span class="pro">Obra</span></div>
+    <div class="h1-sub">un producto de Archiblocks</div>
+
+    <div class="proj-line">Libro de Obras y Carpeta Digital</div>
+    <p class="howto">
+      <b>¿Cómo funciona?</b> Aquí puedes respaldar toda la información de tus obras con
+      estándares del <b>Ministerio de Obras Públicas</b>. Registra folios diarios en el
+      Libro de Obras y organiza todos tus documentos en la Carpeta Digital, con trazabilidad
+      y versionado, listos para fiscalización.
+    </p>
+
+    <div class="cta">
+      <button class="btn-red" onclick="showTool()">▷ Iniciar Obra</button>
+      <button class="btn-gray" onclick="showTool()">⊞ Explorar Herramienta</button>
+    </div>
+  </div>
+
+  <div class="shortcuts">
+    <div class="sh-head">▸ Mis Obras</div>
+    <div class="sh-grid">
+      <div class="obra-card" onclick="showTool()">
+        <span class="chip">● Activa</span>
+        <div class="nm">Casa 47 Guaylandia</div>
+        <div class="meta">REF: OBRA-MQK3 · 128 folios · 36 documentos</div>
+      </div>
+      <div class="obra-card" onclick="showTool()">
+        <span class="chip">● Activa</span>
+        <div class="nm">Ampliación Liceo B-12</div>
+        <div class="meta">REF: OBRA-7HF2 · 64 folios · 21 documentos</div>
+      </div>
+      <div class="obra-card" onclick="showTool()">
+        <span class="chip" style="border-color:var(--muted-foreground);color:var(--muted-foreground)">● En pausa</span>
+        <div class="nm">Pavimentación Ruta G-21</div>
+        <div class="meta">REF: OBRA-2PL9 · 240 folios · 88 documentos</div>
+      </div>
+      <div class="obra-card new" onclick="showTool()">+ Iniciar nueva obra</div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== HERRAMIENTA ===================== -->
+<div id="tool" class="tool hidden">
+  <div class="tool-top">
+    <div class="tool-title">Casa 47 Guaylandia <small id="modeLabel">Libro de Obras Digital</small></div>
+    <div class="toggle">
+      <button id="tabLDO" class="on" onclick="setMode('ldo')">Libro de Obras</button>
+      <button id="tabCD" onclick="setMode('cd')">Carpeta Digital</button>
+    </div>
+  </div>
+
+  <div class="grid3">
+    <!-- Col 1: Mis Obras (angosta) -->
+    <div class="module">
+      <div class="module-header"><span class="rc">|</span> MIS OBRAS</div>
+      <div class="module-body" style="min-height:300px;padding:10px;">
+        <div class="row sel"><span class="ic">▣</span><span class="grow">Casa 47<br><span class="tag">Guaylandia</span></span></div>
+        <div class="row"><span class="ic">▢</span><span class="grow">Liceo B-12<br><span class="tag">Ampliación</span></span></div>
+        <div class="row"><span class="ic">▢</span><span class="grow">Ruta G-21<br><span class="tag">Pavimento</span></span></div>
+      </div>
+    </div>
+
+    <!-- Col 2: SUB-LIBROS (LDO) / ÁRBOL (CD) -->
+    <div class="module">
+      <div class="module-header"><span class="rc">|</span> <span id="col2head">SUB-LIBROS</span></div>
+      <div class="module-body" id="col2body"></div>
+    </div>
+
+    <!-- Col 3: FOLIOS (LDO) / DOCUMENTOS (CD) -->
+    <div class="module">
+      <div class="module-header"><span class="rc">|</span> <span id="col3head">FOLIOS · JUNIO 2026 (4)</span></div>
+      <div class="module-body" id="col3body"></div>
+    </div>
+
+    <!-- Franja AGREGAR bajo columnas 2 y 3 -->
+    <div class="addbar">
+      <div class="module-header" id="addhead">| AGREGAR FOLIO</div>
+      <div class="add-body" id="addbody"></div>
+    </div>
+  </div>
+</div>
+
+<!-- ===================== BARRA INFERIOR ===================== -->
+<div class="bottom">
+  <span>© 2026 Archiblocks · LibrodeObra — Mockup de desarrollo</span>
+  <span><a href="#">Términos</a> · <a href="#">Privacidad</a> · estándar MOP</span>
+</div>
+
+<script>
+  function showTool(){document.getElementById('landing').classList.add('hidden');document.getElementById('tool').classList.remove('hidden');window.scrollTo(0,0);}
+  function showLanding(){document.getElementById('tool').classList.add('hidden');document.getElementById('landing').classList.remove('hidden');window.scrollTo(0,0);}
+
+  const DATA = {
+    ldo:{
+      modeLabel:'Libro de Obras Digital',
+      col2head:'SUB-LIBROS',
+      col2:`
+        <div class="row sel"><span class="ic">▤</span><span class="grow">Junio 2026</span><span class="tag">4</span></div>
+        <div class="row"><span class="ic">▤</span><span class="grow">Mayo 2026</span><span class="tag">31</span></div>
+        <div class="row"><span class="ic">▤</span><span class="grow">Abril 2026</span><span class="tag">28</span></div>
+        <div class="row"><span class="ic">▤</span><span class="grow">Marzo 2026</span><span class="tag">30</span></div>`,
+      col3head:'FOLIOS · JUNIO 2026 (4)',
+      col3:`
+        <div class="folio"><span class="num">#128</span><span class="ft">Hormigonado radier sector B<small>Inspector: J. Pérez · clima despejado</small></span><span class="dt">26-06</span></div>
+        <div class="folio"><span class="num">#127</span><span class="ft">Recepción acero enfierradura<small>Anota: M. Soto</small></span><span class="dt">25-06</span></div>
+        <div class="folio"><span class="num">#126</span><span class="ft">Instrucción ITO — niveles<small>Observación de obra</small></span><span class="dt">24-06</span></div>
+        <div class="folio"><span class="num">#125</span><span class="ft">Avance moldaje muros eje 3<small>Sin novedad</small></span><span class="dt">23-06</span></div>`,
+      addhead:'| AGREGAR FOLIO',
+      add:`
+        <div class="fld"><label>N° Folio</label><input value="129" /></div>
+        <div class="fld"><label>Fecha</label><input value="27-06-2026" /></div>
+        <div class="fld"><label>Responsable / cargo</label><input placeholder="Ej: ITO / Residente" /></div>
+        <div class="fld" style="grid-column:1/-1;"><label>Anotación del día</label><textarea rows="3" placeholder="Describe la actividad, instrucciones u observaciones del folio…"></textarea></div>
+        <div class="add-actions"><button class="btn-add">+ [ Registrar Folio ]</button></div>`
+    },
+    cd:{
+      modeLabel:'Carpeta Digital de Obra',
+      col2head:'ÁRBOL',
+      col2:`
+        <div class="tree">
+          <div class="row sel"><span class="ic">▸</span><span class="grow">01 · Antecedentes</span></div>
+          <div class="row child"><span class="ic">▪</span><span class="grow">Contrato</span></div>
+          <div class="row child"><span class="ic">▪</span><span class="grow">Bases / EETT</span></div>
+          <div class="row"><span class="ic">▸</span><span class="grow">02 · Planos</span></div>
+          <div class="row"><span class="ic">▸</span><span class="grow">03 · Estados de pago</span></div>
+          <div class="row"><span class="ic">▸</span><span class="grow">04 · Recepciones</span></div>
+        </div>`,
+      col3head:'DOCUMENTOS · 01 · ANTECEDENTES (5)',
+      col3:`
+        <div class="folio"><span class="num">PDF</span><span class="ft">Contrato_obra_firmado.pdf<small>v3 · 2,4 MB · subido 18-06</small></span><span class="dt">✔</span></div>
+        <div class="folio"><span class="num">PDF</span><span class="ft">Bases_administrativas.pdf<small>v1 · 1,1 MB · subido 12-06</small></span><span class="dt">✔</span></div>
+        <div class="folio"><span class="num">DWG</span><span class="ft">EETT_estructura.dwg<small>v2 · 5,8 MB · subido 14-06</small></span><span class="dt">✔</span></div>
+        <div class="folio"><span class="num">XLS</span><span class="ft">Presupuesto_detallado.xlsx<small>v4 · 320 KB · subido 20-06</small></span><span class="dt">✔</span></div>
+        <div class="folio"><span class="num">JPG</span><span class="ft">Acta_entrega_terreno.jpg<small>v1 · 780 KB · subido 10-06</small></span><span class="dt">✔</span></div>`,
+      addhead:'| AGREGAR DOCUMENTO',
+      add:`
+        <div class="fld"><label>Tipo de documento</label><input placeholder="Ej: Estado de pago N°1" /></div>
+        <div class="fld"><label>Carpeta destino</label><select><option>01 · Antecedentes</option><option>02 · Planos</option><option>03 · Estados de pago</option><option>04 · Recepciones</option></select></div>
+        <div class="fld"><label>Versión</label><input value="v1" /></div>
+        <div class="fld" style="grid-column:1/-1;"><label>Archivo</label><input type="file" /></div>
+        <div class="add-actions"><button class="btn-add">+ [ Agregar / Nueva versión ]</button></div>`
+    }
+  };
+
+  function setMode(m){
+    const d = DATA[m];
+    document.getElementById('modeLabel').textContent = d.modeLabel;
+    document.getElementById('col2head').textContent = d.col2head;
+    document.getElementById('col3head').textContent = d.col3head;
+    document.getElementById('addhead').textContent = d.addhead;
+    document.getElementById('col2body').innerHTML = d.col2;
+    document.getElementById('col3body').innerHTML = d.col3;
+    document.getElementById('addbody').innerHTML = d.add;
+    document.getElementById('tabLDO').classList.toggle('on', m==='ldo');
+    document.getElementById('tabCD').classList.toggle('on', m==='cd');
+  }
+  setMode('ldo');
+</script>
+</body>
+</html>

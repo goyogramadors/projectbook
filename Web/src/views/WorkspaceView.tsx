@@ -25,9 +25,9 @@ const ESTADO_COLOR: Record<ToolEstado, string> = {
 };
 
 /* ── layout de columnas (persistencia por sesión) ── */
-const COLS_KEY = 'ab-cols';
+const COLS_KEY = 'ab-cols-v2'; // v2: ficha más ancha por defecto
 interface ColsState { cat: number; bind: number; catOpen: boolean; bindOpen: boolean; }
-const COLS_DEFAULT: ColsState = { cat: 392, bind: 320, catOpen: true, bindOpen: true };
+const COLS_DEFAULT: ColsState = { cat: 430, bind: 500, catOpen: true, bindOpen: true };
 function loadCols(): ColsState {
   try { const r = sessionStorage.getItem(COLS_KEY); if (r) return { ...COLS_DEFAULT, ...JSON.parse(r) }; } catch { /* ignore */ }
   return COLS_DEFAULT;

@@ -209,6 +209,17 @@ service cloud.firestore {
         (isAuth() && resource.data.invitedBy == uid());
     }
 
+    // ── Colección: premiumInvitations ────────────────────────────────────────────
+
+    match /premiumInvitations/{docId} {
+      // Admin lee/escribe todo. Usuario autenticado solo lee la suya propia (por correo).
+      // Las Cloud Functions usan Admin SDK → bypasan estas reglas.
+      allow read:           if isAdmin() ||
+                               (isAuth() && resource.data.email == request.auth.token.email);
+      allow create, update: if isAdmin();
+      allow delete:         if isAdmin();
+    }
+
     // ── DB coordenadasnormativas — solo lectura desde cliente ─────────────────
     // Base de datos NOMBRADA, con ruleset SEPARADO: firestore.coordenadasnormativas.rules
     // (declarado como segundo target en firebase.json → firestore[]). Allí

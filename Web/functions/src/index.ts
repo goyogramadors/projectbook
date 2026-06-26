@@ -20,6 +20,32 @@ const REGION = 'southamerica-west1';
 const db     = admin.firestore();
 const auth   = admin.auth();
 
+/**
+ * Rate limiter de ventana fija sobre Firestore (colección `rateLimits`, escrita
+ * solo por Admin SDK → no requiere reglas). Lanza HttpsError 'resource-exhausted'
+ * al superar `max` solicitudes en `windowSec`. Evita abuso/DDoS y disparo de
+ * costos (p. ej. tokens de Gemini). Llave típica: `${fnName}:${uid}`.
+ */
+async function enforceRateLimit(key: string, max: number, windowSec: number): Promise<void> {
+  const ref = db.collection('rateLimits').doc(key);
+  const now = Date.now();
+  await db.runTransaction(async (tx) => {
+    const snap = await tx.get(ref);
+    const data = snap.exists ? (snap.data() as { count: number; windowStart: number }) : null;
+    if (!data || now - data.windowStart >= windowSec * 1000) {
+      tx.set(ref, { count: 1, windowStart: now });
+      return;
+    }
+    if (data.count >= max) {
+      throw new functions.https.HttpsError(
+        'resource-exhausted',
+        'Demasiadas solicitudes. Intenta nuevamente en unos momentos.',
+      );
+    }
+    tx.update(ref, { count: data.count + 1 });
+  });
+}
+
 // ── 1. onProjectDeleted — cascade delete ─────────────────────────────────────
 
 /** Sub-colecciones de un proyecto que deben borrarse en cascada. Fuente única:
@@ -68,9 +94,12 @@ interface InvitePayload {
 }
 
 export const sendInviteEmail = functions.https.onCall(
-  { region: REGION, secrets: ['SENDGRID_API_KEY'] },
+  { region: REGION, secrets: ['SENDGRID_API_KEY'], enforceAppCheck: true, maxInstances: 10 },
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
+
+    // Anti-abuso de envío de correos: 30 invitaciones por hora por usuario.
+    await enforceRateLimit(`sendInvite:${request.auth.uid}`, 30, 3600);
 
     const { projectId, projectName, invitedEmail, rol, token } =
       request.data as InvitePayload;
@@ -128,7 +157,7 @@ interface PremiumInvitePayload {
 }
 
 export const sendPremiumInviteEmail = functions.https.onCall(
-  { region: REGION, secrets: ['SENDGRID_API_KEY'] },
+  { region: REGION, secrets: ['SENDGRID_API_KEY'], enforceAppCheck: true, maxInstances: 5 },
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
     if (request.auth.token.admin !== true) {
@@ -168,13 +197,36 @@ export const sendPremiumInviteEmail = functions.https.onCall(
       throw new functions.https.HttpsError('internal', 'Error al enviar el correo Premium.');
     }
 
+    // Verificar si el usuario ya existe en Firebase Auth
+    let existingUid: string | null = null;
+    try {
+      const userRecord = await auth.getUserByEmail(email);
+      existingUid = userRecord.uid;
+      // Usuario ya registrado → crear/actualizar su doc users/{uid} con Premium
+      await db.doc(`users/${existingUid}`).set({
+        uid: existingUid,
+        email,
+        plan: 'Premium',
+        compPremium: true,
+        estado: 'Activo',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } catch {
+      // 'user-not-found' — el usuario aún no existe, recibirá Premium al registrarse
+    }
+
+    // Registrar invitación (pendiente=true solo si el usuario aún no se registró)
     await db.collection('premiumInvitations').add({
       email,
       invitedBy: request.auth.uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       status: 'sent',
+      pendiente: existingUid === null,
+      plan: 'Premium',
+      compPremium: true,
+      uid: existingUid,
     });
-    functions.logger.info('Invitación Premium enviada', { email });
+    functions.logger.info('Invitación Premium enviada', { email, existingUid });
     return { ok: true };
   }
 );
@@ -191,7 +243,7 @@ interface GeminiResponse {
 }
 
 export const apiProxy = functions.https.onCall(
-  { region: REGION, secrets: ['GEMINI_API_KEY'] },
+  { region: REGION, secrets: ['GEMINI_API_KEY'], enforceAppCheck: true, maxInstances: 10 },
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
 
@@ -202,7 +254,18 @@ export const apiProxy = functions.https.onCall(
       throw new functions.https.HttpsError('permission-denied', 'Requiere plan Premium.');
     }
 
-    const { prompt } = request.data as GeminiPayload;
+    // Rate limit por usuario: tope de costo Gemini (20/min, 200/día).
+    await enforceRateLimit(`apiProxy:min:${request.auth.uid}`, 20, 60);
+    await enforceRateLimit(`apiProxy:day:${request.auth.uid}`, 200, 86400);
+
+    // Validación/saneamiento del input: nunca se confía en el cliente.
+    const { prompt } = (request.data ?? {}) as GeminiPayload;
+    if (typeof prompt !== 'string' || prompt.trim().length === 0) {
+      throw new functions.https.HttpsError('invalid-argument', 'El prompt es obligatorio.');
+    }
+    if (prompt.length > 8000) {
+      throw new functions.https.HttpsError('invalid-argument', 'El prompt excede el largo máximo (8000).');
+    }
     const apiKey = process.env.GEMINI_API_KEY;
     if (!apiKey) throw new functions.https.HttpsError('internal', 'GEMINI_API_KEY no configurado.');
 
@@ -219,34 +282,5 @@ export const apiProxy = functions.https.onCall(
 
     const data = await resp.json() as GeminiResponse;
     return { text: data.candidates?.[0]?.content?.parts?.[0]?.text ?? '' };
-  }
-);
-
-// ── 4. setUserState — admin suspende/activa (§13) ────────────────────────────
-
-interface SetUserStatePayload {
-  targetUid: string;
-  disabled:  boolean;
-}
-
-export const setUserState = functions.https.onCall(
-  { region: REGION },
-  async (request) => {
-    if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
-
-    // El claim ya viene verificado en request.auth.token (v2 onCall); no re-verificar.
-    if (request.auth.token.admin !== true) {
-      throw new functions.https.HttpsError('permission-denied', 'Solo administradores.');
-    }
-
-    const { targetUid, disabled } = request.data as SetUserStatePayload;
-
-    await auth.updateUser(targetUid, { disabled });
-    await db.doc(`users/${targetUid}`).update({
-      estado: disabled ? 'Suspendido' : 'Activo',
-    });
-
-    functions.logger.info('Estado usuario actualizado', { targetUid, disabled });
-    return { ok: true };
   }
 );
