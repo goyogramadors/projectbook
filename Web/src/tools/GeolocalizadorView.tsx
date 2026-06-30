@@ -18,7 +18,7 @@ import { useDimensionadorSync } from '../hooks/useDimensionadorSync';
 import { loadComunaGeoJSON } from '../core/GeoJsonService';
 import { getNormativaDesdeFeature } from '../core/NormativaService';
 import type { ToolProps, NormativaPRC, ProjectMaster } from '../core/types';
-import { loadTerreno, saveTerreno } from './terrenoStore';
+import { clearTerreno, loadTerreno, saveTerreno } from './terrenoStore';
 import { saveNormativa, fichaToNormativa } from './normativaStore';
 
 const DEFAULT_CENTER = { lat: -33.4569, lng: -70.6483 }; // Ñuñoa (capa de muestra)
@@ -291,7 +291,13 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
       setError(err instanceof Error ? err.message : 'Error de coreografía espacial.');
     }
   };
-  const limpiar = () => { polygonRef.current?.getPath()?.clear(); setEstado('idle'); setError(null); setFicha(null); setZona(null); setAreaTerreno(null); };
+  const limpiar = () => {
+    polygonRef.current?.getPath()?.clear();
+    ringRef.current = [];
+    setEstado('idle'); setError(null); setFicha(null); setZona(null); setAreaTerreno(null);
+    // Persiste el borrado (local + nube) en la clave compartida con Ubicación.
+    if (projectId) clearTerreno(projectId, repo.kind === 'cloud');
+  };
 
   const guardarSuperficie = async () => {
     if (areaTerreno == null) return;

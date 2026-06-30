@@ -10,6 +10,27 @@
 
 ---
 
+## 2026-06-30 16:40 (Chile) — Terreno: borrar/reemplazar polígono + traspaso a Geolocalizador · campo N° Casa/Depto · norma-data multi-región (La Reina / Algarrobo)
+
+**1. Polígono del terreno — borrar y reemplazar (no persistía el borrado):**
+- Nuevo `terrenoStore.clearTerreno(pid, isCloud)`: borra el terreno de TODAS las capas (localStorage clave compartida + `deleteDoc` del doc nube `toolData/terreno`). Antes "Limpiar" solo borraba el trazo en pantalla → el polígono viejo reaparecía al reabrir y no se podía reemplazar.
+- `UbicacionView.limpiar` y `GeolocalizadorView.limpiar` ahora llaman `clearTerreno` y resetean `ringRef`. El traspaso Ubicación↔Geolocalizador ya operaba por la clave compartida (`loadTerreno` al montar); con el fix de array anidado (entrada previa) la nube por fin persiste, así que el polígono se ve en ambas.
+
+**2. Nuevo campo "N° Casa o Depto" (complemento de dirección):**
+- `ProjectMaster.depto?: string` (types.ts). UI nueva en Ubicación entre Número y Rol SII; se carga/guarda en `handleSave`. NO ensucia `direccion` (calle+número). Disponible para que los formularios DOM lo lean.
+
+**3. norma-data / geo-data multi-región (La Reina y Algarrobo no cargaban ficha):**
+- **Causa La Reina:** archivo subido como `13_la_reina.json`, pero `comunaSlug("La Reina")`="lareina" (sin guion bajo). **Renombrado → `13_lareina.json`.**
+- **Causa Algarrobo:** `NormativaService` y `GeoJsonService` tenían la **región fija '13'** → buscaban `13_*` para una comuna de la región 05. Ahora ambos derivan el **código de región desde la comuna** (`getCodigoRegionDeComuna` en data-chile, mapa de 16 códigos en orden de `regionesYComunas`), con fallback '13'. Archivo renombrado a 2 dígitos → `05_algarrobo.json` (consistente con geo-data `05_PRC_Algarrobo.json`).
+- **Convención para nuevas comunas (importante):** archivo `public/norma-data/{códigoRegión 2 díg}_{comunaSlug sin espacios ni guiones}.json` (ej. `13_lareina.json`, `05_algarrobo.json`). El GeoJSON de zonas debe existir en `public/geo-data/{cod}_PRC_{Comuna_Title_Case}.json` o la zona no se detecta.
+
+**Archivos:** `core/types.ts`, `core/data-chile.ts`, `core/NormativaService.ts`, `core/GeoJsonService.ts`, `tools/terrenoStore.ts`, `tools/UbicacionView.tsx`, `tools/GeolocalizadorView.tsx`; renombrados `13_la_reina.json`→`13_lareina.json` y `5_algarrobo.json`→`05_algarrobo.json`. **Build:** `tsc -b` OK (EXIT=0).
+**Incidencia §8 (grave):** el host Edit truncó en disco varios archivos grandes (terrenoStore, types, Ubicacion, Geolocalizador, servicios). Se recuperó con `git show HEAD` + reemplazos atómicos en Python (`os.replace`). **Lección: para archivos del repo, editar SIEMPRE vía Python/tmp+replace, no edición directa.**
+**Limpieza pendiente (manual):** borrar `Web/__synctest.txt` (archivo de prueba; el montaje no permite unlink desde la sesión).
+**Pendiente de publicar:** `2 - Commit y Push (main).bat` (solo código + datos; no requiere reglas ni Functions). Si git reclama `index.lock`, correr antes `5 - Desbloquear Git`.
+
+---
+
 ## 2026-06-30 16:14 (Chile) — FIX: Ubicación no guardaba (invalid-argument) por array anidado del terreno
 
 **Síntoma:** al presionar "Guardar Sección" en Ubicación con un polígono dibujado, toast `ERROR AL GUARDAR LA UBICACIÓN (INVALID-ARGUMENT)` y NO se guardaban calle/número/comuna/etc. (datos que leen otras herramientas).
@@ -1201,21 +1222,4 @@ Trabajo sobre los mockups de las herramientas nuevas (Fase 0). Cuatro bloques: (
 ### B. Carpeta Digital — Glosario MOP completo y NUMERADO
 - La tool tenía datos **placeholder** (6 contratos genéricos + 5 carpetas inventadas). Reemplazados por el **glosario real** (textos literales de los manuales MOP).
 - **Nuevo `Web/src/tools/carpetaDigitalData.ts`** (≈372 líneas): 6 tipos de contrato con sus árboles completos — Obras y Conservación (21 carpetas N1), Asesorías (18), Consultorías (18), AIF (10), Estudios/Diseños (11), APR (10) — con subcarpetas y documentos predeterminados. Extraído programáticamente del prototipo (`index.html` → objeto `CONTRACTS`) para fidelidad exacta.
-- `CarpetaDigitalView.tsx` reescrito: árbol recursivo **numerado** (`1 Licitación`, `4-1 …`, `2.1 …`), conteo recursivo, tipos de documento por carpeta, versionado y archivar/restaurar.
-
-### C. Carpeta Digital — Compartir + tipo de contrato permanente
-- **Botón Compartir** específico de la Carpeta con permiso por usuario (sin acceso → lectura → escritura → edición).
-- **Selector "Tipo de contrato" solo al inicio:** pantalla de apertura "[ ABRIR CARPETA DIGITAL ]"; una vez elegido queda **permanente** (se muestra como dato fijo, sin selector).
-- *Archivos:* `Web/src/tools/CarpetaDigitalView.tsx`, `Web/src/tools/carpetaDigitalData.ts` (nuevo).
-
-### D. Libro de Obras Digital — reescritura completa (desde el prototipo)
-- **Libros por defecto:** Maestro, Comunicaciones, Gestión de Calidad, Prevención de Riesgos.
-- **"+ Agregar libro"** con simulados: temáticos (Medio Ambiente, Participación Ciudadana, …) y por especialidad (Estructuras, Sanitario, Electricidad, Topografía, Laboratorio) **+ especialidad personalizada**. Nacen 🔒 cerrados → Acta de Apertura.
-- **Formatos de entrada predeterminados:** Comunicación (1.1–1.5), Incidente (2.1), Reporte Ejecutivo (2.2), Formato libre.
-- **Subtemas por entrada:** Tema 1.1–1.5 despliega su lista oficial de subtemas (textos del glosario §4); Incidente con sus tipos.
-- **"Ver también en (libros vinculados)"** (multiselección), **"Participantes (otros usuarios o personas sin cuenta)"** (chips + sugeridos, marca "(sin cuenta)"), **"Adjuntar archivos o imágenes"** (lista de adjuntos).
-- **Botón Compartir** específico del Libro con permiso por usuario.
-- *Archivos:* `Web/src/tools/LibroObrasDigitalView.tsx`.
-
-### ⚠️ Incidencias del entorno
-- **El mount trunca escrituras grandes** (Write/Edit) en ~13,4 KB en algunos archivos (afectó a `CarpetaDigitalView.tsx` y a este `Last Update.md`). **Workaround confirmado:** construir el ar
+- `CarpetaDigitalView.tsx` reescrito: árbol recursivo **numerado** (`1 Licitación

@@ -113,6 +113,9 @@ export interface ProjectMaster extends SuperficieModel {
   rol: string;
   direccion: string;
   comuna: string;
+  /** N° de casa o departamento (complemento de la dirección): NO ensucia `direccion`
+   *  (calle+número). Lo ingresa el usuario en UbicacionView; lo leen los formularios DOM. */
+  depto?: string;
   /** Región (no manual): derivada de la comuna / geocode en UbicacionView. */
   region?: string;
   /** Ciudad/localidad (no manual): del geocode en UbicacionView; fallback comuna. */

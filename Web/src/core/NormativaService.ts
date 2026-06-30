@@ -10,9 +10,15 @@
    Caché en memoria por comuna (una descarga por sesión).
    ============================================================================= */
 import type { NormativaPRC } from './types';
+import { getCodigoRegionDeComuna } from './data-chile';
 
-const REGION_DEFECTO = '13'; // Región Metropolitana (única región con normativa local hoy).
+const REGION_DEFECTO = '13'; // Fallback: Región Metropolitana si no se resuelve la región.
 const memoryCache: Record<string, NormativaPRC[]> = {};
+
+/** Código de región (2 dígitos) a usar para una comuna: derivado de la comuna; '13' si no se resuelve. */
+function regionDeComuna(comuna: string): string {
+  return getCodigoRegionDeComuna(comuna) || REGION_DEFECTO;
+}
 
 /** Slug de archivo: comuna en minúsculas, sin tildes ni signos. Ej: "Ñuñoa" → "nunoa". */
 export function comunaSlug(comuna: string): string {
@@ -23,7 +29,7 @@ export function comunaSlug(comuna: string): string {
 }
 
 /** Ruta del archivo de normativa local de una comuna. */
-export function rutaNormativa(comuna: string, region: string = REGION_DEFECTO): string {
+export function rutaNormativa(comuna: string, region: string = regionDeComuna(comuna)): string {
   return `/norma-data/${region}_${comunaSlug(comuna)}.json`;
 }
 
@@ -59,7 +65,7 @@ export function codigoZonaDeProperties(props: Record<string, unknown> | null | u
 }
 
 /** Carga (y cachea) el array de fichas locales de una comuna. Devuelve [] si no hay archivo. */
-export async function loadComunaNormativas(comuna: string, region: string = REGION_DEFECTO): Promise<NormativaPRC[]> {
+export async function loadComunaNormativas(comuna: string, region: string = regionDeComuna(comuna)): Promise<NormativaPRC[]> {
   const key = `${region}_${comunaSlug(comuna)}`;
   if (memoryCache[key]) return memoryCache[key];
   try {

@@ -115,3 +115,37 @@ export function getRegionDeComuna(comunaName: string): string {
   }
   return '';
 }
+
+/* Código oficial de región (2 dígitos), en el MISMO orden que `regionesYComunas`.
+   Lo usan los servicios de datos (geo-data / norma-data) para construir la ruta del
+   archivo por comuna: `{codigo}_PRC_{Comuna}.json` y `{codigo}_{comunaSlug}.json`. */
+const CODIGOS_REGION: string[] = [
+  '15', // Arica y Parinacota
+  '01', // Tarapacá
+  '02', // Antofagasta
+  '03', // Atacama
+  '04', // Coquimbo
+  '05', // Valparaíso
+  '06', // O'Higgins
+  '07', // Maule
+  '16', // Ñuble
+  '08', // Biobío
+  '09', // Araucanía
+  '14', // Los Ríos
+  '10', // Los Lagos
+  '11', // Aysén
+  '12', // Magallanes
+  '13', // Metropolitana de Santiago
+];
+
+/** Código de región (2 dígitos, ej. '13', '05') de una comuna. '' si no se halla. */
+export function getCodigoRegionDeComuna(comunaName: string): string {
+  if (!comunaName) return '';
+  const norm = (s: string) => s.trim().toLocaleLowerCase('es');
+  const target = norm(comunaName);
+  for (let i = 0; i < regionesYComunas.length; i++) {
+    const reg = regionesYComunas[i];
+    if (reg && reg.comunas.some((c) => norm(c) === target)) return CODIGOS_REGION[i] ?? '';
+  }
+  return '';
+}

@@ -14,7 +14,7 @@
    La escritura SIEMPRE espeja a localStorage para que las tres herramientas sigan
    leyéndose entre sí en caliente y para no perder trabajo si la nube falla.
    ============================================================================= */
-import { doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../core/firebase';
 
 export interface TerrenoGuardado { ring: Array<[number, number]>; areaM2: number; }
@@ -94,5 +94,19 @@ export function saveTerreno(pid: string, value: TerrenoGuardado, isCloud: boolea
         { merge: true },
       ).catch(() => { /* reglas / offline: ya quedó en local */ });
     } catch { /* validación síncrona: ya quedó en local */ }
+  }
+}
+
+/**
+ * Borra el terreno guardado (polígono + área) de TODAS las capas: localStorage (clave
+ * compartida) y, si es Premium, el doc en la nube. Sin esto, "Limpiar" solo borraba el
+ * trazo en pantalla y el polígono viejo reaparecía al reabrir o no se podía reemplazar.
+ */
+export function clearTerreno(pid: string, isCloud: boolean): void {
+  try { localStorage.removeItem(localKey(pid)); } catch { /* ignore */ }
+  if (isCloud) {
+    try {
+      void deleteDoc(cloudRef(pid)).catch(() => { /* reglas / offline: ya quedó borrado local */ });
+    } catch { /* validación síncrona */ }
   }
 }

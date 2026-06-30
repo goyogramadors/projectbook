@@ -10,12 +10,19 @@
    _AP hacía que un terreno residencial se reportara como "Área de restricción").
    ============================================================================= */
 
+import { getCodigoRegionDeComuna } from './data-chile';
+
 export interface FeatureCollectionLike {
   type: string;
   features: Array<{ geometry?: { type?: string }; properties?: Record<string, unknown> }>;
 }
 
-const REGION_DEFECTO = '13'; // Región Metropolitana (capa PRC desplegada en Hosting).
+const REGION_DEFECTO = '13'; // Fallback: Región Metropolitana si no se resuelve la región.
+
+/** Código de región (2 dígitos) a usar para una comuna: derivado de la comuna; '13' si no se resuelve. */
+function regionDeComuna(comuna: string): string {
+  return getCodigoRegionDeComuna(comuna) || REGION_DEFECTO;
+}
 const DB_NAME = 'archibots-geo';
 const STORE = 'geojson';
 const memoryCache: Record<string, FeatureCollectionLike> = {};
@@ -36,7 +43,7 @@ export function normalizarComuna(comuna: string): string {
 }
 
 /** Ruta CDN del GeoJSON base de una comuna. */
-export function rutaGeoJSON(comuna: string, region: string = REGION_DEFECTO): string {
+export function rutaGeoJSON(comuna: string, region: string = regionDeComuna(comuna)): string {
   return `/geo-data/${region}_PRC_${normalizarComuna(comuna)}.json`;
 }
 
@@ -72,7 +79,7 @@ function idbSet(key: string, value: FeatureCollectionLike): Promise<void> {
  * Carga la capa PRC BASE de una comuna. Orden: memoria → IndexedDB → CDN (y rellena
  * ambas cachés). Lanza si la comuna no tiene capa publicada (404) o el JSON es inválido.
  */
-export async function loadComunaGeoJSON(comuna: string, region: string = REGION_DEFECTO): Promise<FeatureCollectionLike> {
+export async function loadComunaGeoJSON(comuna: string, region: string = regionDeComuna(comuna)): Promise<FeatureCollectionLike> {
   // `#base` versiona la clave: invalida cachés de la fusión de overlays (que devolvía AP).
   const key = `${region}_${normalizarComuna(comuna)}#base`;
   if (memoryCache[key]) return memoryCache[key];

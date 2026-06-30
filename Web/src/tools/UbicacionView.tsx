@@ -17,7 +17,7 @@ import { auth } from '../core/firebase';
 import { useToast } from '../core/ui/ToastProvider';
 import { getRegionesSorted, getComunasPorRegionSorted, getRegionDeComuna } from '../core/data-chile';
 import type { ToolProps, ProjectMaster } from '../core/types';
-import { loadTerreno, readTerrenoLocal, saveTerreno } from './terrenoStore';
+import { clearTerreno, loadTerreno, readTerrenoLocal, saveTerreno } from './terrenoStore';
 
 /* ── constantes ────────────────────────────────────────────────────────────── */
 const STORAGE_KEY = (pid: string) => `ab-ubicacion-${pid}`;
@@ -67,6 +67,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
   const [comuna, setComuna] = useState('');
   const [calle, setCalle] = useState('');
   const [numero, setNumero] = useState('');
+  const [depto, setDepto] = useState('');
   const [rol, setRol] = useState('');
   const [supLegal, setSupLegal] = useState('');
   const [saving, setSaving] = useState(false);
@@ -109,6 +110,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     setComuna(project.comuna || '');
     const { calle: c, numero: n } = splitDireccion(project.direccion || '');
     setCalle(c); setNumero(n);
+    setDepto(project.depto || '');
     setRol(project.rol || '');
     setSupLegal(project.superficieTerrenoLegal || '');
     let localRegion = '';
@@ -216,8 +218,11 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     ringRef.current = [];
     setAreaM2(null);
     setAreaManual('');
+    // Persiste el borrado (local + nube): si no, el polígono viejo reaparecía al reabrir
+    // o no se podía reemplazar por uno nuevo.
+    clearTerreno(project.id, repo.kind === 'cloud');
     centrarEnDireccion();
-    triggerToast('Polígono limpiado. Vuelve a dibujar sobre el mapa.');
+    triggerToast('Polígono borrado. Dibuja uno nuevo sobre el mapa y guarda la sección.');
   };
 
   const handleSave = async (e: React.FormEvent) => {
@@ -230,6 +235,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     const updated: ProjectMaster = {
       ...project,
       comuna, direccion, rol,
+      depto: depto.trim(),
       region: regionFinal,
       ciudad: comuna || project.ciudad || '',
       superficieTerrenoLegal: supLegal,
@@ -285,6 +291,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
             </div>
             <div className="tech-input-group"><label>Calle</label><input className="tech-input" value={calle} disabled={readOnly} onChange={e => setCalle(e.target.value)} placeholder="Ej: Armando Carrera" /></div>
             <div className="tech-input-group"><label>Número</label><input className="tech-input" value={numero} disabled={readOnly} onChange={e => setNumero(e.target.value)} placeholder="Ej: 5148" /></div>
+            <div className="tech-input-group"><label>N° Casa o Depto</label><input className="tech-input" value={depto} disabled={readOnly} onChange={e => setDepto(e.target.value)} placeholder="Ej: Depto 302 / Casa B" /></div>
             <div className="tech-input-group"><label>Rol SII</label><input className="tech-input" value={rol} disabled={readOnly} onChange={e => setRol(e.target.value)} placeholder="000-00" /></div>
             <div className="tech-input-group"><label>Superficie Terreno Legal (Escritura) m²</label><input type="number" className="tech-input" value={supLegal} disabled={readOnly} onChange={e => setSupLegal(e.target.value)} placeholder="Ej: 320" /></div>
             <div className="tech-input-group">
