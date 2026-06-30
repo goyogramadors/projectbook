@@ -10,6 +10,23 @@
 
 ---
 
+## 2026-06-30 16:14 (Chile) — FIX: Ubicación no guardaba (invalid-argument) por array anidado del terreno
+
+**Síntoma:** al presionar "Guardar Sección" en Ubicación con un polígono dibujado, toast `ERROR AL GUARDAR LA UBICACIÓN (INVALID-ARGUMENT)` y NO se guardaban calle/número/comuna/etc. (datos que leen otras herramientas).
+
+**Causa raíz:** `terrenoStore.saveTerreno` escribía el `ring` del polígono (`Array<[number,number]>` = **array de arrays**) directo a Firestore. Firestore **no admite arrays anidados** y `setDoc` valida la data de forma **SÍNCRONA**, lanzando `invalid-argument` *antes* de devolver la promesa → el `.catch()` (fire-and-forget) NO lo atrapa (solo atrapa rechazos), la excepción sube al `try` de `handleSave` y **aborta el guardado completo antes de llegar a `repo.save`**. Por eso no fallaba antes: el terreno vivía solo en localStorage; la migración a nube introdujo este `setDoc`.
+
+**Solución (quirúrgica, solo `terrenoStore.ts`):**
+- `encodeRing`/`decodeRing`: el ring se serializa a **array de objetos `{lng,lat}`** al escribir a Firestore y se decodifica al leer (con compat para el formato viejo de array anidado, por si quedó algo).
+- `saveTerreno`: el `setDoc` ahora va envuelto en **`try/catch`** además del `.catch()`, para que ninguna validación síncrona futura vuelva a abortar el guardado del llamador.
+- `loadTerreno`: lee vía `decodeRing` (tolerante a ambos formatos).
+
+**Archivos:** `Web/src/tools/terrenoStore.ts`. **Build:** `tsc -b` OK (EXIT=0).
+**Incidencia §8:** el montaje volvió a truncar la edición directa del archivo (~línea 64); se reescribió atómico con `cp` + `python os.replace` en la carpeta destino. Lección reconfirmada.
+**Pendiente de publicar:** push a `main` (frontend) → ejecutar **`2 - Commit y Push (main).bat`**. No requiere reglas ni Functions.
+
+---
+
 ## 2026-06-30 (Chile) — Ubicación: guardado robusto + vista satélite + cursor lápiz
 
 **1. Guardado de Ubicación (no persistía / mostraba error):**

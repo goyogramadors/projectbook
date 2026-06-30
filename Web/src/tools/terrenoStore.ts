@@ -22,6 +22,28 @@ export interface TerrenoGuardado { ring: Array<[number, number]>; areaM2: number
 const localKey = (pid: string) => `ab-mapa-terreno-${pid}`;
 const cloudRef = (pid: string) => doc(db, 'projects', pid, 'toolData', 'terreno');
 
+/* Firestore NO admite arrays anidados: el ring (array de pares [lng,lat]) debe
+   serializarse a array de OBJETOS {lng,lat} para la nube. Si se escribe el array
+   anidado tal cual, setDoc lanza `invalid-argument` de forma SÍNCRONA (saltándose
+   el .catch) y aborta el guardado de toda la sección. Encode al escribir / decode al leer. */
+type RingDoc = Array<{ lng: number; lat: number }>;
+const encodeRing = (ring: Array<[number, number]>): RingDoc =>
+  ring.map(([lng, lat]) => ({ lng, lat }));
+const decodeRing = (raw: unknown): Array<[number, number]> | null => {
+  if (!Array.isArray(raw)) return null;
+  const out: Array<[number, number]> = [];
+  for (const p of raw as unknown[]) {
+    if (Array.isArray(p) && typeof p[0] === 'number' && typeof p[1] === 'number') {
+      out.push([p[0], p[1]]); // compat formato viejo (array anidado, si existiera)
+    } else if (p && typeof (p as { lng?: unknown }).lng === 'number' && typeof (p as { lat?: unknown }).lat === 'number') {
+      out.push([(p as { lng: number }).lng, (p as { lat: number }).lat]);
+    } else {
+      return null;
+    }
+  }
+  return out;
+};
+
 /** Lee el terreno desde localStorage (clave compartida). `null` si no hay o está corrupto. */
 export function readTerrenoLocal(pid: string): TerrenoGuardado | null {
   try {
@@ -42,9 +64,10 @@ export async function loadTerreno(pid: string, isCloud: boolean): Promise<Terren
     try {
       const snap = await getDoc(cloudRef(pid));
       if (snap.exists()) {
-        const payload = (snap.data() as { payload?: Partial<TerrenoGuardado> }).payload;
-        if (payload && Array.isArray(payload.ring) && typeof payload.areaM2 === 'number') {
-          const value: TerrenoGuardado = { ring: payload.ring, areaM2: payload.areaM2 };
+        const payload = (snap.data() as { payload?: { ring?: unknown; areaM2?: unknown } }).payload;
+        const ring = decodeRing(payload?.ring);
+        if (payload && ring && typeof payload.areaM2 === 'number') {
+          const value: TerrenoGuardado = { ring, areaM2: payload.areaM2 };
           try { localStorage.setItem(localKey(pid), JSON.stringify(value)); } catch { /* ignore */ }
           return value;
         }
@@ -61,10 +84,15 @@ export async function loadTerreno(pid: string, isCloud: boolean): Promise<Terren
 export function saveTerreno(pid: string, value: TerrenoGuardado, isCloud: boolean): void {
   try { localStorage.setItem(localKey(pid), JSON.stringify(value)); } catch { /* ignore */ }
   if (isCloud) {
-    void setDoc(
-      cloudRef(pid),
-      { payload: value, updatedAt: serverTimestamp() },
-      { merge: true },
-    ).catch(() => { /* reglas / offline: ya quedó en local */ });
+    // Encode del ring a array de objetos {lng,lat}: Firestore rechaza arrays anidados.
+    // try/catch además del .catch: setDoc valida la data de forma SÍNCRONA y puede
+    // lanzar (no rechazar) — sin esto, un throw aquí aborta el guardado del llamador.
+    try {
+      void setDoc(
+        cloudRef(pid),
+        { payload: { ring: encodeRing(value.ring), areaM2: value.areaM2 }, updatedAt: serverTimestamp() },
+        { merge: true },
+      ).catch(() => { /* reglas / offline: ya quedó en local */ });
+    } catch { /* validación síncrona: ya quedó en local */ }
   }
 }
