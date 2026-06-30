@@ -10,6 +10,18 @@
 
 ---
 
+## 2026-06-30 17:35 (Chile) — Invitación Premium: correo best-effort + mensaje del panel coherente
+
+- **Causa del "correo NO se envió":** la Cloud Function fallaba al enviar por SendGrid (SENDGRID_API_KEY no disponible para la nueva versión, o excepción) y eso abortaba TODO. Además el mensaje "reservado al registrarse" era texto del **frontend viejo** (aún sin push).
+- **`sendPremiumInviteEmail`:** el envío de correo ahora es **best-effort** — la cuenta se pre-crea/eleva SIEMPRE; si el correo falla no se aborta. Devuelve `{ ok, existed, preCreated, emailSent }`.
+- **`AdminDashboard.handleInvite`:** usa esos flags para el mensaje real (cuenta creada / elevada · correo enviado o no), sin depender de `promoteByEmail` (eliminado del import). Si el correo no sale, indica que la persona puede entrar con Google o usar "¿Olvidaste tu clave?".
+- **Builds:** web `tsc -b` OK · functions `npm run build` OK.
+
+**Re-desplegar:** `cd Web/functions && npm run build && firebase deploy --only functions` + `2 - Commit y Push (main).bat`.
+**Si el correo sigue sin salir:** revisar `firebase functions:log` (filtrar `sendPremiumInviteEmail`); verificar el secreto con `firebase functions:secrets:access SENDGRID_API_KEY` y, si falta, `firebase functions:secrets:set SENDGRID_API_KEY` y volver a desplegar functions. El remitente `contacto@archibots.cl` debe estar verificado en SendGrid. Aun sin correo, la cuenta queda creada y la persona entra con Google.
+
+---
+
 ## 2026-06-30 17:10 (Chile) — Invitación Premium: PRE-CREA la cuenta al invitar + activación al primer ingreso + "olvidé mi clave"
 
 **Decisión (HITL):** al invitar a un correo NO registrado, antes solo se "reservaba" y la cuenta nacía al registrarse. Ahora la cuenta se **pre-crea** en el momento de invitar; la persona la activa fijando su clave o entrando con Google.

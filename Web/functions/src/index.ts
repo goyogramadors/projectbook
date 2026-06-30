@@ -171,8 +171,6 @@ export const sendPremiumInviteEmail = functions.https.onCall(
     }
 
     const sgApiKey = process.env.SENDGRID_API_KEY;
-    if (!sgApiKey) throw new functions.https.HttpsError('failed-precondition', 'SENDGRID_API_KEY no configurado.');
-
     const appUrl = 'https://archibots.cl/';
 
     // ¿El correo ya tiene cuenta en Firebase Auth?
@@ -184,8 +182,10 @@ export const sendPremiumInviteEmail = functions.https.onCall(
 
     let setPasswordLink: string | null = null;
     let preCreated = false;
+    let existed = false;
 
     if (existingUid) {
+      existed = true;
       // Ya registrado → eleva su doc a Premium activo (efecto inmediato).
       await db.doc(`users/${existingUid}`).set({
         uid: existingUid, email, plan: 'Premium', compPremium: true, estado: 'Activo',
@@ -229,21 +229,30 @@ export const sendPremiumInviteEmail = functions.https.onCall(
          <p><a href="${appUrl}" style="padding:10px 20px;background:#171717;color:#fff;text-decoration:none;font-weight:700;">Entrar a ArchiBots</a></p>
          <p style="font-size:12px;color:#666;">Si no esperabas este correo, puedes ignorarlo.</p>`;
 
-    const body = {
-      personalizations: [{ to: [{ email }] }],
-      from:    { email: 'contacto@archibots.cl', name: 'Archiblocks' },
-      subject: 'Tu acceso Premium a ArchiBots',
-      content: [{ type: 'text/html', value: cuerpo }],
-    };
-    const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
-      method:  'POST',
-      headers: { Authorization: `Bearer ${sgApiKey}`, 'Content-Type': 'application/json' },
-      body:    JSON.stringify(body),
-    });
-    if (!resp.ok) {
-      const err = await resp.text();
-      functions.logger.error('SendGrid error (premium invite)', { status: resp.status, err });
-      throw new functions.https.HttpsError('internal', 'Error al enviar el correo Premium.');
+    // Envío del correo: BEST-EFFORT. La cuenta YA quedó creada/elevada arriba; si el
+    // correo falla (SendGrid sin configurar, etc.) NO abortamos: la persona puede entrar
+    // con Google o usar "¿Olvidaste tu clave?" en la app. Devolvemos emailSent al cliente.
+    let emailSent = false;
+    if (sgApiKey) {
+      try {
+        const body = {
+          personalizations: [{ to: [{ email }] }],
+          from:    { email: 'contacto@archibots.cl', name: 'Archiblocks' },
+          subject: 'Tu acceso Premium a ArchiBots',
+          content: [{ type: 'text/html', value: cuerpo }],
+        };
+        const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
+          method:  'POST',
+          headers: { Authorization: `Bearer ${sgApiKey}`, 'Content-Type': 'application/json' },
+          body:    JSON.stringify(body),
+        });
+        if (resp.ok) emailSent = true;
+        else functions.logger.error('SendGrid error (premium invite)', { status: resp.status, err: await resp.text() });
+      } catch (e) {
+        functions.logger.error('SendGrid excepción (premium invite)', { email, e: String(e) });
+      }
+    } else {
+      functions.logger.warn('SENDGRID_API_KEY no configurado: cuenta creada sin enviar correo.', { email });
     }
 
     // Registrar invitación (pendiente=true mientras la persona no haya ingresado).
@@ -251,14 +260,14 @@ export const sendPremiumInviteEmail = functions.https.onCall(
       email,
       invitedBy: request.auth.uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
-      status: 'sent',
+      status: emailSent ? 'sent' : 'created_no_email',
       pendiente: preCreated,
       plan: 'Premium',
       compPremium: true,
       uid: existingUid,
     });
-    functions.logger.info('Invitación Premium enviada', { email, existingUid, preCreated });
-    return { ok: true };
+    functions.logger.info('Invitación Premium procesada', { email, existingUid, preCreated, existed, emailSent });
+    return { ok: true, existed, preCreated, emailSent };
   }
 );
 

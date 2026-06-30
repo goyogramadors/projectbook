@@ -12,7 +12,7 @@ import { useAuth } from '../core/auth/AuthProvider';
 import { useToast } from '../core/ui/ToastProvider';
 import { httpsCallable } from 'firebase/functions';
 import { functions } from '../core/firebase';
-import { listUsers, setUserState, setCompPremium, setUserPlan, promoteByEmail, getTopTools, setTopTools, type AdminUserRow } from '../core/AdminService';
+import { listUsers, setUserState, setCompPremium, setUserPlan, getTopTools, setTopTools, type AdminUserRow } from '../core/AdminService';
 import { CATALOG, TOP_TOOLS_DEFAULT } from '../core/catalog';
 
 /** Fila local: extiende AdminUserRow con la marca de "invitado" (alta desde panel). */
@@ -54,26 +54,29 @@ export default function AdminDashboard() {
     if (!email || inviting) return;
     setInviting(true);
     try {
-      // Elevación REAL: si el correo ya existe en Firestore, cambia su plan a Premium.
-      let existia = false;
-      try { existia = await promoteByEmail(email); }
-      catch { /* offline / reglas */ }
-      // Envío REAL del correo vía Cloud Function. La función también crea el doc
-      // users/{uid} si el usuario ya existe en Auth, o registra la invitación
-      // pendiente en premiumInvitations si aún no se registró.
-      let correoEnviado = false;
+      // La Cloud Function crea/eleva la cuenta (Admin SDK) y devuelve qué ocurrió.
+      let existed = false, preCreated = false, emailSent = false, ok = false;
       try {
-        await httpsCallable(functions, 'sendPremiumInviteEmail')({ email });
-        correoEnviado = true;
-      } catch { /* función no desplegada / SendGrid sin configurar — no rompe el flujo */ }
-      setInviteMsg(
-        `${existia ? `Usuario ${email} elevado a Premium en la base de datos.` : `Premium reservado para ${email}: quedará activo automáticamente al registrarse con este correo.`} ` +
-        (correoEnviado ? 'Correo de invitación enviado.' : 'Aviso: el correo NO se envió (revisa el despliegue de Functions y SENDGRID_API_KEY).'),
-      );
-      setInviteEmail('');
-      triggerToast(correoEnviado ? 'Invitación Premium enviada por correo.' : 'Premium aplicado (sin correo).');
-      // Recargar la tabla para mostrar la fila real (registrado o pendiente)
-      void recargar();
+        const r = await httpsCallable(functions, 'sendPremiumInviteEmail')({ email });
+        const d = (r.data ?? {}) as { existed?: boolean; preCreated?: boolean; emailSent?: boolean };
+        existed = d.existed === true; preCreated = d.preCreated === true; emailSent = d.emailSent === true;
+        ok = true;
+      } catch (err) {
+        const msg = (err as { message?: string })?.message ?? 'error desconocido';
+        setInviteMsg(`No se pudo invitar a ${email}: ${msg}. Revisa el despliegue de Functions (firebase deploy --only functions).`);
+      }
+      if (ok) {
+        const base = existed
+          ? `Usuario ${email} elevado a Premium.`
+          : `Cuenta Premium creada para ${email}: queda activa cuando ingrese (con su clave o con Google).`;
+        const correo = emailSent
+          ? 'Correo de invitación enviado.'
+          : 'Aviso: el correo NO se envió (revisa SENDGRID_API_KEY). La persona igual puede entrar con Google o usar "¿Olvidaste tu clave?" en la app.';
+        setInviteMsg(`${base} ${correo}`);
+        setInviteEmail('');
+        triggerToast(emailSent ? 'Invitación Premium enviada.' : 'Cuenta Premium creada (sin correo).');
+        void recargar();
+      }
     } finally {
       setInviting(false);
     }
