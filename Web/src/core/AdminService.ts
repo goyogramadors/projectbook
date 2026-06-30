@@ -71,7 +71,11 @@ export async function listUsers(): Promise<AdminUserRow[]> {
     });
   } catch { /* sin acceso a premiumInvitations (reglas/offline) → solo muestra registrados */ }
 
-  return [...pending, ...registered];
+  // Dedupe: si el invitado ya tiene doc en users (p. ej. cuenta PRE-CREADA), no se
+  // muestra además como fila "pendiente"; su fila registrada ya refleja el estado.
+  const registeredEmails = new Set(registered.map((r) => r.email.toLowerCase()));
+  const pendingUnique = pending.filter((p) => !registeredEmails.has(p.email.toLowerCase()));
+  return [...pendingUnique, ...registered];
 }
 
 /** Suspende o reactiva una cuenta (users/{uid}.estado). */

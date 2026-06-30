@@ -13,6 +13,7 @@
 
 import * as functions from 'firebase-functions/v2';
 import * as admin      from 'firebase-admin';
+import { randomUUID } from 'crypto';
 
 admin.initializeApp();
 
@@ -173,19 +174,67 @@ export const sendPremiumInviteEmail = functions.https.onCall(
     if (!sgApiKey) throw new functions.https.HttpsError('failed-precondition', 'SENDGRID_API_KEY no configurado.');
 
     const appUrl = 'https://archibots.cl/';
+
+    // ¿El correo ya tiene cuenta en Firebase Auth?
+    let existingUid: string | null = null;
+    try {
+      const rec = await auth.getUserByEmail(email);
+      existingUid = rec.uid;
+    } catch { /* 'user-not-found' → se PRE-CREA la cuenta más abajo */ }
+
+    let setPasswordLink: string | null = null;
+    let preCreated = false;
+
+    if (existingUid) {
+      // Ya registrado → eleva su doc a Premium activo (efecto inmediato).
+      await db.doc(`users/${existingUid}`).set({
+        uid: existingUid, email, plan: 'Premium', compPremium: true, estado: 'Activo',
+        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
+      }, { merge: true });
+    } else {
+      // No registrado → PRE-CREAR la cuenta ahora. Contraseña aleatoria desechable
+      // (la persona fija la suya con el enlace) y emailVerified:true para que pueda
+      // entrar con Google con el mismo correo (Firebase enlaza al mismo usuario).
+      try {
+        const created = await auth.createUser({
+          email, emailVerified: true, password: randomUUID() + randomUUID(),
+        });
+        existingUid = created.uid;
+        preCreated = true;
+        await db.doc(`users/${existingUid}`).set({
+          uid: existingUid, email, nombre: email.split('@')[0],
+          plan: 'Premium', compPremium: true, estado: 'Pendiente',
+          createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        }, { merge: true });
+        // Enlace para que la persona fije su PRIMERA contraseña (página Firebase).
+        try { setPasswordLink = await auth.generatePasswordResetLink(email, { url: appUrl }); }
+        catch (e) { functions.logger.warn('No se generó el enlace de contraseña', { email, e: String(e) }); }
+      } catch (e) {
+        functions.logger.error('No se pudo pre-crear la cuenta de invitación', { email, e: String(e) });
+        throw new functions.https.HttpsError('internal', 'No se pudo crear la cuenta de invitación.');
+      }
+    }
+
+    // Correo de invitación (SendGrid). Si se pre-creó, el CTA fija la contraseña.
+    const ctaLink  = setPasswordLink ?? appUrl;
+    const ctaLabel = setPasswordLink ? 'Definir mi contraseña' : 'Entrar a ArchiBots';
+    const cuerpo = preCreated
+      ? `<p>¡Hola! Un administrador te creó una cuenta <strong>Premium</strong> en ArchiBots con este correo.</p>
+         <p>Para activarla, define tu contraseña:</p>
+         <p><a href="${ctaLink}" style="padding:10px 20px;background:#171717;color:#fff;text-decoration:none;font-weight:700;">${ctaLabel}</a></p>
+         <p style="font-size:13px;color:#444;">También puedes entrar directamente con <strong>Google</strong> usando este mismo correo: tu cuenta queda asociada a tu acceso de Google.</p>
+         <p style="font-size:12px;color:#666;">Si no esperabas este correo, puedes ignorarlo.</p>`
+      : `<p>¡Hola! Un administrador activó tu cuenta <strong>Premium</strong> en ArchiBots.</p>
+         <p>Ingresa con este mismo correo para desbloquear todas las herramientas:</p>
+         <p><a href="${appUrl}" style="padding:10px 20px;background:#171717;color:#fff;text-decoration:none;font-weight:700;">Entrar a ArchiBots</a></p>
+         <p style="font-size:12px;color:#666;">Si no esperabas este correo, puedes ignorarlo.</p>`;
+
     const body = {
       personalizations: [{ to: [{ email }] }],
       from:    { email: 'contacto@archibots.cl', name: 'Archiblocks' },
-      subject: 'Tu acceso Premium a ArchiBots está activo',
-      content: [{
-        type:  'text/html',
-        value: `<p>¡Hola! Un administrador te activó una cuenta <strong>Premium</strong> en ArchiBots.</p>
-                <p>Ingresa (o crea tu cuenta) con este mismo correo para desbloquear todas las herramientas:</p>
-                <p><a href="${appUrl}" style="padding:10px 20px;background:#171717;color:#fff;text-decoration:none;font-weight:700;">Entrar a ArchiBots</a></p>
-                <p style="font-size:12px;color:#666;">Si no esperabas este correo, puedes ignorarlo.</p>`,
-      }],
+      subject: 'Tu acceso Premium a ArchiBots',
+      content: [{ type: 'text/html', value: cuerpo }],
     };
-
     const resp = await fetch('https://api.sendgrid.com/v3/mail/send', {
       method:  'POST',
       headers: { Authorization: `Bearer ${sgApiKey}`, 'Content-Type': 'application/json' },
@@ -197,36 +246,47 @@ export const sendPremiumInviteEmail = functions.https.onCall(
       throw new functions.https.HttpsError('internal', 'Error al enviar el correo Premium.');
     }
 
-    // Verificar si el usuario ya existe en Firebase Auth
-    let existingUid: string | null = null;
-    try {
-      const userRecord = await auth.getUserByEmail(email);
-      existingUid = userRecord.uid;
-      // Usuario ya registrado → crear/actualizar su doc users/{uid} con Premium
-      await db.doc(`users/${existingUid}`).set({
-        uid: existingUid,
-        email,
-        plan: 'Premium',
-        compPremium: true,
-        estado: 'Activo',
-        updatedAt: admin.firestore.FieldValue.serverTimestamp(),
-      }, { merge: true });
-    } catch {
-      // 'user-not-found' — el usuario aún no existe, recibirá Premium al registrarse
-    }
-
-    // Registrar invitación (pendiente=true solo si el usuario aún no se registró)
+    // Registrar invitación (pendiente=true mientras la persona no haya ingresado).
     await db.collection('premiumInvitations').add({
       email,
       invitedBy: request.auth.uid,
       createdAt: admin.firestore.FieldValue.serverTimestamp(),
       status: 'sent',
-      pendiente: existingUid === null,
+      pendiente: preCreated,
       plan: 'Premium',
       compPremium: true,
       uid: existingUid,
     });
-    functions.logger.info('Invitación Premium enviada', { email, existingUid });
+    functions.logger.info('Invitación Premium enviada', { email, existingUid, preCreated });
+    return { ok: true };
+  }
+);
+
+// ── 2c. activateMyAccount — el invitado activa su propia cuenta al primer ingreso ──
+// Las reglas no permiten que un usuario cambie su propio `estado`; esta función
+// (Admin SDK) lo hace de forma segura solo para request.auth.uid: Pendiente → Activo,
+// y marca su invitación Premium como aceptada. La llama el cliente tras autenticarse.
+
+export const activateMyAccount = functions.https.onCall(
+  { region: REGION, enforceAppCheck: true, maxInstances: 10 },
+  async (request) => {
+    if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
+    const uid = request.auth.uid;
+    const ref = db.doc(`users/${uid}`);
+    const snap = await ref.get();
+    if (snap.exists && (snap.data() as { estado?: string }).estado === 'Pendiente') {
+      await ref.set(
+        { estado: 'Activo', updatedAt: admin.firestore.FieldValue.serverTimestamp() },
+        { merge: true },
+      );
+    }
+    const email = request.auth.token.email as string | undefined;
+    if (email) {
+      const invs = await db.collection('premiumInvitations')
+        .where('email', '==', email).where('pendiente', '==', true).get();
+      await Promise.all(invs.docs.map((d) =>
+        d.ref.update({ pendiente: false, acceptedBy: uid, acceptedAt: Date.now() })));
+    }
     return { ok: true };
   }
 );

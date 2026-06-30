@@ -31,7 +31,7 @@ interface AuthModalProps {
 // ── Componente principal ──────────────────────────────────────────────────────
 
 export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
-  const { signInEmail, signUpEmail, signInGoogle } = useAuth();
+  const { signInEmail, signUpEmail, signInGoogle, resetPassword } = useAuth();
 
   const [mode, setMode]               = useState<Mode>('login');
   const [nombre, setNombre]           = useState('');
@@ -41,6 +41,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const [showPass, setShowPass]       = useState(false);
   const [loading, setLoading]         = useState(false);
   const [error, setError]             = useState<string | null>(null);
+  const [notice, setNotice]           = useState<string | null>(null);
   const formId = useId();
 
   // No renderizar nada cuando el modal está cerrado
@@ -51,6 +52,7 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
   const switchMode = (m: Mode) => {
     setMode(m);
     setError(null);
+    setNotice(null);
     setNombre('');
     setPassword('');
     setConfirmPass('');
@@ -98,6 +100,20 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       setError(friendlyError(e?.code ?? e?.message));
       setLoading(false);
     }
+  };
+
+  // Fijar/restablecer contraseña: sirve para cuentas creadas por invitación (definir
+  // su primera clave) y para "olvidé mi contraseña". También pueden entrar con Google.
+  const handleForgot = async () => {
+    setError(null); setNotice(null);
+    if (!email.trim()) { setError('Escribe tu correo arriba y vuelve a presionar.'); return; }
+    setLoading(true);
+    try {
+      await resetPassword(email.trim());
+      setNotice('Te enviamos un correo para fijar tu contraseña (revisa también spam). También puedes entrar con Google usando este mismo correo.');
+    } catch (e: any) {
+      setError(friendlyError(e?.code));
+    } finally { setLoading(false); }
   };
 
   // ── Render ─────────────────────────────────────────────────────────────────
@@ -349,6 +365,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                 </AnimatePresence>
               </form>
 
+              {mode === 'login' && (
+                <button type="button" onClick={handleForgot} disabled={loading}
+                  style={{ background: 'none', border: 'none', cursor: 'pointer', color: 'var(--primary)', fontSize: 10, fontWeight: 700, textAlign: 'left', padding: 0 }}>
+                  ¿Olvidaste tu clave o entras por invitación? Fíjala aquí
+                </button>
+              )}
+
               {/* ── Error */}
               <AnimatePresence>
                 {error && (
@@ -366,6 +389,13 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
                   </motion.div>
                 )}
               </AnimatePresence>
+
+              {notice && (
+                <div className="bg-muted" style={{ padding: '8px 12px', fontSize: 11, display: 'flex', gap: 7, alignItems: 'flex-start' }}>
+                  <Icons.MailCheck size={13} style={{ flexShrink: 0, marginTop: 1 }} />
+                  <span>{notice}</span>
+                </div>
+              )}
 
               {/* ── Submit */}
               <button
@@ -444,7 +474,8 @@ function friendlyError(codeOrMsg?: string): string {
     'auth/user-not-found':         'No existe una cuenta con ese correo.',
     'auth/wrong-password':         'Contraseña incorrecta.',
     'auth/invalid-credential':     'Correo o contraseña incorrectos.',
-    'auth/email-already-in-use':   'Ya existe una cuenta con ese correo. Inicia sesión.',
+    'auth/email-already-in-use':   'Ya existe una cuenta con ese correo (quizás creada por invitación). Entra con Google, o usa "¿Olvidaste tu clave?" para fijar tu contraseña.',
+    'auth/account-exists-with-different-credential': 'Ya tienes una cuenta con ese correo. Entra con Google, o fija tu contraseña con "¿Olvidaste tu clave?".',
     'auth/invalid-email':          'El correo electrónico no es válido.',
     'auth/weak-password':          'La contraseña es demasiado débil (mínimo 8 caracteres).',
     'auth/too-many-requests':      'Demasiados intentos fallidos. Intenta más tarde.',

@@ -49,6 +49,8 @@ export interface AuthState {
   signUpEmail: (email: string, password: string, nombre?: string) => Promise<void>;
   signInGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
+  /** Envía un correo para fijar/restablecer la contraseña (cuentas por invitación o "olvidé mi clave"). */
+  resetPassword: (email: string) => Promise<void>;
   /** Controla el AuthModal de forma global (invocable desde cualquier componente). */
   authModalOpen: boolean;
   openAuthModal: () => void;

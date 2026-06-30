@@ -20,11 +20,13 @@ import {
   createUserWithEmailAndPassword,
   signInWithPopup,
   signOut as fbSignOut,
+  sendPasswordResetEmail,
   updateProfile,
   type User as FbUser,
 } from 'firebase/auth';
+import { httpsCallable } from 'firebase/functions';
 import { doc, getDoc, setDoc, collection, getDocs, query, where, updateDoc } from 'firebase/firestore';
-import { auth, googleProvider, db } from '../firebase';
+import { auth, googleProvider, db, functions } from '../firebase';
 import type { AuthState, User, Plan, Theme } from '../types';
 
 const ADMIN_FALLBACK_EMAIL = 'goyogramador@gmail.com';
@@ -53,7 +55,16 @@ async function resolveUser(fb: FbUser): Promise<User> {
       const d = snap.data() as Partial<User>;
       theme = d.theme;
       compPremium = d.compPremium === true;
-      estado = d.estado ?? 'Activo';
+      // Cuenta PRE-CREADA por invitación: nace con estado 'Pendiente' y se activa al
+      // primer ingreso (clave fijada o Google). El flip lo hace una Cloud Function
+      // (Admin SDK) porque las reglas no dejan que el usuario cambie su propio estado.
+      const estadoRaw = (d as { estado?: string }).estado;
+      if (estadoRaw === 'Pendiente') {
+        estado = 'Activo';
+        try { void httpsCallable(functions, 'activateMyAccount')({}); } catch { /* se reintenta el próximo login */ }
+      } else {
+        estado = estadoRaw === 'Suspendido' ? 'Suspendido' : 'Activo';
+      }
     } else {
       // Auto-aprovisionamiento (primer login): crea users/{uid} en la base (default)
       // para que las reglas Zero-Trust no bloqueen la creación de proyectos
@@ -152,6 +163,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     },
     async signOut() {
       await fbSignOut(auth);
+    },
+    async resetPassword(email) {
+      await sendPasswordResetEmail(auth, email);
     },
   }), [user, loading, authModalOpen]);
 

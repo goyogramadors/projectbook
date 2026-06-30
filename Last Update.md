@@ -10,6 +10,31 @@
 
 ---
 
+## 2026-06-30 17:10 (Chile) — Invitación Premium: PRE-CREA la cuenta al invitar + activación al primer ingreso + "olvidé mi clave"
+
+**Decisión (HITL):** al invitar a un correo NO registrado, antes solo se "reservaba" y la cuenta nacía al registrarse. Ahora la cuenta se **pre-crea** en el momento de invitar; la persona la activa fijando su clave o entrando con Google.
+
+**Cloud Functions (`functions/src/index.ts`):**
+- `sendPremiumInviteEmail` reescrita: si el correo ya existe en Auth → lo eleva a Premium Activo (igual que antes). Si NO existe → `auth.createUser({ email, emailVerified:true, password: aleatoria })`, crea `users/{uid}` Premium con **estado 'Pendiente'**, genera `generatePasswordResetLink` y envía por SendGrid un correo cuyo CTA es **"Definir mi contraseña"** + nota de que también puede entrar con Google (queda asociado al mismo usuario gracias a `emailVerified:true`). `premiumInvitations.pendiente = preCreated`.
+- **Nueva** `activateMyAccount` (callable, Admin SDK): el usuario, tras autenticarse, activa su propia cuenta (estado Pendiente→Activo) y marca su invitación como aceptada. Necesario porque las reglas NO permiten que un usuario cambie su propio `estado`.
+
+**Frontend:**
+- `AuthProvider.resolveUser`: si el doc trae estado 'Pendiente', lo trata como Activo y llama `activateMyAccount` (fire-and-forget). Nuevo método `resetPassword` (sendPasswordResetEmail) en `AuthState`/provider.
+- `AuthModal`: enlace **"¿Olvidaste tu clave o entras por invitación? Fíjala aquí"** (modo login) → envía correo para fijar clave; aviso de éxito; mensajes mejorados para `email-already-in-use` y `account-exists-with-different-credential` (guían a Google / fijar clave).
+- `AdminService.listUsers`: dedupe — si un invitado ya tiene doc en `users` (cuenta pre-creada), no se duplica como fila "Pendiente".
+
+**Comportamiento resultante:** invitar correo nuevo → aparece de inmediato en el panel como **Premium · Pendiente** (cuenta real ya creada); la persona entra con su clave (enlace del correo) o con Google → queda **Activo**. Correo ya registrado → Premium al instante.
+
+**Sin cambios en `firestore.rules`** (la activación va por Cloud Function con Admin SDK). **Builds:** `tsc -b` web OK + `npm run build` functions OK.
+
+**⚠️ DESPLIEGUE REQUERIDO (manual, NO cubierto por los .bat):**
+1. **Functions:** `cd Web/functions && npm run build && firebase deploy --only functions` (publica `sendPremiumInviteEmail` actualizada + `activateMyAccount`). Sin esto, el nuevo flujo NO opera.
+2. **Frontend:** `2 - Commit y Push (main).bat`.
+- Los invitados que ya enviaste antes (que nunca se registraron) NO tienen cuenta pre-creada; vuelve a invitarlos con el flujo nuevo para que se les cree.
+- Limpieza pendiente (manual): borrar `Web/__synctest.txt` (el montaje no permite borrarlo desde la sesión).
+
+---
+
 ## 2026-06-30 16:40 (Chile) — Terreno: borrar/reemplazar polígono + traspaso a Geolocalizador · campo N° Casa/Depto · norma-data multi-región (La Reina / Algarrobo)
 
 **1. Polígono del terreno — borrar y reemplazar (no persistía el borrado):**
