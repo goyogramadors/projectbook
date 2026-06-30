@@ -18,7 +18,7 @@ import { db, auth } from '../firebase';
 import { THEMES, type Theme, type ThemeState } from '../types';
 
 const LS_KEY = 'archibots:theme';
-const DEFAULT_THEME: Theme = 'cad';
+const DEFAULT_THEME: Theme = 'washi'; // tema inicial para usuarios nuevos (respeta la elección guardada)
 
 const ThemeContext = createContext<ThemeState | null>(null);
 

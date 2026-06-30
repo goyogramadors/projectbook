@@ -96,7 +96,7 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
       id,
       name: name.trim() || 'Nuevo Proyecto',
       ownerId: user?.uid ?? 'guest',
-      propietario: user?.nombre ?? 'Invitado',
+      propietario: '', // el propietario/mandante lo ingresa el usuario (no es la cuenta)
       addedTools: [],
       // createdAt se OMITE a propósito: Firestore rechaza campos `undefined`
       // (ignoreUndefinedProperties no está activo) y ese era el error silenciado

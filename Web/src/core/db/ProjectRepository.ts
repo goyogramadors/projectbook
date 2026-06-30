@@ -37,7 +37,7 @@ export function makeDefaultProject(): ProjectMaster {
     id:                      DEFAULT_PROJECT_ID,
     name:                    'Mi Primer Proyecto',
     anio:                    String(new Date().getFullYear()),
-    propietario:             'Invitado',
+    propietario:             '',
     rol:                     '000-00',
     direccion:               '',
     comuna:                  '',

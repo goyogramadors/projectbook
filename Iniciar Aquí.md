@@ -129,6 +129,23 @@ Build configuration del proyecto (ya seteada; documentada por si hay que recrear
 
 ⚠️ **Firebase Hosting sin uso.** `firebase deploy --only hosting` sube a `archibots-497423.web.app`, que **no** es el sitio real. No lo uses para el frontend.
 
+### Scripts `.bat` de publicación (raíz del repo) — USAR ESTOS PARA SUBIR
+
+Andrés publica con archivos `.bat` en la raíz `C:\G\Archiblocks` (doble clic). Cada `.bat` de git
+**borra primero los `.lock` residuales** (`index.lock`, `HEAD.lock`, etc.) para que git no se trabe:
+
+| Archivo | Qué hace |
+|---|---|
+| **`1 - Actualizar Reglas Firestore.bat`** | `firebase deploy --only firestore:rules` (desde `Web/`). |
+| **`2 - Commit y Push (main).bat`** | Limpia locks → `git add -A` → `git commit` (pide mensaje) → `git push origin main`. Publica el **frontend** (Cloudflare construye solo). |
+| **`3 - Actualizar Reglas + Commit y Push.bat`** | Hace 1 y 2 en orden (reglas y luego push). Úsalo cuando cambiaron **reglas + código**. |
+| **`4 - Verificar Build Local (antes de subir).bat`** | `npm run build` (lo mismo que Cloudflare). Para detectar errores ANTES de subir. |
+| **`5 - Desbloquear Git (borrar locks).bat`** | Solo borra los `.lock` de `.git` cuando git dice "index.lock already exists". |
+
+> **Regla para instancias de Claude (cierre de sesión):** NO ofrezcas hacer tú el commit/push.
+> Al terminar, **indícale a Andrés cuál `.bat` accionar** según lo que cambió:
+> solo código → `2`; solo reglas → `1`; reglas + código → `3`; ante dudas de compilación → `4` primero.
+
 ### Backend (Cloud Functions)
 1. `cd functions && npm install && npm run build` (compila TS → `lib/`).
 2. `firebase deploy --only functions`.
@@ -231,6 +248,8 @@ Actúa como **Senior Full-Stack Engineer** sobre un entorno **de producción ya 
 
 6. **REGISTRA LA SESIÓN EN `Last Update.md` (OBLIGATORIO).** Al cerrar cualquier sesión de trabajo, agrega una entrada NUEVA arriba del todo en **`Last Update.md`** (raíz del repo) con **fecha + hora**, detalle de lo realizado, archivos tocados y pendientes generados/resueltos. No borres entradas previas. Mantén los pendientes sincronizados con `Tintero - Pendientes.md`. Este registro es la fuente de continuidad entre instancias.
 
+7. **NO OFREZCAS HACER EL COMMIT/PUSH.** La publicación la ejecuta Andrés con los `.bat` de la raíz (ver §4 · Scripts `.bat`). Al cerrar la sesión, dile **cuál `.bat` accionar** según lo que cambió (código → `2`; reglas → `1`; ambos → `3`; verificar build → `4`). No corras tú `git push` ni `firebase deploy`.
+
 ### Reglas técnicas heredadas (por el stack)
 - `import type { X }` o `{ type X }` **obligatorio** para Vite/oxc (su ausencia produce pantalla en blanco).
 - El `db` normativo usa **Firestore DB nombrada** (`coordenadasnormativas`), no `(default)`.
@@ -247,4 +266,4 @@ Al iniciar una sesión nueva, basta con indicar:
 
 Eso carga el contexto del proyecto, la ubicación de la información, el flujo de despliegue y las reglas de desarrollo.
 
-**Antes de empezar**, lee **`Last Update.md`** para conocer el estado real más reciente y los pendientes abiertos. **Al terminar**, registra la sesión en `Last Update.md` (ver §8, regla 6) — es obligatorio.
+**Antes de empezar**, lee **`Last Update.md`** para conocer el estado real más reciente y los pendientes abiertos. **Al terminar**, registra la sesión en `Last Update.md` (ver §8, regla 6) — es obligatorio — e **indícale a Andrés cuál `.bat` ejecutar** para publicar (ver §4 · Scripts `.bat`); no ofrezcas hacer tú el commit/push.

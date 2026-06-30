@@ -10,6 +10,20 @@
 
 ---
 
+## 2026-06-30 (Chile) — Branding, propietario por defecto y scripts .bat de publicación
+
+- **Título de pestaña**: `index.html` `Project_Book` → **`Archiblocks | Gestión Documental`**.
+- **Favicon**: nuevo `Web/public/favicon.svg` ("A" negra + "B" roja) enlazado en `index.html`.
+- **Tema inicial**: `ThemeProvider.DEFAULT_THEME` `cad` → **`washi`** (solo usuarios nuevos; respeta elección guardada).
+- **Propietario por defecto**: ya NO se siembra con el nombre de la cuenta. `createProject` (ProjectProvider) y `makeDefaultProject` (ProjectRepository) dejan `propietario: ''` para que el usuario ingrese al mandante real.
+- **Scripts `.bat` en la raíz** (publicación por doble clic, con limpieza previa de `.lock` de `.git`): `0 - Bajar Cambios (git pull)`, `1 - Actualizar Reglas Firestore`, `2 - Commit y Push (main)`, `3 - Actualizar Reglas + Commit y Push`, `4 - Verificar Build Local`, `5 - Desbloquear Git (borrar locks)`.
+- **`Iniciar Aquí.md`**: documentados los `.bat` (§4) y nueva **regla 7 (§8)** + cierre (§9): las instancias NO ofrecen hacer el commit; indican a Andrés cuál `.bat` accionar.
+- **Obsoletos** (recomendado borrar): `commit-push.bat` (mensaje hardcodeado viejo) y `guardar.bat` (duplican el `.bat 2`); `actualizar.bat` queda reemplazado por el `.bat 0`.
+
+**Build:** `tsc -b` OK.
+
+---
+
 ## 2026-06-30 (Chile) — Participantes: campos email/teléfono tras "Agregar más datos"
 
 - `Participante` (ParticipantesView): agregados `email?` y `fono?` (opcionales). UI: el botón **"Agregar más datos"** (antes "Agregar dirección") despliega Dirección + Correo + Teléfono; **no aparecen por defecto** (se muestran solo si se abren o si ya hay datos). Estado de expansión por participante (no se persiste).
