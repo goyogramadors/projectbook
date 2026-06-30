@@ -24,6 +24,8 @@ import type { ProjectMaster, User } from '../types';
 const LOCAL_KEY = 'archibots:project:local';
 /** Tope duro Premium validado en frontend (CONST §15). También va en Rules. */
 export const MAX_PREMIUM_PROJECTS = 50;
+/** Tope de proyectos para usuarios Free LOGUEADOS (ahora también en la nube). */
+export const MAX_FREE_PROJECTS = 5;
 
 /** ID fijo del proyecto sandbox para invitados (CONST §7). */
 export const DEFAULT_PROJECT_ID = 'archibots-sandbox';
@@ -112,7 +114,11 @@ export class LocalProjectRepository implements IProjectRepository {
 export class CloudProjectRepository implements IProjectRepository {
   readonly kind = 'cloud' as const;
   readonly canWrite = true;
-  constructor(private readonly uid: string) {}
+  /** Tope de proyectos según plan del dueño (Free=5 · Premium=50). */
+  private readonly maxProjects: number;
+  constructor(private readonly uid: string, isPremium: boolean = true) {
+    this.maxProjects = isPremium ? MAX_PREMIUM_PROJECTS : MAX_FREE_PROJECTS;
+  }
 
   async list(): Promise<ProjectMaster[]> {
     const col = collection(db, 'projects');
@@ -136,8 +142,8 @@ export class CloudProjectRepository implements IProjectRepository {
       const mine = await getDocs(
         query(collection(db, 'projects'), where('ownerId', '==', this.uid)),
       );
-      if (mine.size >= MAX_PREMIUM_PROJECTS) {
-        throw new Error(`Tope de ${MAX_PREMIUM_PROJECTS} proyectos Premium alcanzado (CONST §15).`);
+      if (mine.size >= this.maxProjects) {
+        throw new Error(`Tope de ${this.maxProjects} proyectos alcanzado para tu plan (CONST §15).`);
       }
     }
     await setDoc(
@@ -165,6 +171,8 @@ export class CloudProjectRepository implements IProjectRepository {
 
 /* FACTORY — selecciona la estrategia según la identidad. CONST §7: NO migra. */
 export function getProjectRepository(user: User | null): IProjectRepository {
-  if (user && user.plan === 'Premium') return new CloudProjectRepository(user.uid);
+  // ⟲ 2026-06-30: TODO usuario LOGUEADO (Free o Premium) persiste en la NUBE.
+  // El almacenamiento LOCAL queda solo para invitados/no logueados (sandbox).
+  if (user) return new CloudProjectRepository(user.uid, user.plan === 'Premium');
   return new LocalProjectRepository(true);
 }

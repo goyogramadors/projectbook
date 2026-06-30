@@ -50,9 +50,12 @@ service cloud.firestore {
       return isAuth() && uid() in project.data.members &&
              project.data.members[uid()] == 'viewer';
     }
-    /** §11: colaborador Free con Pase del propietario → solo lectura */
+    /** ⟲ 2026-06-30 — Nuevo modelo: TODO usuario LOGUEADO (Free o Premium) escribe en
+        la nube. Edita su proyecto el DUEÑO (cualquier plan) o un EDITOR invitado. La
+        COLABORACIÓN (invitar miembros) sigue Premium-only (regla de `invitations`). */
     function canEditProject(project) {
-      return isOwner(project) && (isPremium() || hasPase(project.__name__.split('/')[1]));
+      return isOwner(project) || isEditor(project) ||
+             (isOwner(project) && hasPase(project.__name__.split('/')[1]));
     }
     function canReadProject(project) {
       return isOwner(project) || isEditor(project) || isViewer(project);
@@ -89,10 +92,9 @@ service cloud.firestore {
 
     match /projects/{projectId} {
       allow read:   if isActive() && canReadProject(resource);
-      allow create: if isActive() && isPremium() &&
-                       request.resource.data.ownerId == uid() &&
-                       // §15: tope de 50 proyectos (validación adicional en frontend)
-                       true; // el conteo lo hace getCountFromServer en el cliente
+      // ⟲ 2026-06-30 — Crea proyectos cualquier usuario ACTIVO y logueado (Free o Premium).
+      // El tope por plan (Free=5 · Premium=50, CONST §15) lo valida el cliente (getCountFromServer).
+      allow create: if isActive() && request.resource.data.ownerId == uid();
       allow update: if isActive() && canEditProject(resource);
       allow delete: if isActive() && isOwner(resource);
 
@@ -136,15 +138,17 @@ service cloud.firestore {
       // Obra Digital — Libro de Obras (libro-obras). Subcolección propia: doc único
       // 'state' (MVP) y, a futuro, un documento por folio. Mismo modelo de acceso
       // que las hermanas: lectura para miembros, escritura para dueño/editor activo.
+      // Herramienta PREMIUM: escritura requiere plan Premium (además de editor activo).
       match /libroObras/{document=**} {
         allow read:   if isActive() && isProjectMember(projectId);
-        allow write:  if isActive() && isProjectEditor(projectId);
+        allow write:  if isActive() && isPremium() && isProjectEditor(projectId);
       }
       // Obra Digital — Carpeta Digital (carpeta-digital). Subcolección propia: doc
       // único 'state' (MVP) y, a futuro, un documento por archivo (storageRef UUID).
+      // Herramienta PREMIUM: escritura requiere plan Premium (además de editor activo).
       match /carpetaDigital/{document=**} {
         allow read:   if isActive() && isProjectMember(projectId);
-        allow write:  if isActive() && isProjectEditor(projectId);
+        allow write:  if isActive() && isPremium() && isProjectEditor(projectId);
       }
     }
 
@@ -201,7 +205,8 @@ service cloud.firestore {
         resource.data.invitedEmail == request.auth.token.email ||
         resource.data.invitedBy == uid()
       );
-      allow create: if isActive() && canEditProject(
+      // Colaboración Premium-only: solo un dueño Premium puede invitar miembros.
+      allow create: if isActive() && isPremium() && canEditProject(
         get(/databases/$(database)/documents/projects/$(request.resource.data.projectId))
       );
       allow update: if isAuth() && resource.data.invitedEmail == request.auth.token.email;

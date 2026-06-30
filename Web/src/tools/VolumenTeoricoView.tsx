@@ -13,9 +13,9 @@ import { Save, RefreshCw, Maximize, Ruler, Home, AlertCircle } from 'lucide-reac
 import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { db } from '../core/firebase';
 import { useProjects } from '../core/db/ProjectProvider';
-import { useAuth } from '../core/auth/AuthProvider';
 import { useToast } from '../core/ui/ToastProvider';
 import DocumentExportWrapper from '../components/DocumentExportWrapper';
+import { loadNormativa } from './normativaStore';
 import type { ToolProps } from '../core/types';
 
 /* ── tipos ─────────────────────────────────────────────────────────────────── */
@@ -179,11 +179,11 @@ function calcular(inp: Inputs): Resultados {
 /* ── componente principal ──────────────────────────────────────────────────── */
 export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
-  const { getProject } = useProjects();
-  const { user } = useAuth();
+  const { getProject, repo } = useProjects();
   const { triggerToast } = useToast();
   const project = getProject(projectId);
-  const isPremium = user?.plan === 'Premium';
+  // Nube para TODO usuario logueado (repo.kind === 'cloud'); local solo invitado.
+  const isCloud = repo.kind === 'cloud';
 
   const [saving, setSaving] = useState(false);
   const [inputs, setInputs] = useState<Inputs>(INPUTS_DEFECTO);
@@ -192,17 +192,28 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
     if (!project) return;
     let alive = true;
     (async () => {
-      if (isPremium) {
+      if (isCloud) {
         try {
           const snap = await getDoc(estadoDoc(project.id));
           if (alive && snap.exists()) { setInputs({ ...INPUTS_DEFECTO, ...(snap.data() as Partial<Inputs>) }); return; }
         } catch { /* offline / reglas → localStorage */ }
       }
       const raw = localStorage.getItem(STORAGE_KEY(project.id));
-      if (alive && raw) { try { setInputs({ ...INPUTS_DEFECTO, ...(JSON.parse(raw) as Partial<Inputs>) }); } catch { /* corrupto */ } }
+      if (alive && raw) { try { setInputs({ ...INPUTS_DEFECTO, ...(JSON.parse(raw) as Partial<Inputs>) }); return; } catch { /* corrupto */ } }
+      // Sin cabida guardada → siembra parámetros normativos desde la ficha del
+      // Geolocalizador (sync #1): altura, constructibilidad y ocupación de suelo.
+      try {
+        const norm = await loadNormativa(project.id, isCloud);
+        if (alive && norm) setInputs((prev) => ({
+          ...prev,
+          alturaMaxima: norm.alturaMaxima || prev.alturaMaxima,
+          coefConstructibilidad: norm.coefConstructibilidad || prev.coefConstructibilidad,
+          ocupacionSuelo: norm.ocupacionSuelo || prev.ocupacionSuelo,
+        }));
+      } catch { /* sin ficha persistida → valores por defecto */ }
     })();
     return () => { alive = false; };
-  }, [project?.id, isPremium]);
+  }, [project?.id, isCloud]);
 
   const resultados = useMemo(() => calcular(inputs), [inputs]);
 
@@ -213,9 +224,9 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
     if (readOnly || !project) { triggerToast('Selecciona un proyecto para guardar.'); return; }
     setSaving(true);
     try {
-      if (isPremium) await setDoc(estadoDoc(project.id), inputs, { merge: true });
+      if (isCloud) await setDoc(estadoDoc(project.id), inputs, { merge: true });
       else localStorage.setItem(STORAGE_KEY(project.id), JSON.stringify(inputs));
-      triggerToast(isPremium ? 'Estudio de cabida guardado en la nube.' : 'Estudio de cabida guardado localmente.');
+      triggerToast(isCloud ? 'Estudio de cabida guardado en la nube.' : 'Estudio de cabida guardado localmente.');
     } catch { triggerToast('Error al guardar la cabida.'); }
     finally { window.setTimeout(() => setSaving(false), 300); }
   };
@@ -226,7 +237,7 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
         <div>
           <h2 style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 10, fontSize: 20, fontWeight: 'bold', textTransform: 'uppercase' }}><Maximize size={22} strokeWidth={1.4} /> Estudio de Cabida Volumétrica</h2>
           <p style={{ fontSize: 12, color: 'var(--muted-foreground)', marginTop: 4 }}>
-            {project ? <>Proyecto: <strong>{project.name}</strong></> : 'Sin proyecto activo'} <span style={{ marginLeft: 6, opacity: 0.6 }}>[{isPremium ? 'NUBE' : 'LOCAL'}]</span>
+            {project ? <>Proyecto: <strong>{project.name}</strong></> : 'Sin proyecto activo'} <span style={{ marginLeft: 6, opacity: 0.6 }}>[{isCloud ? 'NUBE' : 'LOCAL'}]</span>
           </p>
         </div>
         <button className="technical-btn" onClick={handleSave} disabled={saving || readOnly} style={{ display: 'inline-flex', alignItems: 'center', gap: 8 }}>

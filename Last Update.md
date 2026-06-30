@@ -10,6 +10,60 @@
 
 ---
 
+## 2026-06-30 (Chile) — Participantes: campos email/teléfono tras "Agregar más datos"
+
+- `Participante` (ParticipantesView): agregados `email?` y `fono?` (opcionales). UI: el botón **"Agregar más datos"** (antes "Agregar dirección") despliega Dirección + Correo + Teléfono; **no aparecen por defecto** (se muestran solo si se abren o si ya hay datos). Estado de expansión por participante (no se persiste).
+- `FormulariosDOMView`: `bindCtx` y write-back ahora exponen `participant.<rol>.{nombre,rut,direccion,email,fono}`.
+- Binds de email/teléfono/dirección por profesional en los PDF: **siguen sin marcar** por ambigüedad de rol en los rótulos; el dato ya está disponible en `bindCtx` para marcarlos cuando se confirme el rol de cada campo.
+- Docs: `MAPA_DE_DATOS_Y_ESTADO.md` §5-bis actualizado. **Build:** `tsc -b` OK.
+
+---
+
+## 2026-06-30 (Chile) — Homologación de datos en formularios municipales (DOM)
+
+**Más coincidencias formulario↔herramientas, con prellenado y write-back.**
+
+- `normativaStore`: ampliado para persistir también texto de la ficha PRC (`usosPermitidos`, `usosProhibidos`, `sistemaAgrupamiento`, `antejardin`, `alturaTexto`).
+- `FormulariosDOMView`: `bindCtx` ampliado con `participant.<rol>.{nombre,rut,direccion}` (arquitecto, propietario, calculista, constructor, dom, revisor, ito, mecánico, paisajista), `normativa.*` (desde Geolocalizador) y `superficie.*` (desde Cuadro de Superficies). **Write-back bidireccional**: campos con bind `participant.*` se propagan a la herramienta Participantes al guardar (solo valores no vacíos).
+- **Fieldmaps**: 104 binds aplicados en 22 `*.fieldmap.json` (pase conservador de alta confianza): ocupación de suelo, superficie primer piso, agrupamiento, constructibilidad, antejardín, altura → ficha normativa; superficie total/subterráneo/primer piso → Cuadro; constructor/ITO → Participantes; ciudad/localidad → Master. JSON revalidado, formato compacto original conservado.
+- **Confirmado por Andrés:** `superficieTerrenoLegal` y `superficieManual` NO se fusionan (terreno vs proyecto) — cerrado.
+- **Pendiente (ambiguo, no bindeado):** RUT sin rol explícito, direcciones por profesional, email/teléfono (requiere ampliar el tipo `Participante`).
+- **Docs:** `MAPA_DE_DATOS_Y_ESTADO.md` §5-bis actualizado a "IMPLEMENTADO".
+
+**Build:** `tsc -b` OK. **Reglas Firestore:** ya desplegadas por Andrés. **Pendiente:** push a `main` (frontend) cuando se decida.
+
+---
+
+## 2026-06-30 (Chile) — Nube para todo usuario logueado + homologaciones + sincronizaciones
+
+**Cambio mayor de modelo de persistencia + homologaciones de datos + sincronizaciones.**
+
+**1. Persistencia "nube para todos los logueados":**
+- `ProjectRepository.ts`: `getProjectRepository` ahora devuelve `CloudProjectRepository` para TODO usuario logueado (Free o Premium); `Local` solo para invitados. Topes por plan: `MAX_FREE_PROJECTS=5` · `MAX_PREMIUM_PROJECTS=50` (cap en el constructor Cloud).
+- `firestore.rules`: `allow create` de proyectos ya no exige `isPremium` (solo activo + owner). `canEditProject` = dueño o editor (cualquier plan). **Colaboración (invitations) sigue Premium-only**. **Libro/Carpeta de Obra** (premium) requieren `isPremium` en write. ⚠️ **REQUIERE `firebase deploy --only firestore:rules`** o las escrituras Free serán rechazadas.
+- `VolumenTeoricoView`: persistencia decidida por `repo.kind==='cloud'` (antes `isPremium`).
+- `ProjectProvider`: sandbox automático solo para repo local (invitados).
+
+**2. Homologaciones:**
+- `tipoProyecto`: era colisión de nombre — `DatosExtra.tipoProyecto` (que en realidad es *Categoría*) renombrado a `DatosExtra.categoria`. `ProjectMaster.tipoProyecto` (OGUC) queda como fuente única.
+- `participantes`: FormulariosDOM lee por `useToolData('participantes')` (canal gobernado), no `localStorage`.
+- `comuna`: el Geolocalizador escribe la comuna al Master (dato único).
+- ⚠️ `superficieTerrenoLegal` vs `superficieManual`: **NO homologados** — son semánticamente distintos (lote vs obra edificada); fusionarlos rompe §6 y Presupuesto/Propuesta. Pendiente de confirmación (ver MAPA §5 op.7 / §7.4).
+
+**3. Sincronizaciones aplicadas:**
+- **Ficha normativa → Cabida** (nuevo `src/tools/normativaStore.ts`): el Geolocalizador persiste la ficha (`toolData/normativa`); Cabida siembra altura/constructibilidad/ocupación.
+- **Presupuesto → Master.presupuestoUF**: botón "Usar como presupuesto del proyecto" (opcional; la Ficha sigue editable a mano).
+- EETT→Presupuesto/Gantt: ya existía, se mantiene.
+- Terreno→Cabida: parcial (Cabida usa largo×ancho, no área única) — pendiente input de área.
+
+**4. Docs actualizados:** `Iniciar Aquí.md` (§5/§6), `MAPA_DE_DATOS_Y_ESTADO.md` (modelo, homologaciones, **nueva §5-bis mapeo de formularios municipales** con oportunidades de sync: RUT/profesionales→Participantes, altura/ocupación→ficha, superficies→Cabida/Cuadro; riesgos §7), `MAPA_ARQUITECTURA_PROYECTO.md` (persistencia).
+
+**Incidente:** ediciones directas sobre el montaje truncaron 7 archivos grandes (riesgo §8 de Iniciar Aquí). Se restauraron con `git show HEAD:` y se re-aplicaron con escritura atómica vía Python (`os.replace`). **Lección: para archivos grandes usar siempre Python/tmp+replace, no edición directa del montaje.**
+
+**Build:** `tsc -b` OK (EXIT=0). **Archivos:** ProjectRepository, ProjectProvider, VolumenTeoricoView, GeolocalizadorView, PresupuestoObraView, DatosProyectoView, FormulariosDOMView, normativaStore (nuevo), firestore.rules + 3 docs. **Pendiente de deploy:** `firebase deploy --only firestore:rules` (crítico) + push a `main` (frontend). 
+
+---
+
 ## 2026-06-30 (Chile) — Arqueo de datos: MAPA_DE_DATOS_Y_ESTADO.md
 
 **Contexto:** se solicitó un arqueo completo de la persistencia de proyectos (diccionario de datos + matriz de interdependencias).

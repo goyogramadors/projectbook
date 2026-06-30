@@ -10,8 +10,9 @@
    ============================================================================= */
 import { useEffect, useMemo } from 'react';
 import { DollarSign, Plus, Trash2, RefreshCw } from 'lucide-react';
-import type { ToolProps } from '../core/types';
+import type { ToolProps, ProjectMaster } from '../core/types';
 import { useProjects } from '../core/db/ProjectProvider';
+import { useToast } from '../core/ui/ToastProvider';
 import { useToolData } from '../hooks/useToolData';
 import DocumentExportWrapper from '../components/DocumentExportWrapper';
 import { CATALOGO_PRESUPUESTO } from './construccion/catalogo.presupuesto';
@@ -43,7 +44,8 @@ const supDeMaster = (m: { superficieOrigen?: string; superficieManual?: string; 
 };
 
 export default function PresupuestoObraView({ projectId, access = 'edit' }: ToolProps) {
-  const { getProject } = useProjects();
+  const { getProject, repo, reload } = useProjects();
+  const { triggerToast } = useToast();
   const master = getProject(projectId);
   const eett = useToolData<EettBasis>('eett-generador', projectId, EETT_FALLBACK);
   const { data, setData, save } = useToolData<PresupState>('presupuesto', projectId, FALLBACK);
@@ -107,6 +109,19 @@ export default function PresupuestoObraView({ projectId, access = 'edit' }: Tool
   const setProforma = (i: number, patch: Partial<Proforma>) => commit({ proforma: data.proforma.map((l, k) => k === i ? { ...l, ...patch } : l) });
   const delProforma = (i: number) => commit({ proforma: data.proforma.filter((_, k) => k !== i) });
 
+  // Opción (no automática): adopta el TOTAL generado (F, en UF) como
+  // ProjectMaster.presupuestoUF (alimenta Honorarios/Contratos). La Ficha sigue
+  // editándose a mano; este botón solo lo sobrescribe a pedido del usuario.
+  const usarComoPresupuesto = async () => {
+    if (ro || !master) return;
+    const valorUF = F.toFixed(2);
+    try {
+      const upd: ProjectMaster = { ...master, presupuestoUF: valorUF };
+      await repo.save(upd); await reload();
+      triggerToast(`Presupuesto del proyecto actualizado a ${valorUF} UF.`);
+    } catch { triggerToast('No se pudo actualizar el presupuesto del proyecto.'); }
+  };
+
   const Tot = ({ label, uf: u, clp, grand }: { label: string; uf: number; clp: number; grand?: boolean }) => (
     <div className={`cx-tot${grand ? ' grand' : ''}`}><span>{label}</span><span>{fmtUF(u)} UF · {fmtCLP(clp)}</span></div>
   );
@@ -157,7 +172,15 @@ export default function PresupuestoObraView({ projectId, access = 'edit' }: Tool
       <div className="cx-preview">
         <div className="cx-prevbar">
           <span><DollarSign size={13} /> {filas.length} partidas · UF {fmtUF(data.valorUf)}</span>
-          <button type="button" className="technical-btn" onClick={() => window.print()}>[ EXPORTAR A PDF ]</button>
+          <div style={{ display: 'flex', gap: 6 }}>
+            {!ro && (
+              <button type="button" className="ab-btn sec" onClick={usarComoPresupuesto}
+                title="Sobrescribe el presupuesto del proyecto (Ficha) con este total F. Editable luego a mano.">
+                Usar como presupuesto del proyecto{master?.presupuestoUF ? ` · actual ${master.presupuestoUF} UF` : ''}
+              </button>
+            )}
+            <button type="button" className="technical-btn" onClick={() => window.print()}>[ EXPORTAR A PDF ]</button>
+          </div>
         </div>
         <DocumentExportWrapper documentName="Presupuesto de Obra" documentId="presupuesto" projectId={projectId}>
           <h2 style={{ textAlign: 'center', fontSize: 15, margin: '0 0 4px' }}>PRESUPUESTO DE OBRA</h2>

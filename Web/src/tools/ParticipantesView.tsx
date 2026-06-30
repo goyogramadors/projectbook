@@ -31,6 +31,9 @@ interface Participante {
   rut: string;
   direccion: string;
   conDireccion: boolean;
+  /** Datos opcionales adicionales (ocultos tras "Agregar más datos"). */
+  email?: string;
+  fono?: string;
   fijo?: boolean; // Arquitecto / Propietario: no eliminables
 }
 
@@ -116,6 +119,8 @@ export default function ParticipantesView({ projectId, access = 'edit' }: ToolPr
 
   const [parts, setParts] = useState<Participante[]>(() => defaultParticipantes(project));
   const [saving, setSaving] = useState(false);
+  // IDs con el bloque "más datos" abierto (estado de UI, no se persiste).
+  const [expandidos, setExpandidos] = useState<Set<string>>(() => new Set());
   const [hidratado, setHidratado] = useState(false);
   // Persistencia unificada (Fase 2): la nómina se guarda vía useToolData en la
   // subcolección gobernada projects/{id}/toolData/participantes (Premium) o en
@@ -143,8 +148,11 @@ export default function ParticipantesView({ projectId, access = 'edit' }: ToolPr
   const updatePart = (id: string, patch: Partial<Participante>) =>
     setParts(prev => prev.map(p => (p.id === id ? { ...p, ...patch } : p)));
 
-  const toggleDireccion = (id: string) =>
-    setParts(prev => prev.map(p => (p.id === id ? { ...p, conDireccion: !p.conDireccion } : p)));
+  const toggleMas = (id: string) =>
+    setExpandidos(prev => { const n = new Set(prev); n.has(id) ? n.delete(id) : n.add(id); return n; });
+  // Mostrar el bloque si está abierto o si ya hay algún dato adicional cargado.
+  const tieneMas = (p: Participante) =>
+    expandidos.has(p.id) || p.conDireccion || Boolean(p.direccion || p.email || p.fono);
 
   const removePart = (id: string) =>
     setParts(prev => prev.filter(p => p.id !== id || p.fijo));
@@ -231,17 +239,29 @@ export default function ParticipantesView({ projectId, access = 'edit' }: ToolPr
                     <input className="tech-input" value={p.rut} disabled={readOnly} onChange={e => updatePart(p.id, { rut: e.target.value })} style={{ fontFamily: 'monospace' }} placeholder="11.111.111-1" />
                   </div>
                 </div>
-                {p.conDireccion ? (
-                  <div className="tech-input-group" style={{ marginBottom: 0, marginTop: 10 }}>
-                    <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                      <span>Dirección</span>
-                      <button type="button" onClick={() => toggleDireccion(p.id)} disabled={readOnly} className="btn-tech-gray" style={{ padding: '1px 6px', fontSize: 9 }}>[ – ]</button>
-                    </label>
-                    <input className="tech-input" value={p.direccion} disabled={readOnly} onChange={e => updatePart(p.id, { direccion: e.target.value })} placeholder="Calle N°, comuna" />
+                {tieneMas(p) ? (
+                  <div style={{ marginTop: 10, display: 'grid', gap: 10 }}>
+                    <div className="tech-input-group" style={{ marginBottom: 0 }}>
+                      <label style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                        <span>Dirección</span>
+                        <button type="button" onClick={() => toggleMas(p.id)} disabled={readOnly} className="btn-tech-gray" style={{ padding: '1px 6px', fontSize: 9 }}>[ – ]</button>
+                      </label>
+                      <input className="tech-input" value={p.direccion} disabled={readOnly} onChange={e => updatePart(p.id, { direccion: e.target.value })} placeholder="Calle N°, comuna" />
+                    </div>
+                    <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
+                      <div className="tech-input-group" style={{ marginBottom: 0 }}>
+                        <label>Correo electrónico</label>
+                        <input className="tech-input" type="email" value={p.email ?? ''} disabled={readOnly} onChange={e => updatePart(p.id, { email: e.target.value })} placeholder="correo@dominio.cl" />
+                      </div>
+                      <div className="tech-input-group" style={{ marginBottom: 0 }}>
+                        <label>Teléfono</label>
+                        <input className="tech-input" value={p.fono ?? ''} disabled={readOnly} onChange={e => updatePart(p.id, { fono: e.target.value })} placeholder="+56 9 ..." />
+                      </div>
+                    </div>
                   </div>
                 ) : (
-                  <button type="button" onClick={() => toggleDireccion(p.id)} disabled={readOnly} className="btn-tech-gray" style={{ marginTop: 10, padding: '4px 9px', fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
-                    <Icons.Plus size={12} /> Agregar dirección
+                  <button type="button" onClick={() => toggleMas(p.id)} disabled={readOnly} className="btn-tech-gray" style={{ marginTop: 10, padding: '4px 9px', fontSize: 10, display: 'inline-flex', alignItems: 'center', gap: 5 }}>
+                    <Icons.Plus size={12} /> Agregar más datos
                   </button>
                 )}
               </div>

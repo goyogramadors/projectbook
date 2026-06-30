@@ -8,10 +8,9 @@
 import { useEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { useParams } from 'react-router-dom';
 import { Download, Save, FileText } from 'lucide-react';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../core/firebase';
 import { useProjects } from '../core/db/ProjectProvider';
 import { useToolData } from '../hooks/useToolData';
+import { loadNormativa, type NormativaGuardada } from './normativaStore';
 import { FORM_MAPS } from '../forms';
 import { fillForm, downloadPdf } from './forms/fillForm';
 import { subirAdjunto } from './obra/storageUpload';
@@ -59,22 +58,62 @@ function resolveBind(path: string | null, ctx: Record<string, unknown>): string 
   return v == null ? '' : String(v);
 }
 
-/** Lee el nombre del Arquitecto desde el payload de 'participantes'. */
-function leerArquitecto(stored: unknown): string {
-  if (!stored || typeof stored !== 'object') return '';
-  const data = stored as { participantes?: Array<{ id?: string; rol?: string; nombre?: string }> };
-  if (Array.isArray(data.participantes)) {
-    const arq = data.participantes.find(
-      (p) => p.id === 'arquitecto' || (p.rol ?? '').toLowerCase().includes('arquitecto'),
-    );
-    if (arq?.nombre) return arq.nombre;
-  }
+/* ── Homologación con Participantes / Cuadro / Geolocalizador (binds del formulario) ── */
+interface PartLite { id: string; rol: string; nombre: string; rut: string; direccion: string; email?: string; fono?: string; conDireccion?: boolean; fijo?: boolean; }
+interface ParticipantesPayload { participantes?: PartLite[]; }
+interface PisoLite { util?: string; comun?: string; }
+interface CuadroLite { supOcupacion?: string; supPredio?: string; sobreTerreno?: PisoLite[]; subterraneo?: PisoLite[]; }
+
+/** Roles → clave canónica usada en los binds `participant.<clave>.<attr>`. */
+const ROLE_RE: Array<[RegExp, string]> = [
+  [/arquitect/i, 'arquitecto'],
+  [/propietar|mandante/i, 'propietario'],
+  [/calculist/i, 'calculista'],
+  [/constructor/i, 'constructor'],
+  [/director de obra|\bdom\b/i, 'dom'],
+  [/revisor/i, 'revisor'],
+  [/\bito\b|inspec/i, 'ito'],
+  [/mec[aá]nic/i, 'mecanico'],
+  [/paisaj/i, 'paisajista'],
+];
+const ROLE_LABEL: Record<string, string> = {
+  arquitecto: 'Arquitecto', propietario: 'Propietario', calculista: 'Ingeniero Calculista',
+  constructor: 'Constructor', dom: 'Director de Obra (DOM)', revisor: 'Revisor Independiente',
+  ito: 'ITO', mecanico: 'Ing. Mecánico', paisajista: 'Paisajista',
+};
+function roleKey(p: PartLite): string {
+  if (p.id === 'arquitecto') return 'arquitecto';
+  if (p.id === 'propietario') return 'propietario';
+  const r = `${p.rol ?? ''} ${p.id ?? ''}`;
+  for (const [re, k] of ROLE_RE) if (re.test(r)) return k;
   return '';
+}
+/** Mapa `clave → {nombre,rut,direccion}` para resolver `participant.*` en los binds. */
+function mapaParticipantes(stored: unknown): Record<string, { nombre: string; rut: string; direccion: string; email: string; fono: string }> {
+  const out: Record<string, { nombre: string; rut: string; direccion: string; email: string; fono: string }> = {};
+  const list = (stored && typeof stored === 'object' ? (stored as ParticipantesPayload).participantes : undefined) ?? [];
+  for (const p of list) {
+    const k = roleKey(p);
+    if (k && !out[k]) out[k] = { nombre: p.nombre ?? '', rut: p.rut ?? '', direccion: p.direccion ?? '', email: p.email ?? '', fono: p.fono ?? '' };
+  }
+  return out;
+}
+const num = (v: unknown): number => { const n = parseFloat(String(v ?? '').replace(',', '.')); return Number.isNaN(n) ? 0 : n; };
+const sumaPisos = (arr?: PisoLite[]): number => (arr ?? []).reduce((a, p) => a + num(p?.util) + num(p?.comun), 0);
+/** Superficies derivadas del Cuadro de Superficies para los binds `superficie.*`. */
+function superficiesCtx(c?: CuadroLite): Record<string, string> {
+  const st = sumaPisos(c?.sobreTerreno), sub = sumaPisos(c?.subterraneo);
+  const primer = c?.sobreTerreno?.[0] ? num(c.sobreTerreno[0].util) + num(c.sobreTerreno[0].comun) : 0;
+  const f = (n: number) => (n ? n.toFixed(2) : '');
+  return {
+    ocupacion: c?.supOcupacion ?? '', predio: c?.supPredio ?? '',
+    sobreTerreno: f(st), subterraneo: f(sub), total: f(st + sub), primerPiso: f(primer),
+  };
 }
 
 export default function FormulariosDOMView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
-  const { getProject, setToolState } = useProjects();
+  const { getProject, setToolState, repo } = useProjects();
   const { toolId } = useParams();
   const TOOL_ID = toolId ?? 'solicitud-permiso';
   const { data, save } = useToolData<FormulariosDOMState>(TOOL_ID, projectId, FALLBACK);
@@ -93,35 +132,34 @@ export default function FormulariosDOMView({ projectId, access = 'edit' }: ToolP
   const map: FormFieldMap | undefined = FORM_MAPS[formId];
 
   const [values, setValues] = useState<FormValues>({});
-  const [arquitecto, setArquitecto] = useState('');
   const [busy, setBusy] = useState<'' | 'download' | 'storage'>('');
   const [msg, setMsg] = useState('');
   const hidratado = useRef('');
 
-  // Nombre del arquitecto (local mirror → nube), igual que DocumentExportWrapper.
+  // ── Fuentes de homologación (todas por el canal gobernado useToolData) ──
+  // Participantes (nombre/rut/dirección por rol), Cuadro de Superficies y la
+  // ficha del Geolocalizador (normativa). Nube si logueado, local si invitado.
+  const participantes = useToolData<ParticipantesPayload>('participantes', projectId, {});
+  const cuadro = useToolData<CuadroLite>('cuadro-superficies', projectId, {});
+  const [normativa, setNormativa] = useState<NormativaGuardada | null>(null);
   useEffect(() => {
-    if (!projectId) return;
+    if (!projectId) { setNormativa(null); return; }
     let alive = true;
-    const local = localStorage.getItem(`ab-participantes-${projectId}`);
-    if (local) {
-      const n = leerArquitecto(JSON.parse(local));
-      if (n) { setArquitecto(n); return; }
-    }
-    void (async () => {
-      try {
-        const snap = await getDoc(doc(db, 'projects', projectId, 'toolData', 'participantes'));
-        if (alive && snap.exists()) {
-          setArquitecto(leerArquitecto((snap.data() as { payload?: unknown }).payload));
-        }
-      } catch { /* offline */ }
-    })();
+    void loadNormativa(projectId, repo.kind === 'cloud').then((n) => { if (alive) setNormativa(n); });
     return () => { alive = false; };
-  }, [projectId]);
+  }, [projectId, repo.kind]);
+
+  const partMap = useMemo(() => mapaParticipantes(participantes.data), [participantes.data]);
 
   const bindCtx = useMemo(() => {
     const p = projectId ? getProject(projectId) : undefined;
-    return { project: p ?? {}, participant: { arquitecto: { nombre: arquitecto } } } as Record<string, unknown>;
-  }, [getProject, projectId, arquitecto]);
+    return {
+      project: p ?? {},
+      participant: partMap,
+      normativa: normativa ?? {},
+      superficie: superficiesCtx(cuadro.data),
+    } as Record<string, unknown>;
+  }, [getProject, projectId, partMap, normativa, cuadro.data]);
 
   // Hidratación: valores guardados ∪ prefill por bind (lo guardado manda).
   useEffect(() => {
@@ -139,11 +177,39 @@ export default function FormulariosDOMView({ projectId, access = 'edit' }: ToolP
 
   const setVal = (id: string, v: string) => setValues((prev) => ({ ...prev, [id]: v }));
 
+  /** Write-back BIDIRECCIONAL: si el usuario llenó en el formulario un campo de un
+   *  participante (`participant.<rol>.<attr>`), propaga el valor a la herramienta
+   *  Participantes (toolData). Solo valores NO vacíos (nunca borra lo existente). */
+  const writebackParticipantes = async (): Promise<void> => {
+    if (!map) return;
+    const cambios: Record<string, Record<string, string>> = {};
+    for (const f of map.fields) {
+      if (!f.bind || !f.bind.startsWith('participant.')) continue;
+      const [, key, attr] = f.bind.split('.');
+      const v = (values[f.id] ?? '').trim();
+      if (!key || !attr || !v) continue;
+      (cambios[key] ??= {})[attr] = v;
+    }
+    if (!Object.keys(cambios).length) return;
+    const cur: PartLite[] = (participantes.data?.participantes ?? []).map((x) => ({ ...x }));
+    for (const [key, attrs] of Object.entries(cambios)) {
+      let item = cur.find((p) => roleKey(p) === key);
+      if (!item) {
+        item = { id: `auto-${key}-${Date.now()}`, rol: ROLE_LABEL[key] ?? key, nombre: '', rut: '', direccion: '', conDireccion: false };
+        cur.push(item);
+      }
+      Object.assign(item, attrs);
+      if (attrs.direccion) item.conDireccion = true;
+    }
+    await participantes.save({ participantes: cur });
+  };
+
   const persist = async (): Promise<void> => {
     if (readOnly || !map || !projectId) return;
     const forms = { ...(data?.forms ?? {}) };
     forms[formId] = { values, updatedAt: Date.now() };
     await save({ ...(data ?? FALLBACK), forms });
+    await writebackParticipantes();
     await setToolState(projectId, TOOL_ID, { estado: 'En proceso', fecha: new Date().toISOString() });
   };
 

@@ -9,7 +9,7 @@
 > **`Last Update.md`** (raíz del repo): fecha, hora, detalle de lo hecho, archivos tocados y
 > pendientes generados/resueltos. Es el reporte de estado que se entrega a la siguiente instancia.
 >
-> **Última actualización:** 2026-06-23 · **Repositorio:** `C:\G\Archiblocks` · **Raíz de la SPA:** `C:\G\Archiblocks\Web`
+> **Última actualización:** 2026-06-30 · **Repositorio:** `C:\G\Archiblocks` · **Raíz de la SPA:** `C:\G\Archiblocks\Web`
 
 ---
 
@@ -146,13 +146,14 @@ Build configuration del proyecto (ya seteada; documentada por si hay que recrear
 ## 5. Bases de datos, almacenamiento, claves y respaldos
 
 ### Bases de datos (Firestore multi-DB)
-- **`(default)`** — proyectos del usuario y subcolecciones (datos de cada herramienta para usuarios Premium). Protegida por `firestore.rules` (zero-trust, validación `request.auth.uid`).
+- **`(default)`** — proyectos del usuario y subcolecciones (datos de cada herramienta). ⟲ **2026-06-30:** persiste para **TODO usuario LOGUEADO** (Free o Premium); el almacenamiento local queda solo para invitados/no logueados. Protegida por `firestore.rules` (zero-trust, validación `request.auth.uid`). Topes por plan: Free=5 · Premium=50 proyectos.
 - **`coordenadasnormativas`** — Cerebro Normativo: fichas PRC por zona. Lectura con auth, **escritura prohibida** desde cliente.
 
-### Almacenamiento de datos de herramientas
-- **Premium:** subcolección Firestore por proyecto.
-- **Free:** `localStorage` con clave `ab-<toolId>-${projectId}`.
-- **Master del proyecto:** documento ligero (<5 KB) en `ProjectRepository`.
+### Almacenamiento de datos de herramientas (⟲ modelo 2026-06-30)
+- **Usuario logueado (Free o Premium):** subcolección Firestore por proyecto (`toolData/{toolId}`, `volumen`, `libroObras`, `carpetaDigital`, `normativa`…). **Nube para todos los logueados.**
+- **Invitado / no logueado:** `localStorage` con clave `ab-<toolId>-${projectId}` (sandbox de exploración). Único caso de persistencia local.
+- **Master del proyecto:** documento ligero (<5 KB) en `ProjectRepository` (nube si logueado, local si invitado).
+- **Diferenciación Premium:** herramientas premium (Informe Térmico, Libro/Carpeta de Obra, BIM), **colaboración** (invitar miembros, Premium-only en reglas) y **mayor cupo** (50 vs 5).
 
 ### Storage
 - Firebase Storage para archivos asociados (según herramienta).

@@ -17,8 +17,9 @@ import { useProjects } from '../core/db/ProjectProvider';
 import { useDimensionadorSync } from '../hooks/useDimensionadorSync';
 import { loadComunaGeoJSON } from '../core/GeoJsonService';
 import { getNormativaDesdeFeature } from '../core/NormativaService';
-import type { ToolProps, NormativaPRC } from '../core/types';
+import type { ToolProps, NormativaPRC, ProjectMaster } from '../core/types';
 import { loadTerreno, saveTerreno } from './terrenoStore';
+import { saveNormativa, fichaToNormativa } from './normativaStore';
 
 const DEFAULT_CENTER = { lat: -33.4569, lng: -70.6483 }; // Ñuñoa (capa de muestra)
 const MAPS_KEY = ((import.meta as { env?: Record<string, string> }).env?.VITE_GOOGLE_MAPS_API_KEY) ?? '';
@@ -79,7 +80,7 @@ function fichaEstimada(zona: string | null): NormativaPRC {
 
 export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolProps) {
   const readOnly = access !== 'edit';
-  const { getProject, repo } = useProjects();
+  const { getProject, repo, reload } = useProjects();
   const { syncSuperficie } = useDimensionadorSync();
   const project = getProject(projectId);
 
@@ -266,8 +267,18 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
       setZona(zonaCod);
       // Contingencia paramétrica: si la zona no tiene ficha en normativas_prc, se hidrata
       // una ficha ESTIMADA por defecto para que el expediente renderice la tabla técnica.
-      setFicha(resuelto?.normativa ?? fichaEstimada(zonaCod));
+      const fichaFinal = resuelto?.normativa ?? fichaEstimada(zonaCod);
+      setFicha(fichaFinal);
       setEstado('ok');
+      // Persiste la ficha normativa para que la Cabida la consuma (sync #1) y
+      // homologa la comuna al Master (dato único; si el usuario la editó aquí).
+      if (projectId) {
+        saveNormativa(projectId, fichaToNormativa(fichaFinal, zonaCod ?? undefined, comuna.trim()), repo.kind === 'cloud');
+        if (project && comuna.trim() && comuna.trim() !== project.comuna) {
+          const upd: ProjectMaster = { ...project, comuna: comuna.trim() };
+          try { await repo.save(upd); await reload(); } catch { /* offline / reglas */ }
+        }
+      }
       if (!resuelto?.normativa) setError(`Zona ${zonaCod ?? '—'} detectada SIN ficha local en /norma-data para esta comuna — se muestran PARÁMETROS ESTIMADOS por defecto (verifique el PRC vigente antes de un expediente formal).`);
     } catch (err) {
       setEstado('sinDato');

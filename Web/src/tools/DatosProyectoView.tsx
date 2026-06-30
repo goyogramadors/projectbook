@@ -22,7 +22,9 @@ const pvTd: React.CSSProperties = { padding: '6px 8px', borderBottom: '1px solid
 const pvK: React.CSSProperties = { ...pvTd, fontWeight: 700, width: '46%', color: '#444' };
 
 /* ── tipos locales ─────────────────────────────────────────────────────────── */
-interface DatosExtra { tipoProyecto: string; notas: string; }
+/* `categoria` = clasificación de uso (Habitacional/Comercial…). NO confundir con
+   ProjectMaster.tipoProyecto (OGUC), fuente única del tipo de obra (homologación 2026-06-30). */
+interface DatosExtra { categoria: string; notas: string; }
 
 /* ── constantes ────────────────────────────────────────────────────────────── */
 /* La persistencia del estado propio (tipoProyecto/notas) la gobierna useToolData
@@ -32,7 +34,7 @@ const ETAPAS: Etapa[] = ['Perfil', 'Anteproyecto', 'Proyecto', 'Licitación', 'O
 /* Categoría del proyecto (clasificación de destino/uso, dato propio de la herramienta). */
 const CATEGORIAS_PROYECTO = ['Habitacional', 'Comercial', 'Industrial', 'Equipamiento', 'Mixto'];
 const DESTINOS = ['Vivienda', 'Comercio', 'Oficina', 'Bodega', 'Salud', 'Educación', 'Espacio Público'];
-const DATOS_VACIOS: DatosExtra = { tipoProyecto: 'Habitacional', notas: '' };
+const DATOS_VACIOS: DatosExtra = { categoria: 'Habitacional', notas: '' };
 
 /* ── componente principal ──────────────────────────────────────────────────── */
 export default function DatosProyectoView({ projectId, access = 'edit' }: ToolProps) {
@@ -123,7 +125,7 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
             </div>
             <div className="tech-input-group">
               <label>Categoría del Proyecto</label>
-              <select className="tech-select" value={extra.tipoProyecto} disabled={readOnly} onChange={e => setExtra(prev => ({ ...prev, tipoProyecto: e.target.value }))}>
+              <select className="tech-select" value={extra.categoria} disabled={readOnly} onChange={e => setExtra(prev => ({ ...prev, categoria: e.target.value }))}>
                 {CATEGORIAS_PROYECTO.map(t => <option key={t} value={t}>{t}</option>)}
               </select>
             </div>
@@ -181,7 +183,7 @@ export default function DatosProyectoView({ projectId, access = 'edit' }: ToolPr
             <table style={{ width: '100%', borderCollapse: 'collapse' }}><tbody>
               <tr><td style={pvK}>Nombre</td><td style={pvTd}>{nombre || '—'}</td></tr>
               <tr><td style={pvK}>Etapa</td><td style={pvTd}>{etapa}</td></tr>
-              <tr><td style={pvK}>Categoría del Proyecto</td><td style={pvTd}>{extra.tipoProyecto}</td></tr>
+              <tr><td style={pvK}>Categoría del Proyecto</td><td style={pvTd}>{extra.categoria}</td></tr>
               <tr><td style={pvK}>Tipo de Proyecto</td><td style={pvTd}>{tipoProyecto || '—'}</td></tr>
               <tr><td style={pvK}>Destino</td><td style={pvTd}>{destino}</td></tr>
               <tr><td style={pvK}>Superficie Terreno Legal</td><td style={pvTd}>{supTerreno || '—'} m²</td></tr>

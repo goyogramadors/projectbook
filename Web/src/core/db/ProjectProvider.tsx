@@ -44,8 +44,9 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     setLoading(true);
     try {
       let list = await repo.list();
-      // SANDBOX AUTOMÁTICO (CONST §7): invitados y usuarios Free sin proyectos
-      // reciben un proyecto por defecto de forma invisible y transparente.
+      // SANDBOX AUTOMÁTICO (CONST §7): solo INVITADOS/no logueados (repo local) sin
+      // proyectos reciben un proyecto por defecto invisible. Los usuarios logueados
+      // (Free o Premium) usan el repo NUBE y crean sus proyectos explícitamente.
       if (list.length === 0 && repo.kind === 'local' && repo.canWrite) {
         const def = makeDefaultProject();
         await repo.save(def);

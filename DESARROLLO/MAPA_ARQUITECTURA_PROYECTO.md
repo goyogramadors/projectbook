@@ -66,7 +66,7 @@ src/
 │   ├── product/product.ts   → PRODUCTO host-aware: ProductId, CONFIGS, PRODUCT, isLibroDeObra, switchProduct
 │   ├── auth/AuthProvider.tsx     → Contexto de usuario + openAuthModal(); plan Free/Premium; admin claim
 │   ├── db/ProjectProvider.tsx    → Contexto de proyectos: list/get/createProject/addTool/removeTool
-│   ├── db/ProjectRepository.ts   → Estrategia Cloud(Premium)/Local(Free) · makeDefaultProject
+│   ├── db/ProjectRepository.ts   → Estrategia Cloud(logueado)/Local(invitado) · makeDefaultProject
 │   ├── theme/ThemeProvider.tsx   → 4 temas (cad/washi/matrix/white); persiste users.theme
 │   └── ui/ToastProvider.tsx      → Toasts globales (triggerToast)
 │
@@ -157,7 +157,7 @@ src/
     └── termico.worker.ts     → Cerebro Térmico: ejecuta termico/engine (U + acreditación RT)
 ```
 
-> Nota: `useToolData` (hook estándar de persistencia por herramienta) vive junto al núcleo; varias herramientas lo usan para `projects/{pid}/toolData/{toolId}` (Premium) con fallback `localStorage ab-<toolId>-${pid}` (Free).
+> Nota: `useToolData` (hook estándar de persistencia por herramienta) vive junto al núcleo; varias herramientas lo usan para `projects/{pid}/toolData/{toolId}` (⟲ 2026-06-30: **todo usuario logueado**, Free o Premium) con fallback `localStorage ab-<toolId>-${pid}` (**solo invitados/no logueados**). Topes: Free=5 · Premium=50 proyectos.
 
 ---
 
@@ -208,7 +208,7 @@ Carpetas (`FOLDERS`): **0** Ficha del Proyecto · **1** Información del Proyect
 | **types.ts** | `src/core/types.ts` | Contratos: `ProjectMaster` (region/ciudad/toolStates), `CatalogTool` (tiposProyecto), `ToolProps`, `NormativaPRC`, `FormFieldMap`… |
 | **useAccess.ts** | `src/core/useAccess.ts` | Gating central: `AccessMode` `edit`/`read`/`locked` |
 | **firebase.ts** | `src/core/firebase.ts` | Init Firebase: `db = (default)` (`initializeFirestore`), `auth`, `storage`, `functions` (región `southamerica-west1`) |
-| **ProjectRepository.ts** | `src/core/db/ProjectRepository.ts` | Persistencia Cloud(Premium)/Local(Free) |
+| **ProjectRepository.ts** | `src/core/db/ProjectRepository.ts` | Persistencia Cloud(logueado: Free o Premium)/Local(invitado); topes 5/50 |
 | **NormativaService.ts** | `src/core/NormativaService.ts` | Cerebro Normativo: DB nombrada `coordenadasnormativas`, llave `{comuna}_{zona}` |
 | **geo.worker.ts** | `src/workers/geo.worker.ts` | Web Worker con Turf.js (intersección y área) |
 | **termico.worker.ts** | `src/workers/termico.worker.ts` | Web Worker térmico (U + acreditación RT) |
