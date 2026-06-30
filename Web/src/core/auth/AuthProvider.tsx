@@ -86,6 +86,7 @@ async function resolveUser(fb: FbUser): Promise<User> {
       void setDoc(doc(db, 'users', fb.uid), {
         uid: fb.uid,
         email: fb.email,
+        nombre: fb.displayName || fb.email?.split('@')[0] || 'usuario',
         plan: isPendingPremium ? 'Premium' : 'Free',
         estado: 'Activo',
         compPremium: isPendingPremium,

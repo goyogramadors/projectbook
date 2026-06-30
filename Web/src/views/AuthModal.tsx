@@ -17,8 +17,6 @@
 import { useState, useId } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import * as Icons from 'lucide-react';
-import { doc, setDoc, serverTimestamp } from 'firebase/firestore';
-import { auth, db } from '../core/firebase';
 import { useAuth } from '../core/auth/AuthProvider';
 
 // ── Tipos locales ─────────────────────────────────────────────────────────────
@@ -91,20 +89,10 @@ export default function AuthModal({ isOpen, onClose }: AuthModalProps) {
       } else {
         const nombreFinal = nombre.trim() || email.split('@')[0];
         await signUpEmail(email, password, nombreFinal);
-
-        // Crear doc Firestore users/{uid} — Free desde creación (§7)
-        const uid = auth.currentUser?.uid;
-        if (uid) {
-          await setDoc(doc(db, 'users', uid), {
-            email:       email.trim().toLowerCase(),
-            nombre:      nombreFinal,
-            plan:        'Free',
-            compPremium: false,
-            estado:      'Activo',
-            createdAt:   serverTimestamp(),
-          });
-        }
-        // signUpEmail en AuthProvider llama setAuthModalOpen(false) → cierra el modal
+        // El aprovisionamiento de users/{uid} lo hace AuthProvider.resolveUser
+        // (único escritor): Free por defecto, o Premium si hay invitación
+        // pendiente para este correo. Así evitamos pisar el Premium recién
+        // asignado. signUpEmail ya cierra el modal vía setAuthModalOpen(false).
       }
     } catch (e: any) {
       setError(friendlyError(e?.code ?? e?.message));

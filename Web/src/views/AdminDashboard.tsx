@@ -67,7 +67,7 @@ export default function AdminDashboard() {
         correoEnviado = true;
       } catch { /* función no desplegada / SendGrid sin configurar — no rompe el flujo */ }
       setInviteMsg(
-        `${existia ? `Usuario ${email} elevado a Premium en la base de datos.` : `Premium activado para ${email} (pendiente de primer login).`} ` +
+        `${existia ? `Usuario ${email} elevado a Premium en la base de datos.` : `Premium reservado para ${email}: quedará activo automáticamente al registrarse con este correo.`} ` +
         (correoEnviado ? 'Correo de invitación enviado.' : 'Aviso: el correo NO se envió (revisa el despliegue de Functions y SENDGRID_API_KEY).'),
       );
       setInviteEmail('');

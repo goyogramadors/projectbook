@@ -10,6 +10,31 @@
 
 ---
 
+## 2026-06-30 (Chile) — Arqueo de datos: MAPA_DE_DATOS_Y_ESTADO.md
+
+**Contexto:** se solicitó un arqueo completo de la persistencia de proyectos (diccionario de datos + matriz de interdependencias).
+
+**Realizado:** análisis de `types.ts`, `useToolData`, `useDimensionadorSync`, `terrenoStore`, `ProjectRepository/Provider`, `catalog.ts` y las ~28 vistas de `src/tools/`. Se documentó el modelo de 3 capas (Master / ToolData / Subcolección), el esquema `ProjectMaster`, el diccionario por herramienta, la matriz I/O de datos compartidos, datos duplicados, oportunidades de sincronización, hallazgos y riesgos.
+
+**Archivo creado:** `DESARROLLO/MAPA_DE_DATOS_Y_ESTADO.md`.
+
+**Hallazgos críticos:** (1) ficha normativa del Geolocalizador no se persiste → Cabida la re-pide a mano (mayor ROI de sync); (2) `participantes` se guarda con `useToolData` pero FormulariosDOM lo lee por `localStorage` → riesgo de prellenado vacío en Premium; (3) `tipoProyecto` duplicado Master vs `DatosExtra`; (4) `volumen` persiste bespoke fuera de `useToolData` (verificar cobertura en `firestore.rules`). **Pendiente sugerido:** mover estos puntos al Tintero.
+
+**Contexto:** al invitar a Premium a un correo aún no registrado, el usuario quedaba **Free** tras crear su cuenta, pese a la invitación. El mensaje del panel ("pendiente de primer login") sugería que no se aplicaba.
+
+**Causa raíz:** en el registro, `AuthModal.handleSubmit` hacía un `setDoc` **incondicional** de `users/{uid}` con `plan:'Free', compPremium:false`. Ese write (a) pisaba el Premium que `AuthProvider.resolveUser` asigna desde `premiumInvitations`, y/o (b) creaba el doc primero, haciendo que `resolveUser` **omitiera** el chequeo de invitación (solo lo hace cuando el doc NO existe). Resultado: invitado-nuevo → Free.
+
+**Solución (edición quirúrgica):**
+- `AuthProvider.tsx` (`resolveUser`): el auto-aprovisionamiento ahora incluye `nombre` y queda como **único escritor** del doc en primer login (Free por defecto; Premium si hay invitación pendiente, marcándola `pendiente:false`).
+- `AuthModal.tsx`: eliminado el `setDoc` redundante en registro y sus imports (`doc/setDoc/serverTimestamp/db`). El provisioning lo hace `resolveUser`.
+- `AdminDashboard.tsx`: mensaje del panel reescrito → "Premium reservado para X: quedará activo automáticamente al registrarse con este correo." (más fiel al comportamiento real).
+
+**Comportamiento resultante:** admin invita → usuario existente queda Premium al instante; usuario nuevo queda Premium automáticamente al registrarse con ese correo. Quien se registra/loguea sin invitación queda Free hasta que el admin lo cambie.
+
+**Archivos tocados:** `src/core/auth/AuthProvider.tsx`, `src/views/AuthModal.tsx`, `src/views/AdminDashboard.tsx`. `tsc -b` OK. **Pendiente:** desplegar frontend (push a `main` → Cloudflare). No requiere deploy de Functions.
+
+---
+
 ## 2026-06-26 23:30 (Chile) — Flujo invitación Premium + usuarios Free en panel admin
 
 **Contexto:** cuando el admin enviaba un correo de invitación Premium, el usuario no aparecía en el panel hasta hacer login. Los usuarios Free tampoco aparecían. Se implementó el flujo completo.
