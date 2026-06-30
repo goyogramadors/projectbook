@@ -13,6 +13,7 @@ import { useCallback, useEffect, useRef, useState } from 'react';
 import { motion } from 'framer-motion';
 import * as Icons from 'lucide-react';
 import { useProjects } from '../core/db/ProjectProvider';
+import { auth } from '../core/firebase';
 import { useToast } from '../core/ui/ToastProvider';
 import { getRegionesSorted, getComunasPorRegionSorted, getRegionDeComuna } from '../core/data-chile';
 import type { ToolProps, ProjectMaster } from '../core/types';
@@ -43,6 +44,10 @@ const MAP_STYLE_BW: MapsAny = [
   { featureType: 'road', elementType: 'labels.text.fill', stylers: [{ color: '#2b2b2b' }] },
   { featureType: 'road', elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
 ];
+
+/** Cursor de lápiz sobre el mapa: indica al usuario que puede dibujar el polígono. */
+const PENCIL_CURSOR =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M3 21l3.5-1L20 6.5 17.5 4 4 17.5 3 21z' fill='%23111111' stroke='%23ffffff' stroke-width='1.3'/></svg>\") 2 22, crosshair";
 
 /** Separa "Armando Carrera 5148" → { calle: "Armando Carrera", numero: "5148" }. */
 function splitDireccion(d: string): { calle: string; numero: string } {
@@ -76,6 +81,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
   const geocoderRef = useRef<MapsAny>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
+  const [satelite, setSatelite] = useState(false);
 
   /* ── Web Worker (cálculo de área) ── */
   const workerRef = useRef<Worker | null>(null);
@@ -105,11 +111,10 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     setCalle(c); setNumero(n);
     setRol(project.rol || '');
     setSupLegal(project.superficieTerrenoLegal || '');
-    const raw = localStorage.getItem(STORAGE_KEY(project.id));
-    if (raw) {
-      try { setRegion((JSON.parse(raw) as { region?: string }).region ?? ''); }
-      catch { /* datos corruptos — ignorar */ }
-    } else setRegion('');
+    let localRegion = '';
+    try { const raw = localStorage.getItem(STORAGE_KEY(project.id)); if (raw) localRegion = (JSON.parse(raw) as { region?: string }).region ?? ''; }
+    catch { /* datos corruptos — ignorar */ }
+    setRegion(project.region || localRegion || '');
     // Terreno guardado (clave compartida): local para pintar al instante + nube (Premium).
     const fallbackArea = project.superficieCalculada ? Number(project.superficieCalculada) : null;
     const localT = readTerrenoLocal(project.id);
@@ -148,6 +153,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
         const map: MapsAny = new mapsLib.Map(mapDivRef.current, {
           center: DEFAULT_CENTER, zoom: 17, mapTypeId: 'roadmap', styles: MAP_STYLE_BW,
           disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy',
+          draggableCursor: PENCIL_CURSOR, draggingCursor: 'grabbing',
         });
         mapRef.current = map;
         geocoderRef.current = new geoLib.Geocoder();
@@ -218,30 +224,38 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     e.preventDefault();
     if (readOnly) return;
     setSaving(true);
+    const direccion = [calle.trim(), numero.trim()].filter(Boolean).join(' ');
+    const area = areaM2 ?? (areaManual ? Number(areaManual) : null);
+    const regionFinal = region || getRegionDeComuna(comuna) || '';
+    const updated: ProjectMaster = {
+      ...project,
+      comuna, direccion, rol,
+      region: regionFinal,
+      ciudad: comuna || project.ciudad || '',
+      superficieTerrenoLegal: supLegal,
+      superficieCalculada: area != null && !Number.isNaN(area) ? String(area) : project.superficieCalculada,
+    };
     try {
-      localStorage.setItem(STORAGE_KEY(project.id), JSON.stringify({ region }));
-      const direccion = [calle.trim(), numero.trim()].filter(Boolean).join(' ');
-      const area = areaM2 ?? (areaManual ? Number(areaManual) : null);
-      const regionFinal = region || getRegionDeComuna(comuna);
-      const updated: ProjectMaster = {
-        ...project,
-        comuna, direccion, rol,
-        region: regionFinal,
-        ciudad: comuna, // ciudad/localidad: por defecto la comuna (no manual)
-        superficieTerrenoLegal: supLegal,
-        superficieCalculada: area != null && !Number.isNaN(area) ? String(area) : project.superficieCalculada,
-      };
+      try { localStorage.setItem(STORAGE_KEY(project.id), JSON.stringify({ region: regionFinal })); } catch { /* storage lleno */ }
       if (area != null && !Number.isNaN(area)) {
         saveTerreno(project.id, { ring: ringRef.current, areaM2: area }, repo.kind === 'cloud');
       }
       await repo.save(updated);
-      await reload();
-      triggerToast('Ubicación y terreno guardados correctamente.');
-    } catch {
-      triggerToast('Error al guardar la ubicación.');
-    } finally {
+    } catch (err) {
+      // Diagnóstico: el código de Firebase (p. ej. permission-denied) revela la causa real.
+      const code = (err as { code?: string })?.code;
+      console.error('[Ubicacion] Error al guardar:', err, {
+        code, authUid: auth.currentUser?.uid ?? null, ownerId: project.ownerId ?? null,
+        coincideOwner: (auth.currentUser?.uid ?? null) === (project.ownerId ?? null), repoKind: repo.kind,
+      });
+      triggerToast(`Error al guardar la ubicación${code ? ` (${code})` : ''}.`);
       setSaving(false);
+      return;
     }
+    // Guardado OK. El refresco de la lista es secundario: si falla, NO es error de guardado.
+    try { await reload(); } catch { /* se recarga al reabrir */ }
+    triggerToast('Ubicación y terreno guardados correctamente.');
+    setSaving(false);
   };
 
   return (
@@ -283,6 +297,13 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 12, alignItems: 'stretch', marginTop: 16 }}>
             <div style={{ flex: '3 1 560px', minWidth: 320, minHeight: 360, position: 'relative', border: '2px solid var(--border)', borderRadius: 'var(--radius)', overflow: 'hidden' }}>
               <div ref={mapDivRef} style={{ width: '100%', height: '100%', minHeight: 360, display: mapsError ? 'none' : 'block' }} />
+              {!mapsError && mapReady && (
+                <button type="button" onClick={() => { const m = mapRef.current; if (!m) return; const next = !satelite; m.setMapTypeId(next ? 'hybrid' : 'roadmap'); setSatelite(next); }}
+                  className="technical-btn" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, fontSize: 10, padding: '4px 8px' }}
+                  title="Cambia temporalmente a satélite para trazar con más precisión; vuelve al mapa de líneas con un clic.">
+                  {satelite ? 'Vista mapa' : 'Vista satélite'}
+                </button>
+              )}
               {mapsError && (
                 <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 8, padding: 24, textAlign: 'center', background: 'var(--muted)' }}>
                   <Icons.MapPinOff size={28} style={{ opacity: 0.5 }} />

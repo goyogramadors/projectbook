@@ -47,6 +47,10 @@ const MAP_STYLE_BW: MapsAny = [
   { featureType: 'road', elementType: 'labels.text.stroke', stylers: [{ color: '#ffffff' }] },
 ];
 
+/** Cursor de lápiz: indica al usuario que puede dibujar el polígono sobre el mapa. */
+const PENCIL_CURSOR =
+  "url(\"data:image/svg+xml;utf8,<svg xmlns='http://www.w3.org/2000/svg' width='24' height='24'><path d='M3 21l3.5-1L20 6.5 17.5 4 4 17.5 3 21z' fill='%23111111' stroke='%23ffffff' stroke-width='1.3'/></svg>\") 2 22, crosshair";
+
 const pick = (n: NormativaPRC | null, keys: string[]): string => {
   if (!n) return 'N/A';
   for (const k of keys) {
@@ -127,6 +131,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
   const ringRef = useRef<Array<[number, number]>>([]);
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
+  const [satelite, setSatelite] = useState(false);
 
   const setPoint = useCallback((la: number, ln: number, pan = false) => {
     setLat(la.toFixed(6)); setLng(ln.toFixed(6));
@@ -157,6 +162,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         const map: MapsAny = new mapsLib.Map(mapDivRef.current, {
           center: DEFAULT_CENTER, zoom: 16, mapTypeId: 'roadmap', styles: MAP_STYLE_BW,
           disableDefaultUI: true, zoomControl: true, gestureHandling: 'greedy',
+          draggableCursor: PENCIL_CURSOR, draggingCursor: 'grabbing',
         });
         const marker: MapsAny = new markerLib.Marker({ position: DEFAULT_CENTER, map, draggable: !readOnly });
         marker.addListener('dragend', (e: MapsAny) => { if (e.latLng) setPoint(e.latLng.lat(), e.latLng.lng()); });
@@ -352,6 +358,13 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
           <div className="module-header">| VISOR CARTOGRÁFICO (dibuja el polígono del predio)</div>
           <div className="panel-content" style={{ padding: 0, position: 'relative', flexGrow: 1, minHeight: 340 }}>
             <div ref={mapDivRef} style={{ width: '100%', height: '100%', minHeight: 340, display: mapsError ? 'none' : 'block' }} />
+            {!mapsError && (
+              <button type="button" onClick={() => { const m = mapRef.current; if (!m) return; const next = !satelite; m.setMapTypeId(next ? 'hybrid' : 'roadmap'); setSatelite(next); }}
+                className="technical-btn" style={{ position: 'absolute', top: 8, right: 8, zIndex: 2, fontSize: 10, padding: '4px 8px' }}
+                title="Cambia temporalmente a satélite para trazar con más precisión; vuelve al mapa de líneas con un clic.">
+                {satelite ? 'Vista mapa' : 'Vista satélite'}
+              </button>
+            )}
             {mapsError && (
               <div style={{ position: 'absolute', inset: 0, display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 10, padding: 30, textAlign: 'center', background: 'var(--muted)' }}>
                 <Icons.MapPinOff size={32} style={{ opacity: 0.5 }} />

@@ -10,6 +10,22 @@
 
 ---
 
+## 2026-06-30 (Chile) — Ubicación: guardado robusto + vista satélite + cursor lápiz
+
+**1. Guardado de Ubicación (no persistía / mostraba error):**
+- `handleSave` reescrito: el `reload()` se **desacopla** del éxito del guardado (antes, si fallaba el refresco de la lista, mostraba "Error al guardar" pese a haber guardado). Ahora solo el `repo.save` cuenta como guardado.
+- Log de diagnóstico con el **código real de Firebase** (`err.code`) + authUid/ownerId/repoKind, y el código se muestra en el toast. Si aparece `(permission-denied)` con cuenta Free → las reglas desplegadas son anteriores al modelo "nube para todos": correr **`1 - Actualizar Reglas Firestore.bat`**.
+- `region`/`ciudad` se fuerzan a `''` (nunca undefined) y la **región ahora se hidrata desde el master** (`project.region`), no solo desde localStorage → se ve al reabrir en la nube.
+- `direccion` (calle+número) sigue alimentando al Geolocalizador (geocode de `project.direccion`); confirmado el flujo.
+
+**2. Vista satélite temporal:** botón flotante "Vista satélite/mapa" sobre el mapa en **Ubicación y Geolocalizador**: alterna `mapTypeId` roadmap(BW)↔hybrid para trazar con precisión y volver. El mapa de líneas BW sigue siendo el de por defecto.
+
+**3. Cursor de lápiz:** `draggableCursor` con un SVG de lápiz (fallback `crosshair`) en ambos mapas, para indicar que se puede dibujar.
+
+**Archivos:** `UbicacionView.tsx`, `GeolocalizadorView.tsx`. **Build:** `tsc -b` OK.
+
+---
+
 ## 2026-06-30 (Chile) — Branding, propietario por defecto y scripts .bat de publicación
 
 - **Título de pestaña**: `index.html` `Project_Book` → **`Archiblocks | Gestión Documental`**.
