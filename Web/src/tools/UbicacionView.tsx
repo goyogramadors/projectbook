@@ -79,7 +79,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapsAny>(null);
   const polygonRef = useRef<MapsAny>(null);
-  const appendingRef = useRef(false); // distingue append (dibujo) de midpoint (subdivisión)
+  const vertexMarkersRef = useRef<MapsAny[]>([]); // marcadores de vértice (edición sin midpoints)
   const geocoderRef = useRef<MapsAny>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
@@ -162,16 +162,11 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
         geocoderRef.current = new geoLib.Geocoder();
 
         const polygon: MapsAny = new mapsLib.Polygon({
-          map, editable: !readOnly,
+          map, editable: false, clickable: false, // sin handles nativos → SIN midpoints ni subdivisión
           fillColor: '#111111', fillOpacity: 0.14, strokeColor: '#111111', strokeWeight: 2,
         });
         polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
-        if (!readOnly) map.addListener('click', (e: MapsAny) => {
-          if (!e.latLng) return;
-          appendingRef.current = true;      // inserción intencional al final (dibujo)
-          polygon.getPath().push(e.latLng);
-        });
 
         const recomputeArea = async () => {
           const path: MapsAny = polygon.getPath();
@@ -187,16 +182,41 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
             if (project) saveTerreno(project.id, { ring, areaM2: r.areaM2 }, repo.kind === 'cloud');
           }
         };
-        const pPath: MapsAny = polygon.getPath();
-        // Sin SUBDIVISIONES: el polígono editable inserta un vértice al arrastrar un
-        // "midpoint". Solo permitimos agregar puntos al DIBUJAR (append); cualquier otra
-        // inserción (midpoint) se deshace, conservando el trazo con los menos puntos posibles.
-        gmaps.maps.event.addListener(pPath, 'insert_at', (index: number) => {
-          if (appendingRef.current) { appendingRef.current = false; void recomputeArea(); }
-          else { pPath.removeAt(index); }
+
+        // Vértices = marcadores propios ARRASTRABLES (no los "midpoints" de Google, que
+        // subdividían el lado). Mover un marcador reposiciona el vértice; clic en el mapa
+        // agrega un punto al final; clic derecho sobre un vértice lo elimina (mínimo 3).
+        const buildVertexMarkers = () => {
+          vertexMarkersRef.current.forEach((m) => m.setMap(null));
+          vertexMarkersRef.current = [];
+          if (readOnly) return;
+          const vpath: MapsAny = polygon.getPath();
+          const vn: number = vpath.getLength();
+          for (let i = 0; i < vn; i++) {
+            const idx = i;
+            const mk: MapsAny = new gmaps.maps.Marker({
+              position: vpath.getAt(i), map, draggable: true, crossOnDrag: false, zIndex: 50,
+              icon: { path: gmaps.maps.SymbolPath.CIRCLE, scale: 5.5, fillColor: '#ffffff', fillOpacity: 1, strokeColor: '#111111', strokeWeight: 2 },
+              title: 'Arrastra para mover · clic derecho para eliminar',
+            });
+            mk.addListener('drag', () => polygon.getPath().setAt(idx, mk.getPosition()));
+            mk.addListener('dragend', () => { polygon.getPath().setAt(idx, mk.getPosition()); void recomputeArea(); });
+            mk.addListener('rightclick', () => {
+              if (polygon.getPath().getLength() <= 3) return;
+              polygon.getPath().removeAt(idx);
+              buildVertexMarkers();
+              void recomputeArea();
+            });
+            vertexMarkersRef.current.push(mk);
+          }
+        };
+
+        if (!readOnly) map.addListener('click', (e: MapsAny) => {
+          if (!e.latLng) return;
+          polygon.getPath().push(e.latLng); // agrega un punto SOLO al dibujar
+          buildVertexMarkers();
+          void recomputeArea();
         });
-        gmaps.maps.event.addListener(pPath, 'set_at', recomputeArea);
-        gmaps.maps.event.addListener(pPath, 'remove_at', recomputeArea);
 
         // Redibuja el polígono guardado (clave compartida) y lo encuadra.
         const saved = ringRef.current;
@@ -206,6 +226,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           saved.forEach(([ln, la]) => bounds.extend({ lat: la, lng: ln }));
           map.fitBounds(bounds);
         }
+        buildVertexMarkers();
         setMapReady(true);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -226,6 +247,8 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
   const limpiar = () => {
     if (readOnly) return;
     polygonRef.current?.getPath()?.clear();
+    vertexMarkersRef.current.forEach((m) => m.setMap(null));
+    vertexMarkersRef.current = [];
     ringRef.current = [];
     setAreaM2(null);
     setAreaManual('');

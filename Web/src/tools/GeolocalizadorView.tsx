@@ -129,7 +129,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
   const geocoderRef = useRef<MapsAny>(null);
   const polygonRef = useRef<MapsAny>(null);
   const ringRef = useRef<Array<[number, number]>>([]);
-  const appendingRef = useRef(false); // distingue append (dibujo) de midpoint (subdivisión)
+  const vertexMarkersRef = useRef<MapsAny[]>([]); // marcadores de vértice (edición sin midpoints)
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
   const [satelite, setSatelite] = useState(false);
@@ -168,24 +168,16 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         const marker: MapsAny = new markerLib.Marker({ position: DEFAULT_CENTER, map, draggable: !readOnly });
         marker.addListener('dragend', (e: MapsAny) => { if (e.latLng) setPoint(e.latLng.lat(), e.latLng.lng()); });
 
-        // DrawingManager fue ELIMINADO de la Maps JS API (v3.65). Se reemplaza por un
-        // Polygon editable estandar: cada click fija el punto de analisis Y agrega un
-        // vertice (push al getPath()); arrastrar vertices lo edita. El area se recalcula
-        // en el Web Worker (Turf) ante cualquier cambio del trazo.
+        // Sin DrawingManager (removido en Maps v3.65) y SIN polígono editable (sus
+        // "midpoints" subdividían el lado). El polígono es no-editable/no-clickable y los
+        // vértices se editan con marcadores propios (ver buildVertexMarkers). Clic en el
+        // mapa fija el punto de análisis y agrega un vértice; el área se recalcula en el Worker.
         const polygon: MapsAny = new mapsLib.Polygon({
-          map,
-          editable: !readOnly,
+          map, editable: false, clickable: false,
           fillColor: '#111111', fillOpacity: 0.14, strokeColor: '#111111', strokeWeight: 2,
         });
         polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
-
-        map.addListener('click', (e: MapsAny) => {
-          if (readOnly || !e.latLng) return;
-          setPoint(e.latLng.lat(), e.latLng.lng()); // mantiene el punto de analisis
-          appendingRef.current = true;               // inserción intencional (append)
-          polygon.getPath().push(e.latLng);          // y construye el poligono del terreno
-        });
 
         const recomputeArea = async () => {
           const path: MapsAny = polygon.getPath();
@@ -202,14 +194,42 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
             if (projectId) saveTerreno(projectId, { ring, areaM2: r.areaM2 }, repo.kind === 'cloud');
           }
         };
-        const pPath: MapsAny = polygon.getPath();
-        // Sin subdivisiones por midpoint: solo se agregan puntos al dibujar (append).
-        gmaps.maps.event.addListener(pPath, 'insert_at', (index: number) => {
-          if (appendingRef.current) { appendingRef.current = false; void recomputeArea(); }
-          else { pPath.removeAt(index); }
+
+        // Vértices = marcadores propios ARRASTRABLES (no los "midpoints" de Google, que
+        // subdividían el lado). Mover un marcador reposiciona el vértice; clic en el mapa
+        // agrega un punto al final; clic derecho sobre un vértice lo elimina (mínimo 3).
+        const buildVertexMarkers = () => {
+          vertexMarkersRef.current.forEach((m) => m.setMap(null));
+          vertexMarkersRef.current = [];
+          if (readOnly) return;
+          const vpath: MapsAny = polygon.getPath();
+          const vn: number = vpath.getLength();
+          for (let i = 0; i < vn; i++) {
+            const idx = i;
+            const mk: MapsAny = new gmaps.maps.Marker({
+              position: vpath.getAt(i), map, draggable: true, crossOnDrag: false, zIndex: 50,
+              icon: { path: gmaps.maps.SymbolPath.CIRCLE, scale: 5.5, fillColor: '#ffffff', fillOpacity: 1, strokeColor: '#111111', strokeWeight: 2 },
+              title: 'Arrastra para mover · clic derecho para eliminar',
+            });
+            mk.addListener('drag', () => polygon.getPath().setAt(idx, mk.getPosition()));
+            mk.addListener('dragend', () => { polygon.getPath().setAt(idx, mk.getPosition()); void recomputeArea(); });
+            mk.addListener('rightclick', () => {
+              if (polygon.getPath().getLength() <= 3) return;
+              polygon.getPath().removeAt(idx);
+              buildVertexMarkers();
+              void recomputeArea();
+            });
+            vertexMarkersRef.current.push(mk);
+          }
+        };
+
+        map.addListener('click', (e: MapsAny) => {
+          if (readOnly || !e.latLng) return;
+          setPoint(e.latLng.lat(), e.latLng.lng()); // mantiene el punto de análisis
+          polygon.getPath().push(e.latLng);          // agrega un punto SOLO al dibujar
+          buildVertexMarkers();
+          void recomputeArea();
         });
-        gmaps.maps.event.addListener(pPath, 'set_at', recomputeArea);
-        gmaps.maps.event.addListener(pPath, 'remove_at', recomputeArea);
 
         mapRef.current = map; markerRef.current = marker; geocoderRef.current = new geoLib.Geocoder();
 
@@ -230,6 +250,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
             if (ra.ok) setAreaTerreno(ra.areaM2);
           }
         } catch { /* terreno corrupto — ignorar */ }
+        buildVertexMarkers(); // vértices editables del polígono (compartido)
 
         // Centrado inicial por comuna/dirección (solo si NO había polígono guardado).
         const q0 = [direccion, comuna].filter(Boolean).join(', ');
@@ -299,6 +320,8 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
   };
   const limpiar = () => {
     polygonRef.current?.getPath()?.clear();
+    vertexMarkersRef.current.forEach((m) => m.setMap(null));
+    vertexMarkersRef.current = [];
     ringRef.current = [];
     setEstado('idle'); setError(null); setFicha(null); setZona(null); setAreaTerreno(null);
     // Persiste el borrado (local + nube) en la clave compartida con Ubicación.

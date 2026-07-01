@@ -32,6 +32,16 @@
 
 ---
 
+## 2026-07-01 (Chile) — Trazado del terreno: vértices con marcadores propios (elimina la subdivisión de midpoints)
+
+El `appendingRef` + `removeAt` en `insert_at` NO bastaba: arrastrar un "midpoint" es un gesto interno del polígono editable de Google que reinserta el vértice igual. **Solución robusta:** el polígono pasa a **`editable:false, clickable:false`** (sin handles nativos → sin midpoints) y los vértices se editan con **marcadores propios** (`google.maps.Marker` draggable) en Ubicación y Geolocalizador (`vertexMarkersRef` + `buildVertexMarkers`).
+- Mover: arrastrar un marcador reposiciona el vértice (`setAt` en vivo; recalcula al soltar).
+- Dibujar: clic en el mapa agrega un punto al final (`push` + rebuild markers).
+- Eliminar: clic derecho sobre un vértice lo borra (mínimo 3). Ayuda a mantener los menos trazos posibles.
+- `limpiar` ahora también borra los marcadores. `clickable:false` deja pasar los clics al mapa para agregar puntos aun sobre el relleno.
+Ya no hay subdivisiones. **Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat` (solo frontend).
+---
+
 ## 2026-07-01 (Chile) — Trazado sin subdivisión + guardián de chunks + base de deslindes (Fase 1 en curso)
 
 **Crash del Geolocalizador** ("Failed to fetch dynamically imported module …"): NO es bug de código (el build de Vite transforma los 2.460 módulos OK; solo falla el borrado de `dist` por el sandbox `EPERM`). Es una **pestaña con la versión vieja** tras un deploy (chunk con hash antiguo ya no existe). Se resuelve con Ctrl+Shift+R.
