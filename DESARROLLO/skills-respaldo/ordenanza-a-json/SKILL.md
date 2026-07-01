@@ -40,6 +40,37 @@ El emparejamiento app usa un matcher que tolera el prefijo `Z` inicial (GeoJSON 
 
 ---
 
+## Campo `zona_uso_suelo_codigo` — código PROPIO de cada comuna (CORRECCIÓN jul-2026)
+
+**No reutilizar la taxonomía de Providencia** (`UpR_y_E`, `UpEC`, `ZUSP_R`, `UpAP_e_Ir`, etc.) para otras comunas. Eran códigos del PRCP de Providencia y varios remiten al PRMS. `zona_uso_suelo_codigo` ahora es `string` libre y debe llevar el código de uso **propio de la comuna**. Poblarlo en este orden de prioridad:
+
+1. **Desde el GeoJSON** cuando trae la capa de uso fusionada en el código de zona o en un campo aparte:
+   - Fusionado con `/`: Las Condes `UC1/EAb2` → uso `UC1`; La Florida `R-1/AV3` → `R-1`. (El texto tras `/` es la condición de edificación.)
+   - Campo aparte: Providencia trae `upref` (`Area Verde`, `Equipamiento`, `Mixto`, …).
+2. **Derivado de la tipología** cuando el PRC NO separa capa de uso (zona unitaria: El Tabo `Z1`, La Reina `A-1`). Usar vocabulario OGUC (Art. 2.1.24):
+   - `R` Residencial · `RE` Residencial con Equipamiento · `E` Equipamiento (dominante) · `AP` Actividades Productivas/Industrial · `AV` Área Verde/Espacio Público/Protección · `REST` Restricción/Riesgo · `EQM` Equipamiento Metropolitano/Intercomunal. Combinar con `+` cuando aplique.
+   - Dejar constancia en `zona_uso_suelo_nombre` de que es un **uso DERIVADO** (el PRC no define capa de uso separada).
+
+## Cruce OBLIGATORIO contra el GeoJSON (cobertura y fichas estimadas)
+
+La lista autoritativa de zonas es la propiedad `ZONA` del GeoJSON de la comuna en `Web/public/geo-data/` (clave tolerante: `ZONA`/`zona`/`COD_ZONA`). El match de la app normaliza el código (quita tildes, espacios y guiones, mayúsculas) y tolera el prefijo `Z`. Por lo tanto:
+
+- **Para cada código `ZONA` del GeoJSON que NO tenga ficha en la ordenanza**, crear una **ficha estimada** con los campos numéricos en `null` y el marcador literal **`*Información estimada, requiere validación`** al inicio de `notas_adicionales` (y en `zona_descripcion`). No inventar valores numéricos.
+- **Las zonas definidas en la ordenanza que NO estén (aún) en el GeoJSON, conservarlas** (a futuro pueden aparecer nuevos planos). No borrarlas.
+- Ojo con basura del GeoJSON: referencias al PRMS, saltos `\r\n`, o strings descriptivos largos como código — no generar fichas a partir de esos artefactos sin criterio.
+
+## Nombre de archivo y slug (para que la app lo encuentre)
+
+La app arma la ruta `\/norma-data\/{region}_{slug}.json` con:
+- `region` = código de 2 dígitos con cero a la izquierda (`05` Valparaíso, `13` Metropolitana).
+- `slug` = comuna en minúsculas **sin tildes ni separadores** (Ñuñoa→`nunoa`, El Tabo→`eltabo`, La Reina→`lareina`, Estación Central→`estacioncentral`).
+
+Ejemplos correctos: `05_eltabo.json`, `13_lareina.json`. (No usar `5_el_tabo.json`.)
+
+
+
+---
+
 ## Reglas de extracción y normalización
 
 ### 1. Document ID (`_id`)

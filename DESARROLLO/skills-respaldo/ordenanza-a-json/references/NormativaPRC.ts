@@ -31,20 +31,26 @@ export type TipoZonaEdificacion =
   | "ESPECIAL"; // Zonas especiales (ZE ex-CCU)
 
 /**
- * Zona de uso de suelo (plano L3/4 del PRCP).
- * Overlay independiente al de edificación (plano L2/4).
+ * Zona de uso de suelo: código PROPIO de cada comuna (string libre).
+ *
+ * CORRECCIÓN jul-2026: este campo dejó de ser un enum global. Antes reutilizaba la
+ * taxonomía específica de Providencia (UpR_y_E, UpEC, ZUSP_R...) para todas las
+ * comunas, lo que es incorrecto: cada comuna tiene sus propios códigos y los de
+ * Providencia además remiten al PRMS.
+ *
+ * Reglas para poblarlo (en orden de prioridad):
+ *   1. GeoJSON del PRC cuando trae la capa de uso fusionada en el código de zona
+ *      (Las Condes "UC1/EAb2" -> "UC1"; La Florida "R-1/AV3" -> "R-1") o en un
+ *      campo aparte (Providencia `upref`).
+ *   2. Si el PRC NO separa capa de uso (zona unitaria: El Tabo "Z1", La Reina
+ *      "A-1"), código DERIVADO de la tipología de usos de la propia ordenanza,
+ *      vocabulario OGUC (Art. 2.1.24):
+ *        R=Residencial · RE=Residencial+Equipamiento · E=Equipamiento ·
+ *        AP=Actividades Productivas · AV=Área Verde/Protección ·
+ *        REST=Restricción/Riesgo · EQM=Equipamiento Metropolitano/Intercomunal
+ *      (combinaciones con "+"). Indicar en `zona_uso_suelo_nombre` que es DERIVADO.
  */
-export type ZonaUsoSuelo =
-  | "UR"          // Zona de Uso Residencial (puro, sin mezcla)
-  | "UpR_y_Er"    // Preferentemente residencial y equipamiento restringido
-  | "UpR_y_E"     // Preferentemente residencial y equipamiento
-  | "UpR_y_ECr"   // Preferentemente residencial y equipamiento comercial restringido
-  | "UpR_y_E_CC"  // Subzona residencial de equipamiento culto y cultura
-  | "UpEC"        // Preferentemente equipamiento comercial
-  | "UpAP_e_Ir"   // Preferentemente actividades productivas e industria restringida
-  | "ZEMOI_ZIM"   // Equipamiento metropolitano o intercomunal / Zona de interés metropolitano
-  | "ZUSP_R"      // Uso de suelo patrimonial residencial
-  | "ZE";         // Zona Especial (ex-CCU)
+export type ZonaUsoSuelo = string;
 
 /**
  * Indica si el COS aplica igual a todos los pisos o
@@ -136,7 +142,8 @@ export interface NormativaPRC {
 
   // ── Zona de uso de suelo asociada (plano L3/4, overlay independiente) ───────
 
-  /** Código de la zona de uso de suelo predominante en esta zona de edificación */
+  /** Código de uso de suelo PROPIO de la comuna (ver type ZonaUsoSuelo).
+   *  NO usar la taxonomía de Providencia para otras comunas. */
   zona_uso_suelo_codigo: ZonaUsoSuelo;
 
   /** Nombre completo de la zona de uso de suelo */

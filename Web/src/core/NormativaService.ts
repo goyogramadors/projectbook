@@ -85,11 +85,30 @@ export async function loadComunaNormativas(comuna: string, region: string = regi
  * Busca la ficha normativa local por código de zona (match en `zona_codigo`).
  * Devuelve null si la comuna no tiene archivo o la zona no está en él.
  */
+/** Candidatos de código a partir del código crudo del GeoJSON: el código completo
+ *  y cada segmento separado por "/". Sirve para GeoJSON con el código de uso y el
+ *  de edificación FUSIONADOS (ej. Las Condes "UC1/EAb2" -> ["UC1EAB2","UC1","EAB2"];
+ *  Providencia "UR/EA12" -> ["UREA12","UR","EA12"]). Para códigos sin "/" devuelve
+ *  solo el código completo, por lo que no altera el emparejamiento de las comunas
+ *  con código unitario. */
+function zonaTargets(codigoZonaCrudo: string): string[] {
+  const raw = String(codigoZonaCrudo ?? '');
+  const out: string[] = [];
+  for (const parte of [raw, ...raw.split('/')]) {
+    const n = normZona(parte);
+    if (n && !out.includes(n)) out.push(n);
+  }
+  return out;
+}
+
 export async function getNormativa(comuna: string, codigoZonaCrudo: string): Promise<NormativaPRC | null> {
   const list = await loadComunaNormativas(comuna);
   if (!list.length) return null;
-  const target = normZona(codigoZonaCrudo);
-  const hit = list.find((f) => matchZona(normZona((f as Record<string, unknown>).zona_codigo), target));
+  const targets = zonaTargets(codigoZonaCrudo);
+  const hit = list.find((f) => {
+    const fz = normZona((f as Record<string, unknown>).zona_codigo);
+    return targets.some((t) => matchZona(fz, t));
+  });
   return hit ?? null;
 }
 
