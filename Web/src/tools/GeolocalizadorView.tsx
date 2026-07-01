@@ -18,7 +18,7 @@ import { useDimensionadorSync } from '../hooks/useDimensionadorSync';
 import { loadComunaGeoJSON } from '../core/GeoJsonService';
 import { getNormativaDesdeFeature } from '../core/NormativaService';
 import type { ToolProps, NormativaPRC, ProjectMaster } from '../core/types';
-import { clearTerreno, loadTerreno, saveTerreno } from './terrenoStore';
+import { clearTerreno, loadTerreno, saveTerreno, type DeslindeMeta } from './terrenoStore';
 import { saveNormativa, fichaToNormativa } from './normativaStore';
 
 const DEFAULT_CENTER = { lat: -33.4569, lng: -70.6483 }; // Ñuñoa (capa de muestra)
@@ -130,6 +130,9 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
   const polygonRef = useRef<MapsAny>(null);
   const ringRef = useRef<Array<[number, number]>>([]);
   const vertexMarkersRef = useRef<MapsAny[]>([]); // marcadores de vértice (edición sin midpoints)
+  const edgePolylinesRef = useRef<MapsAny[]>([]); // deslindes coloreados (vía / no vía)
+  const edgeLabelsRef = useRef<MapsAny[]>([]);    // marcador con el número de cada deslinde
+  const edgesRef = useRef<DeslindeMeta[]>([]);    // clasificación por deslinde (se define en Ubicación)
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
   const [satelite, setSatelite] = useState(false);
@@ -174,7 +177,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         // mapa fija el punto de análisis y agrega un vértice; el área se recalcula en el Worker.
         const polygon: MapsAny = new mapsLib.Polygon({
           map, editable: false, clickable: false,
-          fillColor: '#111111', fillOpacity: 0.14, strokeColor: '#111111', strokeWeight: 2,
+          fillColor: '#111111', fillOpacity: 0.12, strokeColor: '#111111', strokeOpacity: 0.18, strokeWeight: 1,
         });
         polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
@@ -191,7 +194,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
             setAreaTerreno(r.areaM2);
             notify(`Polígono: ${r.areaM2.toLocaleString('es-CL')} m².`);
             // Persiste en la clave compartida; Ubicación lo redibuja al abrir.
-            if (projectId) saveTerreno(projectId, { ring, areaM2: r.areaM2 }, repo.kind === 'cloud');
+            if (projectId) saveTerreno(projectId, { ring, areaM2: r.areaM2, edges: edgesRef.current }, repo.kind === 'cloud');
           }
         };
 
@@ -212,14 +215,45 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
               title: 'Arrastra para mover · clic derecho para eliminar',
             });
             mk.addListener('drag', () => polygon.getPath().setAt(idx, mk.getPosition()));
-            mk.addListener('dragend', () => { polygon.getPath().setAt(idx, mk.getPosition()); void recomputeArea(); });
+            mk.addListener('dragend', () => { polygon.getPath().setAt(idx, mk.getPosition()); buildEdges(); void recomputeArea(); });
             mk.addListener('rightclick', () => {
               if (polygon.getPath().getLength() <= 3) return;
               polygon.getPath().removeAt(idx);
               buildVertexMarkers();
+              buildEdges();
               void recomputeArea();
             });
             vertexMarkersRef.current.push(mk);
+          }
+        };
+
+        // Deslindes coloreados (VISUALIZACIÓN; se clasifican en Ubicación): burdeo grueso
+        // = enfrenta a vía; negro = deslinde. Lee edgesRef (persistido en el terreno).
+        const buildEdges = () => {
+          edgePolylinesRef.current.forEach((pl) => pl.setMap(null));
+          edgePolylinesRef.current = [];
+          edgeLabelsRef.current.forEach((mk) => mk.setMap(null));
+          edgeLabelsRef.current = [];
+          const path: MapsAny = polygon.getPath();
+          const en: number = path.getLength();
+          const ec = en >= 3 ? en : (en === 2 ? 1 : 0);
+          const prev = edgesRef.current;
+          edgesRef.current = Array.from({ length: ec }, (_, i) => prev[i] ?? { faceStreet: false });
+          for (let i = 0; i < ec; i++) {
+            const street = edgesRef.current[i]?.faceStreet ?? false;
+            const pl: MapsAny = new gmaps.maps.Polyline({
+              map, clickable: false, zIndex: 10,
+              path: [path.getAt(i), path.getAt((i + 1) % en)],
+              strokeColor: street ? '#7a1f2b' : '#111111', strokeWeight: street ? 6 : 2.5,
+            });
+            edgePolylinesRef.current.push(pl);
+            const va = path.getAt(i), vb = path.getAt((i + 1) % en);
+            edgeLabelsRef.current.push(new gmaps.maps.Marker({
+              position: new gmaps.maps.LatLng((va.lat() + vb.lat()) / 2, (va.lng() + vb.lng()) / 2),
+              map, clickable: false, zIndex: 30,
+              icon: { path: gmaps.maps.SymbolPath.CIRCLE, scale: 8, fillColor: street ? '#7a1f2b' : '#ffffff', fillOpacity: 0.95, strokeColor: '#111111', strokeWeight: 1 },
+              label: { text: String(i + 1), fontSize: '10px', fontWeight: '700', color: street ? '#ffffff' : '#111111' },
+            }));
           }
         };
 
@@ -228,6 +262,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
           setPoint(e.latLng.lat(), e.latLng.lng()); // mantiene el punto de análisis
           polygon.getPath().push(e.latLng);          // agrega un punto SOLO al dibujar
           buildVertexMarkers();
+          buildEdges();
           void recomputeArea();
         });
 
@@ -242,6 +277,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
           if (saved.length >= 3) {
             teniaPoligono = true;
             ringRef.current = saved;
+            edgesRef.current = savedT?.edges ?? [];
             polygon.setPath(saved.map(([ln, la]) => ({ lat: la, lng: ln })));
             const b = new gmaps.maps.LatLngBounds();
             saved.forEach(([ln, la]) => b.extend({ lat: la, lng: ln }));
@@ -251,6 +287,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
           }
         } catch { /* terreno corrupto — ignorar */ }
         buildVertexMarkers(); // vértices editables del polígono (compartido)
+        buildEdges();         // deslindes coloreados (vía / no vía) — visualización
 
         // Centrado inicial por comuna/dirección (solo si NO había polígono guardado).
         const q0 = [direccion, comuna].filter(Boolean).join(', ');
@@ -322,6 +359,11 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
     polygonRef.current?.getPath()?.clear();
     vertexMarkersRef.current.forEach((m) => m.setMap(null));
     vertexMarkersRef.current = [];
+    edgePolylinesRef.current.forEach((pl) => pl.setMap(null));
+    edgePolylinesRef.current = [];
+    edgeLabelsRef.current.forEach((mk) => mk.setMap(null));
+    edgeLabelsRef.current = [];
+    edgesRef.current = [];
     ringRef.current = [];
     setEstado('idle'); setError(null); setFicha(null); setZona(null); setAreaTerreno(null);
     // Persiste el borrado (local + nube) en la clave compartida con Ubicación.

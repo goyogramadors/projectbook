@@ -28,8 +28,154 @@
 **Decisiones cerradas (no reabrir):** `superficieTerrenoLegal` ≠ `superficieManual` (terreno vs obra, NO fusionar).
 **Pendiente de producto:** binds de RUT/dirección/email por profesional en los PDF DOM (rótulos ambiguos por rol; el dato ya está en `bindCtx`).
 
-**Convención de edición (§8):** editar archivos del repo SIEMPRE de forma atómica (Python `os.replace`); el montaje trunca ediciones directas.
+**Entorno + convención de edición (⟲ 2026-07-01):** ahora se trabaja en **Claude Code** (ya no Cowork). Editar directo con Edit/Write nativos y validar con `tsc -b`; *red de seguridad:* si un archivo grande apareciera truncado, verificar (`git show HEAD:<ruta>`) y caer a scratch + `cp`. La atomicidad vía Python `os.replace` era limitación de Cowork y quedó obsoleta (ver `Iniciar Aquí.md` §8 y `CLAUDE.md`).
 
+**🗂️ ORDENANZAS / norma-data (herencia — ver entrada 2026-07-01 "ORDENANZAS"):** entregable maestro `DESARROLLO/Clasificacion_Zonas_GeoJSON_v6.xlsx` (clasifica los 565 códigos de zona y su estado). **Regla nueva:** `zona_uso_suelo_codigo` es código PROPIO de cada comuna (del GeoJSON fusionado/`upref` o derivado OGUC R/RE/E/AP/AV/REST/EQM), NUNCA la taxonomía de Providencia. Matcher `NormativaService.ts` ahora parte por `/` (rescató Las Condes/Providencia; requiere deploy). **Con datos:** El Tabo, La Reina, Las Condes, Providencia (re-extraída), Peñalolén (re-extraída del consolidado "Zonas Juntas"; faltan K/R8/R9), La Florida, Puente Alto, Ñuñoa, Macul. **BLOQUEADAS por falta de la ordenanza que corresponde al GeoJSON:** Algarrobo (ord. 1984 vs GeoJSON nuevo), Lo Barnechea (solo Sector Valle; faltan códigos PA/QA/RA de otro sector), Estación Central (capa IP*), Santiago (macrozonas vs fichas). **Recoleta:** GeoJSON con nombres de sector (corregir plano). **Vitacura:** GeoJSON = capa de USO (mostrar solo usos). **Artefactos del GeoJSON:** Providencia IP/EC2+A5, Macul ZM-6/7, Ñuñoa CD.
+**✅ Cabida/envolvente (resuelto 2026-07-01 tarde — ver entrada):** `VolumenTeoricoView.tsx` compila (`tsc -b` OK). Rasante rehecha como **faldones diagonales** (muro vertical hasta 3,5 m + distancia·tanθ, luego chaflán a la cumbrera; ya NO aplana la altura ni impide otro piso). Esquina de 3 frentes corregida con **clamp de miter** en `insetPolygon`. Adosamiento **despeja el retiro del vecino** (no se dibuja si invadiría el distanciamiento/antejardín contiguo). Pendiente producto: la cifra "Volumen Teórico Bruto" sigue siendo prisma recto (no descuenta el faldón); afinar si se requiere el volumen neto.
+
+---
+
+## 2026-07-01 (Chile, tarde) — 🏗️ ESTUDIO DE CABIDA: rasante como faldón diagonal, esquina de 3 frentes y adosamiento sin invadir retiro vecino
+
+> Retomé el estudio de cabida (`VolumenTeoricoView.tsx`) tras el intento truncado. Tres correcciones sobre el visualizador isométrico en **modo polígono real** (terreno del Geolocalizador):
+
+**1) Esquina entre 3 frentes → figura rara (corregido).** `insetPolygon` cruzaba las rectas retiradas y en vértices casi rectos/reflejos el punto de *miter* se disparaba lejos, deformando la huella. Añadido **clamp de miter**: si el punto se aleja del vértice más de `max(off) · 3 + 0,5 m`, se recorta sobre la bisectriz. También fallback a `poly[i]` si no hay intersección.
+
+**2) Rasante mal interpretada → ahora es FALDÓN, no tope plano (corregido).** Antes la rasante **aplanaba** la altura (`min(…, maxAltRasante)`), impidiendo pisos. Ahora el cuerpo sube hasta `min(alturaMáx, altura por constructibilidad)` y la rasante **recorta en diagonal**: por cada deslinde, muro **vertical hasta `hWall = 3,5 m + d·tanθ`** (d = distancia del origen de rasante al muro: en vía = antejardín + ancho_vía/2; en vecino = distanciamiento) y por encima un **plano inclinado** que entra hacia la cumbrera (`topInset = insetPolygon(inset, (h−hWall)/tanθ)`, con clamp perpendicular al centroide para no invertir el techo). Render nuevo: caras `wall` + `faldon` ordenadas por profundidad (pintor). Eliminados los planos translúcidos flotantes (redundantes). `calcular()` ya no tiene tope por rasante; `alturaEfectiva = min(alturaMáx, altPorConst)`.
+
+**3) Adosamiento no puede solaparse con otro distanciamiento (corregido).** El bloque de adosamiento (muro ≤3,5 m, ≤40% del lado) ahora **despeja en cada esquina** la franja de retiro del deslinde vecino NO adosado (antejardín si es vía, distanciamiento si es vecino). Si tras el despeje no cabe, **no se dibuja**. Antes se centraba fijo 0,3–0,7 e invadía el distanciamiento contiguo (visible en lados cortos).
+
+**Archivo tocado:** `Web/src/tools/VolumenTeoricoView.tsx` (solo este). **Verificación:** `npx tsc -b` OK.
+**Pendiente menor:** el número "Volumen Teórico Bruto" sigue siendo prisma recto (área × altura), no descuenta el chaflán del faldón — afinar si se quiere volumen neto.
+
+---
+
+## 2026-07-01 (Chile) — 🗂️ ORDENANZAS / norma-data: campo de USO propio por comuna, matcher fusionado, re-extracciones (Providencia, Peñalolén, La Florida, El Tabo, La Reina) y **DIAGNÓSTICO DE PROVENANCE** (herencia clave)
+
+> **Herencia para instancias futuras.** Todo lo referente a ordenanzas de esta sesión, para no repetir análisis. El **entregable maestro** es `DESARROLLO/Clasificacion_Zonas_GeoJSON_v6.xlsx` (última versión; hay v1..v6, usar la mayor): clasifica los **565 códigos de zona** de los GeoJSON de las 15 comunas activas y su estado.
+
+### A) Corrección estructural del esquema y el matcher (aplicado)
+- **`references/NormativaPRC.ts` (skill) — `ZonaUsoSuelo` dejó de ser enum fijo → `string`.** El campo `zona_uso_suelo_codigo` **NO** debe reusar la taxonomía de **Providencia** (`UpR_y_E`, `UpEC`, `ZUSP_R`, `UpAP_e_Ir`…): eran códigos del PRCP y varios remiten al PRMS. Reglas para poblarlo (en orden): **(1)** del GeoJSON cuando trae uso fusionado en el código (`UC1/EAb2`→`UC1`; La Florida `R-1/AV3`) o en campo `upref` (Providencia); **(2)** si el PRC no separa capa de uso (zona unitaria: El Tabo `Z1`, La Reina `A-1`) un código **derivado** de la tipología OGUC Art.2.1.24: `R / RE / E / AP / AV / REST / EQM` (combinables con `+`), dejando constancia en `zona_uso_suelo_nombre` de que es DERIVADO. El campo hoy es **solo informativo** (la app NO lo usa para el match).
+- **`Web/src/core/NormativaService.ts` — matcher parte el código fusionado por `/`** (`zonaTargets`): empareja el código completo **y** cada segmento. Es el arreglo de **mayor palanca**: rescató **Las Condes** (0→~100% de códigos con ficha) y subió **Providencia** (1→48 matches) sin tocar datos. Seguro para códigos unitarios. ⚠️ **Requiere build/deploy del frontend.**
+- **Skill `ordenanza-a-json`:** actualizada la copia local (`DESARROLLO/skills-respaldo/ordenanza-a-json/`: SKILL.md + references) con las reglas de uso-propio, cruce con GeoJSON, fichas estimadas y nombre de archivo. **La caché del skill es de solo lectura** → sincronizar desde Settings ▸ Capabilities (el usuario ya la actualizó en el sistema).
+
+### B) Convención de datos (recordatorio, ya en Iniciar Aquí)
+- Archivo: `Web/public/norma-data/{región 2 díg}_{comunaSlug sin espacios ni guiones}.json` (ej. `13_lareina.json`, `05_eltabo.json`). El slug de la app = comuna sin tildes ni separadores. **Bug corregido:** `5_el_tabo.json` → **`05_eltabo.json`** (región 2 díg + slug `eltabo`).
+- El match es por `zona_codigo` contra la propiedad `ZONA` del GeoJSON (normaliza tildes/espacios/guiones, tolera prefijo `Z`, ahora parte por `/`).
+- **Fichas estimadas:** los códigos del GeoJSON sin correspondencia en la ordenanza se crean con numéricos en `null` y el marcador literal **`*Información estimada, requiere validación`** al inicio de `notas_adicionales`. Se conservan las zonas de la ordenanza aunque no estén (aún) en el GeoJSON.
+
+### C) Comunas TERMINADAS / con datos reales
+- **El Tabo** (`05_eltabo.json`, 22 zonas): PRC 2005 D.O. 25/04/2005 (Balnearios El Tabo y Las Cruces). Z1–Z8, ZI1/ZI2, ZE1–ZE5, ZR1–ZR4, ICH (+AV/Laguna el Peral estimadas). Uso derivado.
+- **La Reina** (`13_lareina.json`, 50 zonas): PRC Decreto 1.516/2010 **+ Enmienda Decreto 1.857/2015** (dejados los valores MODIFICADOS: A-1 altura 18→14,4 m/5 pisos; B COS 0,8→0,56 y 56→44,8 m; C-1 30→24 m/9 pisos). C-2: la enmienda nombra 24.4.2 pero solo publicó tabla vigente (30 m) → dato a verificar. `J-2` estimada.
+- **Las Condes** (`13_lascondes.json`): GeoJSON **fusionado** `UC1/EAb2`; el matcher lo resuelve. Uso desde el prefijo del GeoJSON.
+- **Providencia** (`13_providencia.json`, 36 zonas) — **re-extraída de su ordenanza** (`13. Ordenanza PRC Providencia.pdf`, refundida may-2025, texto): 33 reales + 3 estimadas. Agregadas **EA7/pa** (7 pisos/22 m, CC 1,6, +0,6 adosado) y **EA12/pa** (12 pisos/37 m, CC 1,7), **ZEMoI** y **ZIM** separadas (predial 2.500, CC 2, COS 0,4, 5 pisos/17,5 m, 440 hab/há, Art.5.6.03) y **13 zonas de área verde/parque/plaza** (PqM, PqI, PqI(p)7/8, PqCom, PqVi, Pqcc, PzCom, PzVec, Pzt, AV, AVC, EP). Corregida EA7 base (CC 1,5→1,6; COS 1º piso 0,3→0,2). **Artefactos del GeoJSON (no existen en la ordenanza): `EC2+A5`, `IP`, `CDA`** → quedan estimados.
+- **Peñalolén** (`13_penalolen.json`, ~34 con datos) — **re-extraída del consolidado que aportó el usuario** (`Zonas Juntas.pdf`, SECPLA; la ordenanza D.55/1989 que teníamos era una versión ANTERIOR y no servía). Extraídas con datos reales: **ZHM-1..5** (Habitacional Mixta; densidades 700/300/200/150/100 hab/há; vivienda colectiva COS 0,30, CC 2,5→1,5, alturas 52,5→14 m), **Z-E** (Equip. Intercomunal), **E1/E1a**, **E2** (COS 0,3/CC 0,6/2 pisos-7,5 m/70 hab/há), **EQ-1..5** (EQ-1 predial 1.000/COS 0,7/CC 3; EQ-2 predial 10.000/CC 0,25; EQ-4 ocup≤20%; EQ-5 áreas inestables Quebrada Macul, predial 3 há/COS 0,1/CC 0,1), **R2/R4/R5/R6/R7/R10/R11**, **PE** (equip. científico/educación/cultura/deporte). **Faltan `K`, `R 8`, `R 9`** (no vienen en el consolidado provisto). El otro PDF (anexo zonas 11-B/bC/bF PRMS) corresponde a "11 B Peñalolén Alto / 11 b Lo Hermida" (venían como refs PRMS en el GeoJSON) — sin incorporar aún.
+- **La Florida** (`13_laflorida.json`): 15 zonas MIXTA+estimada pasadas a **con datos** (Texto Refundido 2016): **ED-1..ED-11** (equip. deportivo, estadios nominados, COS 0,2/CC 0,6/predial existente), **ESP-3** (se rige por E-AM3: CC 2,08/COS 0,52/14,4 m), **PEDC-3** (protección ecológica, PRMS Tít.8.3), **PL** (plazas, Art.21), **R-1/AV3, R-2/AV4, R-3/AV5, R-5/AV6** (restricción quebradas/canales/pendiente, PRMS 8.2.1.1 / Tít.8). Otras estimadas de La Florida (AV*, U-VEV*, RI, ZRM-DT) son de otra clase (área verde/uso/restricción), fuera del encargo "mixta".
+- **Puente Alto, Ñuñoa, Macul**: alineadas; uso derivado. **Artefactos (no en ordenanza):** Macul `ZM-6`/`ZM-7` (la ordenanza tiene ZM-1..ZM-5), Ñuñoa `CD`. Ñuñoa `Z-US` = Uso del Subsuelo (BNUP, Ley 19.425), sin cuadro de edificación.
+
+### D) ⛔ Comunas BLOQUEADAS por PROVENANCE (herencia crítica) — necesitan que el usuario consiga la ordenanza que corresponde a la versión/sector del GeoJSON:
+- **Algarrobo** — ordenanza que tenemos = **Decreto 181/1984** (solo H1–H4, C1/C2, EL, ED, RC, PE, M). El GeoJSON es de un PRC **más nuevo** (ZH 5/6/7, ZBM, ZCU, ZD, ZET, ZPI, ZT, ZTDS, ZSH…). No extraíble sin la ordenanza vigente.
+- **Lo Barnechea** — la ordenanza cubre **solo el "Área Urbana Sector Valle"** (códigos `ZHE-*`, `ZHP-*`, `ZM-*`, `ZEE-*`, `ZERH`). El GeoJSON incluye **23 códigos de otro plan/sector** (`PA1, PB1, QA1, RA1, SA1, TB1, ZE1..3`) que NO están en ese instrumento. Falta la ordenanza del otro sector.
+- **Estación Central** — GeoJSON usa códigos `IPA..IPX` (otra capa/versión); las fichas (`M-*/L-*/R-*/E-*`) no calzan.
+- **Santiago** — GeoJSON de **macrozonas** (A, B, D, E, F, G, H + variantes) que no calza con las 61 fichas detalladas de la ordenanza.
+- **Recoleta** — el GeoJSON trae **nombres de sector** ("Barrio Bellavista", "Cementerios"…) en vez de códigos → **corregir el GeoJSON en origen**.
+- **Vitacura** — el GeoJSON es la **capa de USO** (`U-V`, `U PC`, `U Ee1`…). Por geolocalización solo se puede afirmar **usos**, no edificación (caso testigo del "despliegue honesto").
+
+### E) Concepto de DESPLIEGUE HONESTO (decisión de producto pendiente)
+La hoja "Zonas" de la planilla clasifica cada código como: **MIXTA (zona PRC completa)** / **MIXTA (uso/edif. fusionados)** / **USO de suelo** / **ÁREA VERDE** / **RESTRICCIÓN** / **NOMBRE DESCRIPTIVO** / **RUIDO**. Ningún GeoJSON es "solo edificación". La web debería mostrar honestamente: si la capa es de USO → solo usos permitidos/prohibidos; si la ficha es estimada → rotularla "estimada/por validar"; si es mixta con datos → usos + condiciones de edificación. **Pendiente:** reflejar esa lógica en el geolocalizador (a definir con el usuario).
+
+### F) Digitalización de GeoJSON desde PDF (evaluado, NO recomendado por defecto)
+Extraer GeoJSON de un plano PDF (ej. el L2/4 de Providencia que se subió) es **lograble pero es trabajo de SIG**: el PDF es **raster** (sin geometría vectorial), tiene grilla UTM y escala 1:5.000, pero las zonas se distinguen **por trama** (achurado), lo que rompe la segmentación por color. Georreferenciar (PSAD56→WGS84) + vectorizar semi-automático ≈ 0,5–2 días/comuna. **Recomendado primero:** re-descargar los vectores oficiales (IDE MINVU / ide.cl / geoportales) — de ahí salió el geo-data. Digitalizar solo cuando no exista el vector oficial.
+
+### G) Intento de la ENVOLVENTE de rasante (Cabida) — **REVERTIDO**
+El usuario pidió corregir el volumen teórico: (1) la esquina de 3 frentes crea una figura rara; (2) la rasante debe **cortar el volumen en diagonal** (dejar caras inclinadas) en vez de ser un **tope plano** — el `insetPolygon` genera espigas y `alturaEfectiva` aplica la rasante como escalar. Se intentó reescribir `Web/src/tools/VolumenTeoricoView.tsx` (muro vertical → cara inclinada → meseta = altura sin rasante; `insetPolygon` con miter acotado). **Hallazgo:** la copia de trabajo del archivo **ya estaba sin compilar antes** (le falta el cierre `</motion.div>`; abre en L285, en git HEAD sí cierra en L408). Para no dejar el build peor, **se revirtieron todos los cambios de la envolvente**; el archivo quedó como estaba (con ese error preexistente que NO introdujo esta sesión). **Pendiente:** (a) cerrar `</motion.div>` para que compile; (b) rehacer la envolvente con la interpretación correcta (rasante = plano que recorta faldones diagonales, no tope plano) — probablemente más robusto como malla de faldones + meseta por `insetPolygon` acotado, validado visualmente. Las imágenes que mostró el usuario podrían venir de un widget de otra sesión, no de este archivo.
+
+**Publicar (cuando corresponda):** `2 - Commit y Push (main).bat` sube el frontend (matcher `/`) + los datos `norma-data` (El Tabo, La Reina, Providencia, Peñalolén, La Florida, etc.) + la planilla en DESARROLLO. Sin deploy de reglas ni Functions.
+
+---
+
+## 2026-07-01 (Chile) — Cierre de sesión: estado y pendiente de publicación
+
+Sesión registrada por completo en las entradas anteriores de hoy. Resumen de lo trabajado:
+- **Usuarios/Invitación Premium:** resuelto (App Check desactivado en las 4 callables → causaba `Unauthenticated`); la cuenta se pre-crea y aparece en el panel. Reglas + Functions + frontend desplegados; `setUserState` (huérfana) eliminada.
+- **Cabida (T-10):** sync Terreno→Cabida, pisos c/3,5 m, forma REAL del polígono, clasificación de deslindes (vía) con clic+botón, deslindes coloreados en Geolocalizador, DIMENSIONES colapsable, distanciamiento/antejardín/ancho de vía POR deslinde, rasante por región (70/60) + tope de altura, retiro real (huella edificable, `insetPolygon`), calles unidas con eje paralelo, rotación con mouse, envolvente de rasante translúcida, bloque de adosamiento (3,5 m × 40%), números de deslinde (Cabida + Ubicación + Geolocalizador), fix del "espejo" del volumen.
+- **Trazado del terreno:** sin subdivisión (marcadores propios de vértice), borrar/reemplazar polígono.
+- **Utilidades:** `.bat` Terminal (Web / functions / raíz), `.bat` "Probar Local (npm run dev)", guardián de chunks (`vite:preloadError`).
+- **Docs:** `Iniciar Aquí.md` y `MAPA_DE_DATOS_Y_ESTADO.md` actualizados.
+
+**PENDIENTE (acción de Gregorio):** publicar el frontend con **`2 - Commit y Push (main).bat`** (todo lo de Cabida/mapas/App Check es solo frontend; ya se desplegaron reglas y Functions). Limpieza opcional: borrar `Web/__synctest.txt`.
+**Pendiente de producto (futuro):** reactivar App Check (reCAPTCHA v3) cuando se quiera endurecer; respaldos Firestore/Storage; completar datos legales (`legalContent.ts`).
+
+---
+
+## 2026-07-01 (Chile) — Cabida: fix "espejo" + envolvente de rasante translúcida + adosamiento 3D + números en Ubicación/Geolocalizador
+
+- **Fix "espejo" (volumen hacia abajo):** el modo polígono usaba una proyección distinta al modo rectángulo. Se unificó a `Pp = ((x+y)·cos, (x−y)·sin − z)` (calle al frente, volumen sube en +z) y se ajustó el orden de pintado de muros (`depth = x−y`).
+- **Envolvente de rasante (translúcida):** por cada deslinde se dibuja el **plano inclinado** que nace a 3,5 m (en los frentes, desde el eje de calzada = ancho_vía/2 hacia afuera) y sube con el ángulo regional; acotado a la altura del volumen y con opacidad baja para no saturar. Burdeo en vía, azul en el resto.
+- **Bloque de adosamiento 3D:** en los deslindes con "Adosar", un muro de **≤3,5 m en el 40% (centrado)** del lado, extendido hasta la línea de distanciamiento (color primario).
+- **Números de deslinde** ahora también en **Ubicación y Geolocalizador**: marcador circular con el nº en el punto medio de cada lado (burdeo si enfrenta vía).
+
+Verificado con render (volumen sube correcto, rasante sutil, adosamiento, números). **Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat`. Con esto se cierra la tarea #10 (envolvente 3D + retiro real).
+---
+
+## 2026-07-01 (Chile) — Cabida 3D Fase 2b: retiro real (huella edificable) + calles unidas + números de deslinde
+
+- **Huella edificable con retiros:** nuevo `insetPolygon` (offset variable por deslinde con `segIntersect`) — el volumen 3D ahora es el polígono **retirado** por deslinde (frente→antejardín, vecino→distanciamiento), mostrando el retiro real (respaldo al polígono completo si el inset colapsa en lotes chicos).
+- **Calles corregidas:** el eje discontinuo va **paralelo al frente** (antes cortaba la calle); las calles de deslindes de vía **contiguos se unen** con esquina miter (intersección de las líneas de offset). Ancho por deslinde (`edgeVia`).
+- **Números de deslinde 1..N** dibujados en el modelo (fuera del `<g>` para tamaño constante), coloreados (vía en burdeo).
+- **UI:** eliminados los inputs globales Ancho Calle / Antejardín / Distanciamiento Base (ahora por deslinde). **Adosar** ya NO fuerza el distanciamiento a 0 (el distanciamiento del resto se mantiene; el adosamiento es muro ≤3,5 m en ≤40% del lado) y no se salta en el tope de rasante.
+
+Verificado con render (retiro visible, calles unidas + eje paralelo, números). **Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat`.
+**Pendiente (Fase 2c, tarea #10):** dibujar los **planos inclinados de rasante** (envolvente translúcida) y el **bloque de adosamiento** (3,5 m × 40% del lado) en el modelo.
+---
+
+## 2026-07-01 (Chile) — Cabida: rasante por REGIÓN + distanciamiento por deslinde + tope de altura (Fase 2a)
+
+Implementada la parte exacta/de datos de las reglas OGUC de distanciamientos y rasantes:
+- **Ángulo de rasante por región** (`rasanteAngleForRegion`): sur (Ñuble→Magallanes) = 60°; resto (Arica→Maule incl. RM) = 70°. Se siembra en `inputs.rasante` según `project.region` y se muestra en el panel.
+- **Distanciamiento POR deslinde** (arrays en `Inputs`: `edgeDist`, `edgeAnte`, `edgeVia`): en el módulo, cada deslinde tiene su input — **frentes a vía**: antejardín (def. 5 m) + ancho de vía (def. 8 m); **vecinos**: distanciamiento (def. 3 m; el usuario pone 4 si >7 m, 1,4 si muro ciego) + **Adosar (0 m)**. Texto guía con las reglas.
+- **Tope de altura por rasante** (`rasMaxH`): la rasante nace a 3,5 m sobre el deslinde (o el **eje de calzada** = antejardín + ancho_vía/2 en los frentes) y sube con el ángulo regional; el tope es el mínimo entre deslindes (los adosados no limitan). Se aplica como `hOverride` al alto del modelo 3D poligonal y se muestra el valor.
+
+**Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat`.
+**Pendiente (Fase 2b, tarea #10):** dibujar los **planos inclinados de rasante** como envolvente en el 3D y calcular la **huella edificable por offset variable** del polígono (retiro real por deslinde). Es la parte geométrica delicada; se hará y validará aparte.
+---
+
+## 2026-07-01 (Chile) — Cabida 3D: calle en deslindes de vía + rotación dinámica
+
+- **Calle reflejada:** por cada deslinde marcado como vía, el modelo dibuja una **franja gris hacia afuera del predio** (ancho = "Ancho Calle", tope 30 m) con eje discontinuo, calculada con la normal exterior del lado. Rota junto con el modelo.
+- **Rotación dinámica:** el volumen se **rota con el mouse** (arrastrar horizontal = azimut, alrededor del centroide del predio) para verlo desde cualquier lado; botón **"↺ Vista"** para volver al frente. Pointer events + `touch-action:none`; el auto-encuadre y el orden de pintado de muros se recalculan con la rotación. Verificado con render a 0° y 55°.
+
+**Archivos:** `VolumenTeoricoView.tsx` (rama polígono de `Visualizador3D`). **Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat`.
+---
+
+## 2026-07-01 (Chile) — Cabida: DIMENSIONES colapsable + adosamiento POR deslinde
+
+- **DIMENSIONES DEL PREDIO colapsado por defecto:** ahora se usa la forma real del terreno; el frente/fondo manual queda oculto. El header es un toggle (chevron) y el botón **"Usar (cuadrado)"** también abre el panel (y siembra el cuadrado ≈√área). La referencia del terreno dibujado queda siempre visible.
+- **Adosamiento POR deslinde:** `Inputs.adosaEdges?: boolean[]` (índice = segmento). Si hay polígono, el módulo de adosamiento lista **Deslinde 1..N** con checkbox por lado; los que **enfrentan vía quedan deshabilitados** (no adosables, OGUC). Sin polígono, se mantienen los checkboxes izquierdo/derecho/fondo del modelo rectangular. En el modelo 3D poligonal, los deslindes adosados se pintan en **var(--primary)** (vía = burdeo, resto = rojo). Persistido con el estado de la cabida.
+
+**Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat`. **Prueba local:** `.bat` dev.
+**Nota:** el efecto del adosamiento sobre retiros/área precisa (offset del polígono) queda para Fase 2; hoy es selección + visualización.
+---
+
+## 2026-07-01 (Chile) — Cabida con forma REAL del polígono + deslindes coloreados en Geolocalizador + "Deslinde"
+
+**Cabida (`VolumenTeoricoView`) — forma real del polígono:** nuevo `ringToPlanar` (lng/lat→metros planos por centroide). `Visualizador3D` recibe `poly`+`polyEdges`: si hay terreno dibujado (≥3 vértices), **extruye la huella poligonal real** (suelo + muros por deslinde + techo) con separación de pisos cada 3,5 m y los deslindes que enfrentan vía en **burdeo**; si no hay polígono, mantiene el modelo rectangular como respaldo. La Cabida carga `ring`+`edges` del terreno (`loadTerreno`) al abrir. Verificado con render (cairosvg).
+
+**Geolocalizador — visualización de vía:** los deslindes ahora se dibujan como polilíneas coloreadas (burdeo = enfrenta vía; negro = deslinde), leyendo `edges` del terreno (solo visualización; la clasificación se hace en Ubicación). Contorno del polígono atenuado para que el color del deslinde sea el borde visible. Persiste `edges` al recalcular.
+
+**Terminología:** "Lindero" → **"Deslinde"** en la leyenda y el botón de Ubicación.
+
+**Build:** `tsc -b` OK. **Requiere prueba en mapa real** (Google Maps). **Publicar:** `2 - Commit y Push (main).bat`.
+**Pendiente (refinamiento):** elegir adosamiento POR deslinde no-vía en Cabida (hoy siguen los 3 checkboxes izq/der/fondo del modelo rectangular); retiros/rasantes precisos por offset del polígono = Fase 2.
+---
+
+## 2026-07-01 (Chile) — Clasificación de deslindes (enfrenta vía) en Ubicación + .bat dev
+
+**Deslindes clasificables (`UbicacionView`):** cada lado del polígono es ahora una **polilínea clicable**; al hacer clic se selecciona (se resalta) y el botón **"Enfrenta a una vía" / "Marcar como lindero"** alterna su estado. Color: **burdeo grueso `#7a1f2b`** = enfrenta vía; **negro** = lindero. Leyenda incluida. La clasificación se guarda por segmento en `terreno.edges` (`DeslindeMeta[]`), nube + local, y se recarga al abrir. El polígono base quedó con contorno tenue (las polilíneas de deslinde son el borde real). Índices de `edges` se re-sincronizan al agregar/mover/eliminar vértices (los flags se preservan por índice; conviene clasificar una vez terminado el trazo). **Build:** `tsc -b` OK. **Requiere prueba en mapa real** (código Google Maps).
+
+**Utilidad:** nuevo `.bat` en la raíz **"Probar Local (npm run dev).bat"** → levanta el servidor Vite de desarrollo (hot-reload) para probar en localhost. El `.bat 4 - Verificar Build Local` (npm run build) está OK y sirve para validar antes de subir.
+
+**Pendiente Fase 1:** Cabida consumiendo el polígono real + adosamiento por deslinde no-vía (tarea #9).
 ---
 
 ## 2026-07-01 (Chile) — Trazado del terreno: vértices con marcadores propios (elimina la subdivisión de midpoints)

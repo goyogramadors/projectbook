@@ -9,7 +9,12 @@
 > **`Last Update.md`** (raíz del repo): fecha, hora, detalle de lo hecho, archivos tocados y
 > pendientes generados/resueltos. Es el reporte de estado que se entrega a la siguiente instancia.
 >
-> **Última actualización:** 2026-06-30 · **Repositorio:** `C:\G\Archiblocks` · **Raíz de la SPA:** `C:\G\Archiblocks\Web`
+> **Última actualización:** 2026-07-01 · **Repositorio:** `C:\G\Archiblocks` · **Raíz de la SPA:** `C:\G\Archiblocks\Web`
+>
+> 💻 **ENTORNO:** el proyecto se desarrolla en **Claude Code** (ya **no** en Cowork). En la raíz hay un
+> **`CLAUDE.md`** que se carga solo en cada sesión y actúa de enrutador (identidad, orden de lectura,
+> reglas inmutables, reglas heredadas reemplazadas, lecciones/decisiones vivas). Este documento sigue
+> siendo la **memoria maestra**; `CLAUDE.md` remite a él y no lo duplica.
 
 ---
 
@@ -85,17 +90,21 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 - `catalog.ts` — metadata de presentación (`FOLDERS`, `CATALOG[]`, `TOP_TOOLS_DEFAULT`). **No** implementa herramientas.
 - `registry.ts` — une catálogo + componente lazy (`LAZY_COMPONENTS`). **Único** lugar con los `import()` de cada tool.
 - `useAccess.ts` — gating central del paywall (`AccessMode` = `edit` / `read` / `locked`)
+- `useCerebroNormativo.ts` — hook que une los dos cerebros (Turf `booleanPointInPolygon` + snap por distancia → ficha)
 - `NormativaService.ts` — Cerebro Normativo (archivos locales `/norma-data/*.json`, llave `{region}_{comunaSlug(comuna)}`)
 - `GeoJsonService.ts` — carga GeoJSON PRC desde Hosting `/geo-data/` + caché IndexedDB
-- `db/ProjectRepository.ts` — persistencia **Cloud (Premium)** / **Local (Free)**
-- `AdminService.ts` · `ShareService.ts` · proveedores en `auth/`, `db/`, `theme/`, `ui/`
+- `data-chile.ts` — comunas/regiones de Chile (`getCodigoRegionDeComuna`, fallback `13`)
+- `db/ProjectProvider.tsx` · `db/ProjectRepository.ts` — contexto + persistencia **Cloud (usuario logueado)** / **Local (invitado)**
+- `AdminService.ts` · `ShareService.ts` · proveedores en `auth/`, `theme/`, `ui/` (Toast, ActiveSection); contenidos en `legal/` (`legalContent.ts`) y `product/` (`product.ts`)
 
 ### Carcasa y herramientas
 - `src/AppShell.tsx` — carcasa persistente (header, statusbar, `<Outlet>`, footer, TopToolsBar)
-- `src/components/` — bloques del shell (BinderFicha, ToolCatalog, ToolHost, StatusBar, etc.)
-- `src/tools/` — **una herramienta por archivo** (20 activas hoy), montadas vía `registry.ts`
-- `src/views/` — páginas montadas por el router (HomeView, WorkspaceView, AdminDashboard, PricingView…)
-- `src/workers/geo.worker.ts` — Cerebro Espacial (Turf)
+- `src/components/` — bloques del shell: `ShellTop`/`ShellDock`/`TopToolsBar`/`StatusBar`, `ArchiblocksNav` (el "Block") + escenas `archiblocks-scene.html`/`librodeobra-scene.html`, `BinderFicha`, `ToolCatalog`, `ToolHost` + `ToolErrorBoundary`, `DocumentExportWrapper`, `CorporateFooter`, `Icon`, `ProximamenteView`
+- `src/tools/` — **una vista por archivo** (29 `*.tsx`; ≈35 herramientas registradas), montadas vía `registry.ts`. Submódulos de dominio: `construccion/` (catálogos EETT/Presupuesto/Gantt + `activaSi.ts`/`meta.ts`), `obra/` (`libroStore`/`carpetaStore`/`storageUpload`/`temas`), `termico/` (`engine.ts` + `tablas.ts`), `forms/` (`fillForm.ts`), y stores `terrenoStore.ts`/`normativaStore.ts`
+- `src/hooks/` — `useToolData.ts` (persistencia gobernada nube↔local) · `useDimensionadorSync.ts`
+- `src/forms/` — field-maps JSON de formularios DOM (serie `2-x` + DDJJ de término) + `index.ts` (consumidos por `FormulariosDOMView`/`ExpedienteMunicipalView`)
+- `src/views/` — páginas del router: HomeView, WorkspaceView, AdminDashboard, PricingView, LegalView, AuthModal, ShareProjectModal, LibroLandingView/LibroWorkspaceView (Libro de Obra), NotFoundView
+- `src/workers/` — `geo.worker.ts` (Cerebro Espacial/Turf) · `termico.worker.ts` (motor Norma Térmica)
 
 ### Configuración y backend (en `Web\`, raíz de la SPA)
 - `firebase.json` — Hosting (`public: dist`) + Firestore multi-DB (2 targets) + Functions
@@ -236,9 +245,9 @@ Actúa como **Senior Full-Stack Engineer** sobre un entorno **de producción ya 
 
 ### Reglas obligatorias de seguridad y economía de tokens
 
-1. **MODO SILENCIOSO (cero explicaciones).** Sin saludos, despedidas ni teoría larga sobre cómo funciona el código. Entrega solo el código solicitado. Si necesitas una aclaración técnica, ponla como **comentario breve dentro del propio código**.
+1. **EXPLICACIONES BREVES (⟲ Claude Code).** Sin saludos, despedidas ni teoría larga. Justifica cada decisión en **una línea**; el detalle técnico va como comentario breve dentro del código. *(Antes "modo silencioso extremo"; se relajó al pasar de Cowork a Claude Code.)*
 
-2. **EDICIÓN QUIRÚRGICA (no reescribir archivos completos).** El código actual funciona. **Bajo ninguna circunstancia** reescribas un componente o archivo entero salvo petición explícita. Entrega solo los fragmentos nuevos, los imports necesarios o el bloque exacto a reemplazar. Usa marcadores `// ... código existente ...` para indicar dónde va la inserción.
+2. **EDICIÓN QUIRÚRGICA (no reescribir archivos completos).** El código actual funciona. **Bajo ninguna circunstancia** reescribas un componente o archivo entero salvo petición explícita. En Claude Code edita **directo con las herramientas nativas** (Edit/Write), cambiando solo el bloque exacto. *(Ya NO se entrega "un único bloque de código para copiar" ni se usa `os.replace`; ver Reglas técnicas heredadas.)*
 
 3. **RESPETA LA ARQUITECTURA EXISTENTE.** No inventes ni sugieras nuevas dependencias, librerías de UI ni patrones de estado. Usa exclusivamente lo del stack: `framer-motion`, `lucide-react`, clases atómicas de Tailwind, `types.ts` centralizado.
 
@@ -253,7 +262,7 @@ Actúa como **Senior Full-Stack Engineer** sobre un entorno **de producción ya 
 ### Reglas técnicas heredadas (por el stack)
 - `import type { X }` o `{ type X }` **obligatorio** para Vite/oxc (su ausencia produce pantalla en blanco).
 - El `db` normativo usa **Firestore DB nombrada** (`coordenadasnormativas`), no `(default)`.
-- **Edición de archivos del repo: SIEMPRE atómica** (escribir a tmp en la MISMA carpeta y `os.replace` vía Python por bash, validando luego con `tsc -b`). La edición directa del montaje/host trunca archivos en disco **incluso chicos** (se confirmó de nuevo el 2026-06-30: se recuperó con `git show HEAD:` + reescritura atómica). Para validar TS aislado, esbuild (`transformSync` loader `tsx`).
+- **Edición de archivos (⟲ Claude Code):** edita directo con Edit/Write nativos y valida con `tsc -b` antes de cerrar. *Red de seguridad:* si un archivo grande apareciera truncado tras editar, verifícalo (`git show HEAD:<ruta>`) y cae a escribir en scratch + `cp`. *(La regla previa de atomicidad vía Python `os.replace` era una limitación del montaje de Cowork; ya no aplica.)*
 - Cada herramienta nueva: registrar en `registry.ts` + `catalog.ts`, lazy load, tipos en `types.ts`.
 
 ---
@@ -264,6 +273,6 @@ Al iniciar una sesión nueva, basta con indicar:
 
 > "Lee **`Iniciar Aquí.md`** en la raíz del proyecto y trabaja según esas instrucciones."
 
-Eso carga el contexto del proyecto, la ubicación de la información, el flujo de despliegue y las reglas de desarrollo.
+En **Claude Code** el `CLAUDE.md` de la raíz se carga automáticamente al abrir la sesión y ya remite a este documento, así que normalmente no hace falta ni pedirlo. Eso carga el contexto del proyecto, la ubicación de la información, el flujo de despliegue y las reglas de desarrollo.
 
 **Antes de empezar**, lee **`Last Update.md`** para conocer el estado real más reciente y los pendientes abiertos. **Al terminar**, registra la sesión en `Last Update.md` (ver §8, regla 6) — es obligatorio — e **indícale a Andrés cuál `.bat` ejecutar** para publicar (ver §4 · Scripts `.bat`); no ofrezcas hacer tú el commit/push.

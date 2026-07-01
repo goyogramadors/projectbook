@@ -17,7 +17,7 @@ import { auth } from '../core/firebase';
 import { useToast } from '../core/ui/ToastProvider';
 import { getRegionesSorted, getComunasPorRegionSorted, getRegionDeComuna } from '../core/data-chile';
 import type { ToolProps, ProjectMaster } from '../core/types';
-import { clearTerreno, loadTerreno, readTerrenoLocal, saveTerreno } from './terrenoStore';
+import { clearTerreno, loadTerreno, readTerrenoLocal, saveTerreno, type DeslindeMeta } from './terrenoStore';
 
 /* ── constantes ────────────────────────────────────────────────────────────── */
 const STORAGE_KEY = (pid: string) => `ab-ubicacion-${pid}`;
@@ -80,6 +80,11 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
   const mapRef = useRef<MapsAny>(null);
   const polygonRef = useRef<MapsAny>(null);
   const vertexMarkersRef = useRef<MapsAny[]>([]); // marcadores de vértice (edición sin midpoints)
+  const edgePolylinesRef = useRef<MapsAny[]>([]); // una polilínea CLICABLE por deslinde (lado)
+  const edgeLabelsRef = useRef<MapsAny[]>([]);    // marcador con el número de cada deslinde
+  const edgesRef = useRef<DeslindeMeta[]>([]);    // clasificación por deslinde (enfrenta vía o no)
+  const [selectedEdge, setSelectedEdge] = useState<number | null>(null);
+  const [edgesVersion, setEdgesVersion] = useState(0); // fuerza re-render del panel al clasificar
   const geocoderRef = useRef<MapsAny>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
@@ -122,10 +127,12 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     const fallbackArea = project.superficieCalculada ? Number(project.superficieCalculada) : null;
     const localT = readTerrenoLocal(project.id);
     ringRef.current = localT?.ring ?? [];
+    edgesRef.current = localT?.edges ?? [];
+    setSelectedEdge(null);
     setAreaM2(localT?.areaM2 ?? fallbackArea);
     if (repo.kind === 'cloud') {
       void loadTerreno(project.id, true).then((t) => {
-        if (t) { ringRef.current = t.ring; setAreaM2(t.areaM2); }
+        if (t) { ringRef.current = t.ring; edgesRef.current = t.edges ?? edgesRef.current; setAreaM2(t.areaM2); }
       });
     }
   }, [project?.id]);
@@ -140,6 +147,34 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
       if (status === 'OK' && res?.[0]) { map.setCenter(res[0].geometry.location); map.setZoom(18); }
     });
   }, [calle, numero, comuna]);
+
+  /* Reaplica estilos a los deslindes: burdeo grueso = enfrenta vía; negro = lindero; el
+     seleccionado se engrosa. */
+  const restyleEdges = useCallback((sel: number | null) => {
+    edgePolylinesRef.current.forEach((pl, i) => {
+      const street = !!edgesRef.current[i]?.faceStreet;
+      const base = street ? 6 : 2.5;
+      pl.setOptions({
+        strokeColor: street ? '#7a1f2b' : '#111111',
+        strokeWeight: i === sel ? base + 3 : base,
+        strokeOpacity: i === sel ? 0.95 : 1,
+        zIndex: i === sel ? 20 : 10,
+      });
+    });
+  }, []);
+
+  /* Alterna "enfrenta a vía" en el deslinde seleccionado y persiste la clasificación. */
+  const toggleFaceStreet = () => {
+    if (readOnly || selectedEdge == null) return;
+    const e = edgesRef.current[selectedEdge];
+    if (!e) return;
+    e.faceStreet = !e.faceStreet;
+    setEdgesVersion((v) => v + 1);
+    restyleEdges(selectedEdge);
+    if (project && ringRef.current.length >= 3 && areaM2 != null) {
+      saveTerreno(project.id, { ring: ringRef.current, areaM2, edges: edgesRef.current }, repo.kind === 'cloud');
+    }
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -163,7 +198,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
 
         const polygon: MapsAny = new mapsLib.Polygon({
           map, editable: false, clickable: false, // sin handles nativos → SIN midpoints ni subdivisión
-          fillColor: '#111111', fillOpacity: 0.14, strokeColor: '#111111', strokeWeight: 2,
+          fillColor: '#111111', fillOpacity: 0.12, strokeColor: '#111111', strokeOpacity: 0.18, strokeWeight: 1,
         });
         polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
@@ -178,14 +213,48 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           const r = await callWorker<WorkerArea>({ op: 'area', ring });
           if (r.ok) {
             setAreaM2(r.areaM2);
-            // Persiste en la clave COMPARTIDA: el Geolocalizador lo redibuja al abrir.
-            if (project) saveTerreno(project.id, { ring, areaM2: r.areaM2 }, repo.kind === 'cloud');
+            // Persiste ring + área + clasificación de deslindes (clave COMPARTIDA con Geoloc).
+            if (project) saveTerreno(project.id, { ring, areaM2: r.areaM2, edges: edgesRef.current }, repo.kind === 'cloud');
           }
         };
 
+        // Deslindes (lados) = una polilínea CLICABLE por segmento, coloreada según
+        // "enfrenta a vía" (burdeo grueso) o lindero (negro). Clic en un lado lo selecciona.
+        const buildEdges = () => {
+          edgePolylinesRef.current.forEach((pl) => pl.setMap(null));
+          edgePolylinesRef.current = [];
+          edgeLabelsRef.current.forEach((mk) => mk.setMap(null));
+          edgeLabelsRef.current = [];
+          const path: MapsAny = polygon.getPath();
+          const n: number = path.getLength();
+          const edgeCount = n >= 3 ? n : (n === 2 ? 1 : 0);
+          const prev = edgesRef.current;
+          edgesRef.current = Array.from({ length: edgeCount }, (_, i) => prev[i] ?? { faceStreet: false });
+          for (let i = 0; i < edgeCount; i++) {
+            const idx = i;
+            const street = edgesRef.current[i]?.faceStreet ?? false;
+            const pl: MapsAny = new gmaps.maps.Polyline({
+              map, clickable: !readOnly, zIndex: 10,
+              path: [path.getAt(i), path.getAt((i + 1) % n)],
+              strokeColor: street ? '#7a1f2b' : '#111111',
+              strokeWeight: street ? 6 : 2.5,
+            });
+            pl.addListener('click', () => { setSelectedEdge(idx); restyleEdges(idx); });
+            edgePolylinesRef.current.push(pl);
+            const va = path.getAt(i), vb = path.getAt((i + 1) % n);
+            edgeLabelsRef.current.push(new gmaps.maps.Marker({
+              position: new gmaps.maps.LatLng((va.lat() + vb.lat()) / 2, (va.lng() + vb.lng()) / 2),
+              map, clickable: false, zIndex: 30,
+              icon: { path: gmaps.maps.SymbolPath.CIRCLE, scale: 8, fillColor: street ? '#7a1f2b' : '#ffffff', fillOpacity: 0.95, strokeColor: '#111111', strokeWeight: 1 },
+              label: { text: String(i + 1), fontSize: '10px', fontWeight: '700', color: street ? '#ffffff' : '#111111' },
+            }));
+          }
+          restyleEdges(null);
+        };
+
         // Vértices = marcadores propios ARRASTRABLES (no los "midpoints" de Google, que
-        // subdividían el lado). Mover un marcador reposiciona el vértice; clic en el mapa
-        // agrega un punto al final; clic derecho sobre un vértice lo elimina (mínimo 3).
+        // subdividían el lado). Mover reposiciona; clic en el mapa agrega un punto; clic
+        // derecho sobre un vértice lo elimina (mínimo 3).
         const buildVertexMarkers = () => {
           vertexMarkersRef.current.forEach((m) => m.setMap(null));
           vertexMarkersRef.current = [];
@@ -200,11 +269,13 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
               title: 'Arrastra para mover · clic derecho para eliminar',
             });
             mk.addListener('drag', () => polygon.getPath().setAt(idx, mk.getPosition()));
-            mk.addListener('dragend', () => { polygon.getPath().setAt(idx, mk.getPosition()); void recomputeArea(); });
+            mk.addListener('dragend', () => { polygon.getPath().setAt(idx, mk.getPosition()); buildEdges(); void recomputeArea(); });
             mk.addListener('rightclick', () => {
               if (polygon.getPath().getLength() <= 3) return;
               polygon.getPath().removeAt(idx);
+              setSelectedEdge(null);
               buildVertexMarkers();
+              buildEdges();
               void recomputeArea();
             });
             vertexMarkersRef.current.push(mk);
@@ -215,6 +286,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           if (!e.latLng) return;
           polygon.getPath().push(e.latLng); // agrega un punto SOLO al dibujar
           buildVertexMarkers();
+          buildEdges();
           void recomputeArea();
         });
 
@@ -227,6 +299,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           map.fitBounds(bounds);
         }
         buildVertexMarkers();
+        buildEdges();
         setMapReady(true);
       } catch (err) {
         const msg = err instanceof Error ? err.message : String(err);
@@ -249,6 +322,12 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
     polygonRef.current?.getPath()?.clear();
     vertexMarkersRef.current.forEach((m) => m.setMap(null));
     vertexMarkersRef.current = [];
+    edgePolylinesRef.current.forEach((pl) => pl.setMap(null));
+    edgePolylinesRef.current = [];
+    edgeLabelsRef.current.forEach((mk) => mk.setMap(null));
+    edgeLabelsRef.current = [];
+    edgesRef.current = [];
+    setSelectedEdge(null);
     ringRef.current = [];
     setAreaM2(null);
     setAreaManual('');
@@ -365,6 +444,20 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
               <button type="button" className="technical-btn secondary" style={{ fontSize: 10, padding: '6px 8px' }} disabled={readOnly || !mapReady} onClick={limpiar}>
                 <Icons.Eraser size={12} style={{ marginRight: 6 }} /> [ LIMPIAR ]
               </button>
+              {areaM2 != null && (
+                <div data-ev={edgesVersion} style={{ display: 'flex', flexDirection: 'column', gap: 6, marginTop: 4, padding: 8, border: '1.5px solid var(--border)', borderRadius: 'var(--radius)' }}>
+                  <span style={{ fontSize: 9, fontWeight: 'bold', textTransform: 'uppercase', opacity: 0.6 }}>Deslindes (calles)</span>
+                  <span style={{ fontSize: 9, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-block', width: 16, borderTop: '3px solid #7a1f2b' }} /> Enfrenta a vía</span>
+                  <span style={{ fontSize: 9, display: 'flex', alignItems: 'center', gap: 6 }}><span style={{ display: 'inline-block', width: 16, borderTop: '2px solid #111111' }} /> Deslinde (no vía)</span>
+                  {selectedEdge != null ? (
+                    <button type="button" className="technical-btn" style={{ fontSize: 10, padding: '6px 8px' }} disabled={readOnly} onClick={toggleFaceStreet}>
+                      {edgesRef.current[selectedEdge]?.faceStreet ? 'Marcar como deslinde' : 'Enfrenta a una vía'}
+                    </button>
+                  ) : (
+                    <span style={{ fontSize: 9, opacity: 0.6 }}>Haz clic en un lado del terreno para clasificarlo.</span>
+                  )}
+                </div>
+              )}
             </div>
           </div>
 
