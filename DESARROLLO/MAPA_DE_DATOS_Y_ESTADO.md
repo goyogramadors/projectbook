@@ -166,8 +166,7 @@ Datos que hoy se **re-capturan manualmente** pudiendo leerse de otra herramienta
    (nuevo `normativaStore`) al analizar; la Cabida (`volumen`) **siembra** `alturaMaxima`, `coefConstructibilidad`
    y `ocupacionSuelo` desde ahí cuando no hay cabida guardada.
 
-2. ⏳ **PARCIAL — Superficie de terreno → Cabida.** La Cabida modela el predio como `largo × ancho`, que no mapea
-   1:1 a un área única; por eso NO se autocompleta desde `terreno.areaM2`. Pendiente: input "área de terreno" en Cabida.
+2. ✅ **IMPLEMENTADO (2026-07-01) — Superficie de terreno → Cabida.** Al abrir sin cabida guardada, la Cabida siembra el predio desde el **área real** (`terreno.areaM2` del Geolocalizador; fallback `superficieTerrenoLegal`) como cuadrado ≈√área, más un indicador y botón "Usar (cuadrado)". Como el modelo geométrico necesita frente×fondo, el usuario ajusta la proporción; el área se toma como punto de partida. También se siembra **antejardín** desde la ficha normativa.
 
 3. ✅ **IMPLEMENTADO — `participantes` → FormulariosDOM.** Unificado bajo `useToolData('participantes')`.
 

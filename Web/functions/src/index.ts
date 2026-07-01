@@ -95,7 +95,7 @@ interface InvitePayload {
 }
 
 export const sendInviteEmail = functions.https.onCall(
-  { region: REGION, secrets: ['SENDGRID_API_KEY'], enforceAppCheck: true, maxInstances: 10 },
+  { region: REGION, secrets: ['SENDGRID_API_KEY'], maxInstances: 10 }, // App Check pendiente (ver Tintero)
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
 
@@ -158,7 +158,7 @@ interface PremiumInvitePayload {
 }
 
 export const sendPremiumInviteEmail = functions.https.onCall(
-  { region: REGION, secrets: ['SENDGRID_API_KEY'], enforceAppCheck: true, maxInstances: 5 },
+  { region: REGION, secrets: ['SENDGRID_API_KEY'], maxInstances: 5 }, // App Check pendiente (ver Tintero)
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
     if (request.auth.token.admin !== true) {
@@ -277,7 +277,7 @@ export const sendPremiumInviteEmail = functions.https.onCall(
 // y marca su invitación Premium como aceptada. La llama el cliente tras autenticarse.
 
 export const activateMyAccount = functions.https.onCall(
-  { region: REGION, enforceAppCheck: true, maxInstances: 10 },
+  { region: REGION, maxInstances: 10 }, // App Check pendiente (ver Tintero)
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
     const uid = request.auth.uid;
@@ -312,7 +312,7 @@ interface GeminiResponse {
 }
 
 export const apiProxy = functions.https.onCall(
-  { region: REGION, secrets: ['GEMINI_API_KEY'], enforceAppCheck: true, maxInstances: 10 },
+  { region: REGION, secrets: ['GEMINI_API_KEY'], maxInstances: 10 }, // App Check pendiente (ver Tintero)
   async (request) => {
     if (!request.auth) throw new functions.https.HttpsError('unauthenticated', 'No autenticado.');
 

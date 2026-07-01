@@ -32,6 +32,51 @@
 
 ---
 
+## 2026-07-01 (Chile) — Cabida: Sync Terreno→Cabida + condiciones de edificación + modelo con pisos y calle al frente
+
+`VolumenTeoricoView.tsx` (Estudio de Cabida):
+- **Sync Terreno→Cabida:** al abrir sin cabida guardada, siembra el predio desde el **área real del terreno** (polígono del Geolocalizador vía `loadTerreno`; fallback `superficieTerrenoLegal`) como cuadrado ≈√área. Nuevo indicador "Terreno dibujado (Geolocalizador): X m²" + botón **"Usar (cuadrado)"**. El usuario ajusta frente/fondo si conoce la forma real.
+- **Condiciones de edificación:** ya sembraba altura/constructibilidad/ocupación desde la ficha normativa; se agregó **antejardín** (desde `normativa.antejardin`). (Rasante/ancho de calle no vienen en la ficha PRC → quedan manuales.)
+- **Modelo 3D reescrito (`Visualizador3D`):** (1) **calle hacia el observador** (se negó la profundidad `y` en la isometría; antes la calle quedaba al fondo); (2) **separación de pisos cada 3,50 m** dibujada en las caras frente/lado del volumen (líneas), con conteo aproximado en el encabezado; (3) auto-encuadre (bbox → escala/centro) y `vector-effect: non-scaling-stroke` para trazos constantes. Caras visibles: techo + frente (a la calle) + lado derecho.
+
+**Verificación:** `tsc -b` OK; render de prueba (cairosvg) confirmó orientación y pisos.
+**Pendiente de publicar:** `2 - Commit y Push (main).bat` (solo frontend; no requiere reglas ni functions).
+---
+
+## 2026-07-01 (Chile) — ✅ RESUELTO: invitación Premium funciona (usuarios quedan registrados)
+
+Tras quitar `enforceAppCheck` y redesplegar Functions, la invitación Premium **funciona**: el error `Unauthenticated` desapareció, la cuenta se **pre-crea** y el usuario invitado **queda en el listado** del panel (Premium · Pendiente) sin necesidad de que se registre. Cierre del hilo de "usuarios invitados no aparecían" (era despliegue/config: Functions abortando + App Check bloqueando, no bug de código).
+
+Estado de despliegue: reglas ✅, functions ✅ (sin App Check), frontend ✅, `setUserState` eliminada ✅. Extra: creados 3 `.bat` de utilidad en la raíz (Terminal en Web / functions / raíz).
+
+**Pendientes vigentes:** correo SendGrid (opcional; la cuenta se crea igual y se entra con Google), completar datos legales, respaldos Firestore/Storage, sync Terreno→Cabida, binds DOM ambiguos, borrar `Web/__synctest.txt`, y reactivar App Check a futuro (reCAPTCHA v3).
+
+---
+
+## 2026-07-01 (Chile) — App Check desactivado (simplificación) → causa de "Unauthenticated" en invitaciones
+
+**Causa confirmada:** el panel devolvía `Unauthenticated` al invitar porque las Cloud Functions tenían `enforceAppCheck: true` pero el frontend NO envía token App Check (falta `VITE_RECAPTCHA_V3_SITE_KEY` / reCAPTCHA v3 sin configurar). Afectaba a TODAS las callables (invitación Premium, `activateMyAccount`, `apiProxy`/BIM, `sendInviteEmail`).
+
+**Decisión (Andrés):** por ahora **simplificar**, sin reCAPTCHA. Se quitó `enforceAppCheck: true` de las 4 callables en `functions/src/index.ts` (`sendInviteEmail`, `sendPremiumInviteEmail`, `activateMyAccount`, `apiProxy`). Siguen protegidas por **autenticación** (admin/usuario/plan) y **rate limits**. El código de App Check en `firebase.ts` queda intacto (condicional a la site key), listo para reactivar. **Build functions:** OK.
+
+**⚠️ REQUIERE:** `cd Web/functions && npm run build && firebase deploy --only functions` (esta vez SÍ detecta cambios). No requiere tocar frontend ni reglas.
+
+**📌 PENDIENTE FUTURO — Reactivar App Check (reCAPTCHA v3):** cuando se quiera endurecer anti-abuso: crear clave reCAPTCHA v3 (dominios archibots.cl / projectbook-8qt.pages.dev / localhost), registrar el proveedor en Firebase Console → App Check con la Secret key, poner la **Site key** en `VITE_RECAPTCHA_V3_SITE_KEY` (Cloudflare Production + `.env.local`), reconstruir frontend, y volver a poner `enforceAppCheck: true` en las callables. (App Check ya venía a medio configurar desde el 2026-06-26.)
+
+---
+
+## 2026-07-01 (Chile) — Despliegue COMPLETADO (rules + functions + frontend) y lectura de logs
+
+**Andrés desplegó todo:** `firebase deploy --only firestore:rules` ✅ (reglas liberadas), `functions` ✅ (*Skipped: No changes detected* → el código nuevo ya estaba live desde el deploy previo: `sendPremiumInviteEmail` pre-crea + best-effort, `activateMyAccount`), **`setUserState` eliminada** ✅ (huérfana), y **frontend** vía `2 - Commit y Push` ✅.
+
+**Lectura de `functions:log`:** `sendpremiuminviteemail` ejecuta OK — `verifications: {auth: VALID, app: MISSING}`. La función **corre y pasa** (no la bloquea). Sin errores de SendGrid ni de creación en el log. Los registros mostrados eran de **ayer** (pruebas previas al deploy completo).
+
+**Hallazgo menor (App Check):** `app: MISSING` → el frontend NO envía token App Check (falta `VITE_RECAPTCHA_V3_SITE_KEY`). Hoy no bloquea (enforce no está rechazando), pero es frágil: si se activa enforcement real, las callables (invitación, activación, apiProxy) empezarían a fallar. **Pendiente:** configurar reCAPTCHA v3 + la site key, o alinear `enforceAppCheck` a la realidad.
+
+**Siguiente:** validar en producción con una invitación NUEVA (ver si aparece como Premium·Pendiente en el panel y si el correo sale).
+
+---
+
 ## 2026-07-01 (Chile) — Consolidación semanal (23–30 jun): cerrado vs. pendiente + revisión invitaciones + MAPA de datos
 
 **A) CERRADO esta semana (resumen; detalle en las entradas respectivas):**

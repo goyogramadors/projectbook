@@ -16,6 +16,7 @@ import { useProjects } from '../core/db/ProjectProvider';
 import { useToast } from '../core/ui/ToastProvider';
 import DocumentExportWrapper from '../components/DocumentExportWrapper';
 import { loadNormativa } from './normativaStore';
+import { loadTerreno } from './terrenoStore';
 import type { ToolProps } from '../core/types';
 
 /* ── tipos ─────────────────────────────────────────────────────────────────── */
@@ -64,64 +65,92 @@ function Checkbox({ label, checked, onChange, disabled }: { label: string; check
 
 /* ── visualizador isométrico (módulo) ──────────────────────────────────────── */
 function Visualizador3D({ inputs, resultados }: { inputs: Inputs; resultados: Resultados }) {
-  const { largo, ancho, anchoCalle, antejardin, distanciamiento, rasante, adosamientos } = inputs;
+  const { largo, ancho, anchoCalle, antejardin, distanciamiento, adosamientos } = inputs;
   const angle = Math.PI / 6;
-  const projectIso = (x: number, y: number, z: number) => ({ x: (x - y) * Math.cos(angle), y: (x + y) * Math.sin(angle) - z });
+  const COS = Math.cos(angle), SIN = Math.sin(angle);
+  const PISO = 3.5; // altura de piso (m) para la separación del modelo
 
-  const drawBox = (x: number, y: number, z: number, w: number, l: number, h: number, fill: string, stroke: string) => {
-    const p1 = projectIso(x, y, z), p2 = projectIso(x + w, y, z), p3 = projectIso(x + w, y + l, z), p4 = projectIso(x, y + l, z);
-    const p1t = projectIso(x, y, z + h), p2t = projectIso(x + w, y, z + h), p3t = projectIso(x + w, y + l, z + h), p4t = projectIso(x, y + l, z + h);
+  // Isometría con la CALLE HACIA EL FRENTE (hacia el observador): respecto de la
+  // versión anterior se niega la profundidad `y` (la calle, en y<0, cae más abajo =
+  // más cerca). z es altura y sube en pantalla.
+  const P = (x: number, y: number, z: number) => ({ x: (x + y) * COS, y: (x - y) * SIN - z });
+
+  const hCore = resultados.alturaEfectiva || 0;
+  const wEd = resultados.anchoEdificable || 0;
+  const lEd = resultados.largoEdificable || 0;
+  const hAdos = Math.min(PISO, hCore);
+  const nPisos = hCore > 0 ? Math.max(1, Math.round(hCore / PISO)) : 0;
+  const bx = distanciamiento, by = antejardin;
+
+  // ── Auto-encuadre: proyecta puntos clave y centra/escala al viewBox 400×400 ──
+  const key: Array<{ x: number; y: number }> = [];
+  const add = (x: number, y: number, z: number) => key.push(P(x, y, z));
+  const M = 8; // margen lateral de la calle
+  add(-M, -anchoCalle, 0); add(ancho + M, -anchoCalle, 0); add(ancho, largo, 0); add(0, largo, 0);
+  if (wEd > 0 && lEd > 0) {
+    add(bx, by, 0); add(bx + wEd, by, 0); add(bx + wEd, by + lEd, 0); add(bx, by + lEd, 0);
+    add(bx, by, hCore); add(bx + wEd, by, hCore); add(bx + wEd, by + lEd, hCore); add(bx, by + lEd, hCore);
+  }
+  const xs = key.map(k => k.x), ys = key.map(k => k.y);
+  const minX = Math.min(...xs), maxX = Math.max(...xs), minY = Math.min(...ys), maxY = Math.max(...ys);
+  const spanX = Math.max(1, maxX - minX), spanY = Math.max(1, maxY - minY);
+  const fit = Math.min(340 / spanX, 340 / spanY);
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const gTransform = `translate(200 200) scale(${fit.toFixed(4)}) translate(${(-cx).toFixed(2)} ${(-cy).toFixed(2)})`;
+
+  const pts = (arr: Array<{ x: number; y: number }>) => arr.map(p => `${p.x.toFixed(1)},${p.y.toFixed(1)}`).join(' ');
+
+  // Caja con las 3 caras visibles (techo + frente hacia la calle + lado derecho) y,
+  // opcionalmente, líneas de separación de pisos cada PISO metros.
+  const box = (x: number, y: number, z: number, w: number, l: number, h: number, fill: string, stroke: string, floors: boolean) => {
+    const A = P(x, y, z), B = P(x + w, y, z), C = P(x + w, y + l, z), D = P(x, y + l, z);
+    const A2 = P(x, y, z + h), B2 = P(x + w, y, z + h), C2 = P(x + w, y + l, z + h), D2 = P(x, y + l, z + h);
+    const zs: number[] = [];
+    if (floors && h > 0) for (let k = 1; k * PISO < h - 1e-6; k++) zs.push(k * PISO);
     return (
       <g>
-        <polygon points={`${p3.x},${p3.y} ${p4.x},${p4.y} ${p4t.x},${p4t.y} ${p3t.x},${p3t.y}`} fill={fill} fillOpacity={0.3} />
-        <polygon points={`${p4.x},${p4.y} ${p1.x},${p1.y} ${p1t.x},${p1t.y} ${p4t.x},${p4t.y}`} fill={fill} fillOpacity={0.3} />
-        <polygon points={`${p1t.x},${p1t.y} ${p2t.x},${p2t.y} ${p3t.x},${p3t.y} ${p4t.x},${p4t.y}`} fill={fill} fillOpacity={0.85} stroke={stroke} strokeWidth={1} />
-        <polygon points={`${p1.x},${p1.y} ${p2.x},${p2.y} ${p2t.x},${p2t.y} ${p1t.x},${p1t.y}`} fill={fill} fillOpacity={0.5} stroke={stroke} strokeWidth={1} />
-        <polygon points={`${p2.x},${p2.y} ${p3.x},${p3.y} ${p3t.x},${p3t.y} ${p2t.x},${p2t.y}`} fill={fill} fillOpacity={0.7} stroke={stroke} strokeWidth={1} />
+        <polygon points={pts([C, D, D2, C2])} fill={fill} fillOpacity={0.15} vectorEffect="non-scaling-stroke" />
+        <polygon points={pts([D, A, A2, D2])} fill={fill} fillOpacity={0.15} vectorEffect="non-scaling-stroke" />
+        <polygon points={pts([A2, B2, C2, D2])} fill={fill} fillOpacity={0.88} stroke={stroke} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <polygon points={pts([B, C, C2, B2])} fill={fill} fillOpacity={0.6} stroke={stroke} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        <polygon points={pts([A, B, B2, A2])} fill={fill} fillOpacity={0.42} stroke={stroke} strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+        {zs.map((zz, i) => {
+          const f1 = P(x, y, zz), f2 = P(x + w, y, zz), r2 = P(x + w, y + l, zz);
+          return (
+            <g key={i}>
+              <line x1={f1.x} y1={f1.y} x2={f2.x} y2={f2.y} stroke={stroke} strokeWidth={0.8} strokeOpacity={0.75} vectorEffect="non-scaling-stroke" />
+              <line x1={f2.x} y1={f2.y} x2={r2.x} y2={r2.y} stroke={stroke} strokeWidth={0.8} strokeOpacity={0.75} vectorEffect="non-scaling-stroke" />
+            </g>
+          );
+        })}
       </g>
     );
   };
 
-  const maxDim = Math.max(largo, ancho, resultados.alturaEfectiva || 0);
-  const scale = maxDim > 0 ? 120 / maxDim : 1;
-  const dist = distanciamiento, ante = antejardin, aCalle = anchoCalle;
-  const hCore = resultados.alturaEfectiva || 0;
-  const hAdos = Math.min(3.5, hCore);
-
-  const t1 = projectIso(0, 0, 0), t2 = projectIso(ancho * scale, 0, 0), t3 = projectIso(ancho * scale, largo * scale, 0), t4 = projectIso(0, largo * scale, 0);
-  const s1 = projectIso(-10 * scale, -aCalle * scale, 0), s2 = projectIso(ancho * scale + 10 * scale, -aCalle * scale, 0), s3 = projectIso(ancho * scale + 10 * scale, 0, 0), s4 = projectIso(-10 * scale, 0, 0);
-  const eje1 = projectIso(-10 * scale, -(aCalle / 2) * scale, 0), eje2 = projectIso(ancho * scale + 10 * scale, -(aCalle / 2) * scale, 0);
-  const rasRad = rasante * (Math.PI / 180);
-  const rfStart = projectIso(ancho / 2 * scale, -(aCalle / 2) * scale, 0);
-  const rfEnd = projectIso(ancho / 2 * scale, largo * scale, (largo + aCalle / 2) * Math.tan(rasRad) * scale);
-  const rlStart = projectIso(0, largo / 2 * scale, 0);
-  const rlEnd = projectIso(ancho * scale, largo / 2 * scale, ancho * Math.tan(rasRad) * scale);
+  const groundLot = [P(0, 0, 0), P(ancho, 0, 0), P(ancho, largo, 0), P(0, largo, 0)];
+  const groundStreet = [P(-M, -anchoCalle, 0), P(ancho + M, -anchoCalle, 0), P(ancho + M, 0, 0), P(-M, 0, 0)];
 
   return (
     <div style={{ width: '100%', background: 'var(--muted)', borderRadius: 'var(--radius)', border: '1.5px solid var(--border)', overflow: 'hidden', display: 'flex', flexDirection: 'column', minHeight: 300, flex: 1 }}>
       <div style={{ padding: 10, background: 'var(--card)', borderBottom: '1px solid var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Maximize size={12} /> Esquema Volumétrico 3D</span>
-        <span style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>Escala autoajustable</span>
+        <span style={{ fontSize: 11, fontWeight: 600, color: 'var(--muted-foreground)', display: 'inline-flex', alignItems: 'center', gap: 4 }}><Maximize size={12} /> Esquema Volumétrico 3D · pisos c/{PISO} m{nPisos > 0 ? ` (≈${nPisos})` : ''}</span>
+        <span style={{ fontSize: 10, color: 'var(--muted-foreground)' }}>Calle al frente</span>
       </div>
       <div style={{ flex: 1, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
         <svg width="100%" height="100%" viewBox="0 0 400 400">
-          <g transform="translate(200, 280)">
-            <polygon points={`${s1.x},${s1.y} ${s2.x},${s2.y} ${s3.x},${s3.y} ${s4.x},${s4.y}`} fill="var(--muted)" stroke="var(--border)" strokeWidth={1} />
-            <line x1={eje1.x} y1={eje1.y} x2={eje2.x} y2={eje2.y} stroke="var(--muted-foreground)" strokeDasharray="4" strokeWidth={1} />
-            <text x={projectIso(ancho / 2 * scale, -2 * scale, 0).x} y={projectIso(ancho / 2 * scale, -2 * scale, 0).y} fontSize={10} fontWeight="bold" fill="var(--muted-foreground)" textAnchor="middle">↑ LÍNEA OFICIAL ↑</text>
-            <polygon points={`${t1.x},${t1.y} ${t2.x},${t2.y} ${t3.x},${t3.y} ${t4.x},${t4.y}`} fill="var(--card)" stroke="var(--border)" strokeWidth={1.5} />
-            {hCore > 0 && resultados.anchoEdificable > 0 && resultados.largoEdificable > 0 && (
+          <g transform={gTransform}>
+            <polygon points={pts(groundLot)} fill="var(--card)" stroke="var(--border)" strokeWidth={1.5} vectorEffect="non-scaling-stroke" />
+            <polygon points={pts(groundStreet)} fill="var(--muted)" stroke="var(--border)" strokeWidth={1} vectorEffect="non-scaling-stroke" />
+            {hCore > 0 && wEd > 0 && lEd > 0 && (
               <>
-                {drawBox(dist * scale, ante * scale, 0, resultados.anchoEdificable * scale, resultados.largoEdificable * scale, hCore * scale, 'var(--destructive)', 'var(--foreground)')}
-                {adosamientos.fondo && drawBox(dist * scale, (largo - dist) * scale, 0, Math.min(ancho * 0.4, resultados.anchoEdificable) * scale, dist * scale, hAdos * scale, 'var(--primary)', 'var(--foreground)')}
-                {adosamientos.izquierdo && drawBox(0, ante * scale, 0, dist * scale, Math.min(largo * 0.4, largo - ante) * scale, hAdos * scale, 'var(--primary)', 'var(--foreground)')}
-                {adosamientos.derecho && drawBox((ancho - dist) * scale, ante * scale, 0, dist * scale, Math.min(largo * 0.4, largo - ante) * scale, hAdos * scale, 'var(--primary)', 'var(--foreground)')}
-                <line x1={rfStart.x} y1={rfStart.y} x2={rfEnd.x} y2={rfEnd.y} stroke="var(--destructive)" strokeWidth={1.5} strokeDasharray="3,3" />
-                <line x1={rlStart.x} y1={rlStart.y} x2={rlEnd.x} y2={rlEnd.y} stroke="var(--primary)" strokeWidth={1.5} strokeDasharray="3,3" />
-                <text x={rfStart.x} y={rfEnd.y - 15} fontSize={9} fontWeight="bold" fill="var(--destructive)" textAnchor="middle">Rasantes</text>
+                {box(bx, by, 0, wEd, lEd, hCore, 'var(--destructive)', 'var(--foreground)', true)}
+                {adosamientos.fondo && box(bx, largo - distanciamiento, 0, Math.min(ancho * 0.4, wEd), distanciamiento, hAdos, 'var(--primary)', 'var(--foreground)', false)}
+                {adosamientos.izquierdo && box(0, by, 0, distanciamiento, Math.min(largo * 0.4, largo - by), hAdos, 'var(--primary)', 'var(--foreground)', false)}
+                {adosamientos.derecho && box(ancho - distanciamiento, by, 0, distanciamiento, Math.min(largo * 0.4, largo - by), hAdos, 'var(--primary)', 'var(--foreground)', false)}
               </>
             )}
           </g>
+          <text x={200} y={390} textAnchor="middle" fontSize={10} fontWeight="bold" fill="var(--muted-foreground)">↓ CALLE / LÍNEA OFICIAL (frente) ↓</text>
         </svg>
       </div>
     </div>
@@ -187,11 +216,19 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
 
   const [saving, setSaving] = useState(false);
   const [inputs, setInputs] = useState<Inputs>(INPUTS_DEFECTO);
+  const [terrenoArea, setTerrenoArea] = useState<number | null>(null); // área real del polígono (Geolocalizador)
 
   useEffect(() => {
     if (!project) return;
     let alive = true;
     (async () => {
+      // Área REAL del terreno (polígono del Geolocalizador/Ubicación) — referencia + semilla.
+      let areaTerr = 0;
+      try { const t = await loadTerreno(project.id, isCloud); if (t && t.areaM2 > 0) areaTerr = t.areaM2; } catch { /* sin terreno */ }
+      const areaLegal = Number(project.superficieTerrenoLegal) || 0;
+      if (alive) setTerrenoArea(areaTerr || null);
+
+      // ¿Cabida ya guardada? (nube o local) → tiene prioridad sobre las semillas.
       if (isCloud) {
         try {
           const snap = await getDoc(estadoDoc(project.id));
@@ -200,17 +237,24 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
       }
       const raw = localStorage.getItem(STORAGE_KEY(project.id));
       if (alive && raw) { try { setInputs({ ...INPUTS_DEFECTO, ...(JSON.parse(raw) as Partial<Inputs>) }); return; } catch { /* corrupto */ } }
-      // Sin cabida guardada → siembra parámetros normativos desde la ficha del
-      // Geolocalizador (sync #1): altura, constructibilidad y ocupación de suelo.
+
+      // Sin cabida guardada → SIEMBRA: condiciones de edificación (ficha normativa del
+      // Geolocalizador) + dimensiones del predio desde el área real (aprox. cuadrada; el
+      // usuario ajusta frente/fondo si conoce la forma exacta).
+      const seed: Inputs = { ...INPUTS_DEFECTO };
       try {
         const norm = await loadNormativa(project.id, isCloud);
-        if (alive && norm) setInputs((prev) => ({
-          ...prev,
-          alturaMaxima: norm.alturaMaxima || prev.alturaMaxima,
-          coefConstructibilidad: norm.coefConstructibilidad || prev.coefConstructibilidad,
-          ocupacionSuelo: norm.ocupacionSuelo || prev.ocupacionSuelo,
-        }));
-      } catch { /* sin ficha persistida → valores por defecto */ }
+        if (norm) {
+          if (norm.alturaMaxima) seed.alturaMaxima = norm.alturaMaxima;
+          if (norm.coefConstructibilidad) seed.coefConstructibilidad = norm.coefConstructibilidad;
+          if (norm.ocupacionSuelo) seed.ocupacionSuelo = norm.ocupacionSuelo;
+          const ante = parseFloat(String(norm.antejardin ?? '').replace(',', '.'));
+          if (Number.isFinite(ante) && ante > 0) seed.antejardin = ante;
+        }
+      } catch { /* sin ficha → valores por defecto */ }
+      const areaRef = areaTerr || areaLegal;
+      if (areaRef > 0) { const lado = Math.round(Math.sqrt(areaRef)); seed.largo = lado; seed.ancho = lado; }
+      if (alive) setInputs(seed);
     })();
     return () => { alive = false; };
   }, [project?.id, isCloud]);
@@ -219,6 +263,12 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
 
   const setNum = (k: keyof Inputs) => (v: string) => setInputs(prev => ({ ...prev, [k]: Number(v) }));
   const toggleAdos = (k: keyof Adosamientos) => setInputs(prev => ({ ...prev, adosamientos: { ...prev.adosamientos, [k]: !prev.adosamientos[k] } }));
+  const usarAreaTerreno = () => {
+    if (readOnly || !terrenoArea) return;
+    const lado = Math.round(Math.sqrt(terrenoArea));
+    setInputs(prev => ({ ...prev, largo: lado, ancho: lado }));
+    triggerToast(`Predio ajustado a ${terrenoArea.toLocaleString('es-CL')} m² (cuadrado ${lado}×${lado}). Ajusta frente/fondo si conoces la forma real.`);
+  };
 
   const handleSave = async () => {
     if (readOnly || !project) { triggerToast('Selecciona un proyecto para guardar.'); return; }
@@ -259,6 +309,12 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
                 <span style={{ fontSize: 13, fontWeight: 600 }}>Superficie Total:</span>
                 <span style={{ fontWeight: 'bold' }}>{resultados.superficieTerreno.toLocaleString('es-CL')} m²</span>
               </div>
+              {terrenoArea != null && (
+                <div style={{ gridColumn: '1 / -1', padding: 10, background: 'var(--card)', borderRadius: 'var(--radius)', border: '1px dashed var(--border)', display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 8 }}>
+                  <span style={{ fontSize: 12 }}>Terreno dibujado (Geolocalizador): <strong>{terrenoArea.toLocaleString('es-CL')} m²</strong></span>
+                  <button type="button" className="technical-btn secondary" style={{ fontSize: 10, padding: '4px 8px' }} disabled={readOnly} onClick={usarAreaTerreno}>Usar (cuadrado)</button>
+                </div>
+              )}
             </div>
           </div>
 
