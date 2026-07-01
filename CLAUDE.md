@@ -37,12 +37,14 @@
 5. **TS estricto:** usa `import type { X }` (Vite/oxc; su ausencia deja pantalla en blanco) y valida con `tsc -b` antes de dar por cerrada una edición.
 6. **Sin dependencias nuevas:** no introduzcas librerías, UI ni patrones de estado nuevos sin autorización. Usa el stack existente (`framer-motion`, `lucide-react`, `archibots.css`, `types.ts`).
 7. **Pregunta antes de borrar:** si un bloque parece estorbar, señala el conflicto en una línea y espera confirmación; no asumas que hay que borrarlo.
+8. **Modo silencioso + confirmaciones mínimas:** sin saludos, despedidas ni teoría; ejecuta y reporta breve, con una línea de justificación cuando aporte. Pide confirmación **solo en decisiones que son de Gregorio** (diseño/producto/arquitectura, borrar o reemplazar algo que funciona, alcance ambiguo, tocar reglas/Functions/secretos). **NO** conviertas en pregunta la mera autorización de correr comandos ni pasos rutinarios y reversibles: hazlos y avísalo.
 
 ## Reglas heredadas REEMPLAZADAS (nacieron de la plataforma anterior)
 - ~~"Edición atómica vía `os.replace` en Python"~~ → **obsoleta**: edita con Edit/Write nativos. *Espíritu vigente:* nunca reescribas un archivo completo que funciona; edición quirúrgica. **Red de seguridad:** si un archivo grande aparece truncado tras editar, verifícalo y cae a escribir en scratch + `cp`.
 - ~~"Entregar un único bloque de código para copiar" (Prompt Maestro §14)~~ → **obsoleta**: escribe directo en `Web/src/tools/`. El Prompt Maestro sigue siendo el **contrato de arquitectura** (§5 `ToolProps`, §6 hooks, §9 estilos, §12 prohibiciones).
-- ~~"Modo silencioso extremo"~~ → **relajada**: explicaciones breves y decisiones justificadas en una línea; sin teoría larga.
 - **No edites `Iniciar Aquí.md` ni el Prompt Maestro sin autorización:** propón los cambios y espera confirmación.
+
+> Nota: "Modo silencioso extremo" **NO** está reemplazado — sigue vigente (ver Reglas inmutables §8). Solo se refina: confirmaciones reservadas a decisiones de Gregorio, no a autorizar comandos.
 
 ## Backlog activo (punteros — el detalle está en los docs, no lo dupliques)
 - **`Last Update.md` → `ESTADO AL CIERRE (2026-06-30)`:** pendientes de despliegue (Cloud Functions sin desplegar, frontend sin subir), limpieza y verificación de reglas.
@@ -73,3 +75,4 @@
 - [2026-06-30] `import type { X }` es obligatorio con Vite/oxc: omitirlo deja la app en pantalla en blanco sin error claro.
 - [2026-07-01] Entorno = Claude Code (no la plataforma previa): edita con Edit/Write nativos; `os.replace` ya no aplica, pero verifica ediciones de archivos grandes por si el montaje trunca.
 - [2026-07-01] El frontend NO se publica con `firebase deploy --only hosting` (esa URL `*.web.app` está sin uso): el sitio real (`archibots.cl`) se publica vía `git push` → build en Cloudflare Pages (`.bat 2`).
+- [2026-07-01] Para iterar, Gregorio prefiere probar en LOCAL con el `.bat` de la raíz `Probar Local (npm run dev).bat` (Vite) antes de publicar; reservar `.bat 2` (Commit y Push) para cuando confirme que sube a producción.

@@ -245,7 +245,7 @@ Actúa como **Senior Full-Stack Engineer** sobre un entorno **de producción ya 
 
 ### Reglas obligatorias de seguridad y economía de tokens
 
-1. **EXPLICACIONES BREVES (⟲ Claude Code).** Sin saludos, despedidas ni teoría larga. Justifica cada decisión en **una línea**; el detalle técnico va como comentario breve dentro del código. *(Antes "modo silencioso extremo"; se relajó al pasar de Cowork a Claude Code.)*
+1. **MODO SILENCIOSO + CONFIRMACIONES MÍNIMAS.** Sin saludos, despedidas ni teoría larga: ejecuta y reporta breve, con una línea de justificación cuando aporte (el detalle técnico va como comentario en el código). Pide confirmación **solo en decisiones que son de Gregorio** (diseño/producto/arquitectura, borrar o reemplazar algo que funciona, alcance ambiguo, tocar reglas/Functions/secretos). **NO** preguntes para autorizar comandos ni pasos rutinarios reversibles: hazlos y avísalo.
 
 2. **EDICIÓN QUIRÚRGICA (no reescribir archivos completos).** El código actual funciona. **Bajo ninguna circunstancia** reescribas un componente o archivo entero salvo petición explícita. En Claude Code edita **directo con las herramientas nativas** (Edit/Write), cambiando solo el bloque exacto. *(Ya NO se entrega "un único bloque de código para copiar" ni se usa `os.replace`; ver Reglas técnicas heredadas.)*
 

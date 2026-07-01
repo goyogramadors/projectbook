@@ -1,0 +1,16 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(*)",
+      "PowerShell(*)"
+    ],
+    "deny": [
+      "Bash(git push*)",
+      "PowerShell(git push*)",
+      "Bash(firebase deploy*)",
+      "PowerShell(firebase deploy*)",
+      "Read(**/.env.local)",
+      "Read(**/.env.*.local)"
+    ]
+  }
+}

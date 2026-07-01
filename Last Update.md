@@ -46,7 +46,39 @@
 **3) Adosamiento no puede solaparse con otro distanciamiento (corregido).** El bloque de adosamiento (muro ≤3,5 m, ≤40% del lado) ahora **despeja en cada esquina** la franja de retiro del deslinde vecino NO adosado (antejardín si es vía, distanciamiento si es vecino). Si tras el despeje no cabe, **no se dibuja**. Antes se centraba fijo 0,3–0,7 e invadía el distanciamiento contiguo (visible en lados cortos).
 
 **Archivo tocado:** `Web/src/tools/VolumenTeoricoView.tsx` (solo este). **Verificación:** `npx tsc -b` OK.
-**Pendiente menor:** el número "Volumen Teórico Bruto" sigue siendo prisma recto (área × altura), no descuenta el chaflán del faldón — afinar si se quiere volumen neto.
+
+### Segunda pasada (misma sesión) — reescritura robusta tras feedback con capturas
+El *miter* (intersección de rectas retiradas) seguía disparando picos en la esquina de 3 frentes, el adosamiento aún invadía y sólo se veía 1 piso. Reescrito:
+- **`insetPolygon` (miter) → `setbackTagged` (retiro por semiplanos, Sutherland–Hodgman).** Cada deslinde recorta el polígono contra su recta retirada; **nunca genera picos** (bisela las esquinas agudas) y devuelve el anillo **etiquetado por deslinde de origen** (`edgeSrc`) para seguir asociando cada arista a su deslinde. Helpers nuevos de módulo: `innerNormal`, `clipTagged`, `setbackTagged`, `ringArea`. **Verificado con prueba numérica** (hexágono con punta): inset 6 aristas etiquetadas, sin NaN, `rInset < rPoly` (no hay pico).
+- **Cumbrera por semiplanos:** techo plano a `h` = `setbackTagged(poly, topOffs)` con `topOffs = max(retiro, sRidge)` y `sRidge = (h−3,5)/tanθ − origen`. Faldón por arista: muro vertical hasta `hWall`, luego retroceso `(h−hWall)/tanθ` (clamp al centroide). En la prueba, los frentes (antejardín 5 > sRidge 2,4) suben verticales y sólo los vecinos generan faldón.
+- **TODOS los pisos:** las líneas de piso se dibujan hasta `h` (antes sólo hasta el alero más bajo → se veía 1 piso); sobre el faldón la línea de piso **retrocede** con la pendiente.
+- **Adosamiento:** el bloque (40% centrado) se **recorta geométricamente** (`clipTagged`) contra la recta de retiro de cada deslinde vecino NO adosado; si no queda superficie, no se dibuja. Elimina la invasión del distanciamiento contiguo (deslinde 4 vs 5).
+
+### Tercera pasada (misma sesión) — techo construido desde la CUMBRERA (sin picos) + preferencia de prueba local
+Con 6 deslindes (3 vía + 3 vecinos adosados), la cumbrera seguía mostrando **picos** en el techo y parecía que "el deslinde 6 tomaba el 4 para cortar". Causa: las caras de faldón se construían **por arista del inset** y sus bordes superiores no coincidían con la cumbrera → picos y cruces donde se encontraban faldones vecinos.
+- **Techo construido DESDE la cumbrera (`topRing`) hacia afuera:** una cara por arista de `topRing` (etiquetada por deslinde `tv.e`); baja como faldón `run = topOffs−retiro` hasta el alero `hWall` y luego muro vertical. Aristas contiguas comparten el vértice de cumbrera → **el techo cierra exacto, sin picos**. Cada faldón queda ligado a SU deslinde (se acabó la confusión 6↔4). Fallback `flatTop` si la cumbrera colapsa (predios chicos).
+- **Líneas de piso** interpoladas alero→cumbrera (retroceden con el faldón), hasta la altura del techo.
+- **Verificado numéricamente** (hexágono con params de la captura): `topRing` = 6 aristas tags 0..5 en orden; vía alero 15,9 m (faldón 1,9 m), vecinos alero 9,0 m (faldón 4,4 m) — coincide con "Altura máx por rasante ≈ 9,0 m".
+
+**Preferencia de flujo (Gregorio):** para iterar, usar el `.bat` de la raíz **`Probar Local (npm run dev).bat`** (Vite local) en vez de publicar a producción en cada vuelta. Reservar `2 - Commit y Push (main).bat` para publicar cuando confirme.
+
+### Cuarta pasada (misma sesión) — sólido HERMÉTICO (esquinas cerradas) + faldón por su propio deslinde
+Persistían dos fallas: (a) parecía que el deslinde 6 cortaba con la recta del 4, y (b) el volumen no cerraba en las esquinas interiores (ranuras/huecos). Causa: se construía desde la cumbrera con `rec` por cara → aristas vecinas no compartían la base y quedaban ranuras. Reescrito para ser hermético:
+- **Construcción desde la HUELLA** (`baseRing`, esquinas de base compartidas) **emparejada con la CUMBRERA por deslinde** (`topByTag`: la arista de cumbrera con el mismo tag). Por arista: muro vertical (base→alero `hWall`) + faldón (alero→cumbrera). Cada faldón usa **su propia** recta de cumbrera → se acabó el "6 corta con 4".
+- **Triángulos de limatesa** por esquina: cuando dos aleros vecinos están a distinta altura, un triángulo `[esquina@alero1, esquina@alero2, apex_cumbrera]` cierra la ranura. **Verificado numéricamente:** huella y cumbrera con idéntico orden de tags 0..5, y el apex compartido entre faldones vecinos coincide (separación 0.000) → esquinas herméticas.
+- Render unificado en `pieces` (`wall`/`faldon`/`hip`) ordenadas por profundidad; líneas de piso por pieza (muro vertical o interpoladas sobre el faldón). Fallback `flatTop` si la cumbrera colapsa.
+
+### Quinta pasada (misma sesión) — retiro por BISECTRICES (un tramo no limita a otro) + corrección conceptual
+- **Corrección conceptual (Gregorio):** el deslinde **adosado SÍ impone rasante** (la rasante parte a 3,5 m del deslinde, justo donde termina el adosamiento; no se pisan). Se revirtió el intento de "adosado no impone rasante".
+- **Bug real:** el retiro se calculaba por **intersección de semiplanos** (rectas infinitas), así que un tramo recortaba la zona de otro de la MISMA orientación → el deslinde 4 limitaba el crecimiento hacia el deslinde 6. Reemplazado por **retiro por bisectrices / esqueleto recto** (`miterOffsetTagged`): cada deslinde se mueve por su PROPIA recta y se unen en miter, respetando escalones (un tramo no invade la zona de otro). Las aristas que se invierten (esquinas agudas / offset excesivo) se **eliminan iterativamente** → sin picos. Se eliminó `setbackTagged` (semiplanos), ya sin uso.
+- **Verificado numéricamente:** (a) lado norte escalonado (dos tramos paralelos): el offset respeta el escalón (y=25 y y=19 por separado; el tramo más restrictivo NO arrastra al otro); (b) punta de 3 frentes: sin spike (`rInset < rPoly`).
+- Guarda extra en el triángulo de limatesa: sólo cierra la esquina si ambos faldones comparten de verdad el vértice de cumbrera.
+
+### Sexta pasada (misma sesión) — ángulo de rasante editable + fachadas a la calle sí se cortan
+- **Ángulo de rasante editable:** el 3D usaba SOLO el ángulo por región (`rasanteAngleForRegion`) e ignoraba el campo «Ángulo Rasante» (`inputs.rasante`). Ahora `rasAngle = inputs.rasante>0 ? inputs.rasante : región`. Se mantiene la SIEMBRA por región (sur 60° / resto 70°) pero el usuario puede cambiarlo y el volumen responde. Etiqueta actualizada ("editable; por defecto según región").
+- **Fachadas a la calle sí se cortan:** era consecuencia de lo anterior — con 70° la rasante de frente (origen en el eje de calzada, ~9 m) recortaba a ~28 m (casi invisible); con el ángulo real del usuario (p. ej. 50°) recorta desde ~14 m. Los frentes ya reciben faldón como corresponde.
+
+**Pendiente menor:** el número "Volumen Teórico Bruto" sigue siendo prisma recto (área × altura), no descuenta el chaflán del faldón. Falta verificación visual final en pantalla con el predio real.
 
 ---
 

@@ -97,32 +97,60 @@ function segIntersect(p1: Pt2, d1: Pt2, p2: Pt2, d2: Pt2): Pt2 | null {
   const t = ((p2[0] - p1[0]) * d2[1] - (p2[1] - p1[1]) * d2[0]) / den;
   return [p1[0] + t * d1[0], p1[1] + t * d1[1]];
 }
-/** Polígono retirado hacia adentro con un offset por deslinde (retiros OGUC). */
-function insetPolygon(poly: Pt2[], offs: number[]): Pt2[] {
+/** Vértice de un anillo etiquetado con el deslinde de origen de la arista que le sigue. */
+type TaggedPt = { p: Pt2; e: number };
+/** Normal unitaria hacia ADENTRO de la arista i del polígono (respecto del centroide). */
+function innerNormal(poly: Pt2[], i: number, cx: number, cy: number): Pt2 {
+  const a = poly[i]!, b = poly[(i + 1) % poly.length]!;
+  let nx = b[1] - a[1], ny = -(b[0] - a[0]); const L = Math.hypot(nx, ny) || 1; nx /= L; ny /= L;
+  const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
+  if ((cx - mx) * nx + (cy - my) * ny < 0) { nx = -nx; ny = -ny; }
+  return [nx, ny];
+}
+/** Recorte de semiplano (Sutherland–Hodgman) de un anillo etiquetado: conserva el lado
+ *  interior de la recta (punto lp, normal interior nrm). Los tramos NUEVOS que quedan sobre
+ *  la recta de corte se etiquetan con `clipId` (el deslinde cuyo retiro los generó). */
+function clipTagged(ring: TaggedPt[], lp: Pt2, nrm: Pt2, clipId: number): TaggedPt[] {
+  const res: TaggedPt[] = []; const N = ring.length;
+  const side = (p: Pt2) => (p[0] - lp[0]) * nrm[0] + (p[1] - lp[1]) * nrm[1];
+  for (let i = 0; i < N; i++) {
+    const cur = ring[i]!, nxt = ring[(i + 1) % N]!;
+    const sc = side(cur.p), sn = side(nxt.p);
+    const inter = (): Pt2 => { const t = sc / (sc - sn); return [cur.p[0] + t * (nxt.p[0] - cur.p[0]), cur.p[1] + t * (nxt.p[1] - cur.p[1])]; };
+    if (sc >= 0) { res.push(cur); if (sn < 0) res.push({ p: inter(), e: clipId }); }
+    else if (sn >= 0) { res.push({ p: inter(), e: cur.e }); }
+  }
+  return res;
+}
+function ringArea(pp: Pt2[]): number { let a = 0; for (let i = 0; i < pp.length; i++) { const j = (i + 1) % pp.length; a += pp[i]![0] * pp[j]![1] - pp[j]![0] * pp[i]![1]; } return Math.abs(a) / 2; }
+
+/** Retiro por BISECTRICES (esqueleto recto): cada deslinde se mueve hacia adentro `offs[i]` por su
+ *  PROPIA recta y las aristas se unen en miter. A diferencia del retiro por semiplanos, un
+ *  tramo NO recorta la zona de otro tramo de la misma orientación (respeta escalones): así el
+ *  deslinde 4 no limita el crecimiento hacia el deslinde 6. Las aristas que se invierten (esquinas
+ *  agudas / offset excesivo) se eliminan iterativamente para no generar "spikes". Devuelve el
+ *  anillo etiquetado por deslinde de origen. */
+function miterOffsetTagged(poly: Pt2[], offs: number[]): TaggedPt[] {
   const n = poly.length;
   const cx = poly.reduce((s, p) => s + p[0], 0) / n, cy = poly.reduce((s, p) => s + p[1], 0) / n;
-  const lines = poly.map((a, i) => {
-    const b = poly[(i + 1) % n]!;
-    let nx = b[1] - a[1], ny = -(b[0] - a[0]); const L = Math.hypot(nx, ny) || 1; nx /= L; ny /= L;
+  let active = poly.map((a, i) => {
+    const b = poly[(i + 1) % n]!; const [nx, ny] = innerNormal(poly, i, cx, cy); const o = offs[i] ?? 0;
     const mx = (a[0] + b[0]) / 2, my = (a[1] + b[1]) / 2;
-    if ((cx - mx) * nx + (cy - my) * ny < 0) { nx = -nx; ny = -ny; } // normal hacia ADENTRO
-    const o = offs[i] ?? 0;
-    return { p: [a[0] + nx * o, a[1] + ny * o] as Pt2, d: [b[0] - a[0], b[1] - a[1]] as Pt2, nx, ny, o };
+    return { tag: i, p: [mx + nx * o, my + ny * o] as Pt2, dir: [b[0] - a[0], b[1] - a[1]] as Pt2 };
   });
-  const out: Pt2[] = [];
-  for (let i = 0; i < n; i++) {
-    const l0 = lines[(i - 1 + n) % n]!, l1 = lines[i]!;
-    const q = segIntersect(l0.p, l0.d, l1.p, l1.d);
-    if (!q) { out.push([poly[i]![0] + l1.nx * l1.o, poly[i]![1] + l1.ny * l1.o]); continue; }
-    // Clamp de miter: en vértices casi rectos/reflejos (p. ej. esquina entre 3 frentes)
-    // la intersección de las rectas retiradas se dispara lejos y crea una figura rara.
-    // Limitamos el punto a una distancia razonable del vértice original.
-    const maxMiter = Math.max(l0.o, l1.o) * 3 + 0.5;
-    const dx = q[0] - poly[i]![0], dy = q[1] - poly[i]![1];
-    const dm = Math.hypot(dx, dy);
-    out.push(dm > maxMiter ? [poly[i]![0] + (dx / dm) * maxMiter, poly[i]![1] + (dy / dm) * maxMiter] : q);
+  const verts = () => active.map((e, k) => { const pr = active[(k - 1 + active.length) % active.length]!; return segIntersect(pr.p, pr.dir, e.p, e.dir) ?? e.p; });
+  for (let iter = 0; iter < n + 2 && active.length >= 3; iter++) {
+    const m = active.length, V = verts();
+    let worst = -1, worstVal = -1e-6;
+    for (let k = 0; k < m; k++) { // arista k = de V[k] a V[k+1]; si va en contra de su dirección, colapsó
+      const seg: Pt2 = [V[(k + 1) % m]![0] - V[k]![0], V[(k + 1) % m]![1] - V[k]![1]];
+      const dot = seg[0] * active[k]!.dir[0] + seg[1] * active[k]!.dir[1];
+      if (dot < worstVal) { worstVal = dot; worst = k; }
+    }
+    if (worst < 0) return active.map((e, k) => ({ p: V[k]!, e: e.tag })); // todas válidas
+    active.splice(worst, 1);
   }
-  return out;
+  return active.length >= 3 ? active.map((e, k) => ({ p: verts()[k]!, e: e.tag })) : [];
 }
 
 /* ── visualizador isométrico (módulo) ──────────────────────────────────────── */
@@ -185,41 +213,60 @@ function Visualizador3D({ inputs, resultados, poly, polyEdges, polyAdosa, hOverr
       return [nx, ny];
     };
 
-    // Huella EDIFICABLE: polígono retirado por deslinde (frente→antejardín; vecino→distanciamiento).
+    // Retiros por deslinde (frente→antejardín; vecino→distanciamiento) y origen de rasante.
     const offs = poly.map((_, i) => (polyEdges && polyEdges[i]) ? (inputs.edgeAnte?.[i] ?? 5) : (inputs.edgeDist?.[i] ?? 3));
-    const areaOf = (pp: Array<[number, number]>) => { let a = 0; for (let i = 0; i < pp.length; i++) { const j = (i + 1) % pp.length; a += pp[i]![0] * pp[j]![1] - pp[j]![0] * pp[i]![1]; } return Math.abs(a) / 2; };
-    let inset = insetPolygon(poly as Pt2[], offs);
-    if (!inset.every((q) => Number.isFinite(q[0]) && Number.isFinite(q[1])) || areaOf(inset) < areaOf(poly) * 0.04) inset = poly as Pt2[];
-    const m = inset.length;
+    const qOff = poly.map((_, i) => (polyEdges && polyEdges[i]) ? (inputs.edgeVia?.[i] ?? 8) / 2 : 0); // origen rasante fuera del deslinde (eje de calzada)
+    const nInner = poly.map((_, i) => innerNormal(poly as Pt2[], i, cX, cY)); // normal interior por deslinde
     const groundPts = poly.map(([x, y]) => Pr(x, y, 0));
 
-    // ── RASANTE COMO FALDÓN: el cuerpo sube hasta `h`; cerca de cada deslinde la rasante
-    // (3,5 m + distancia·tanθ) recorta el volumen EN DIAGONAL. Muro vertical hasta esa
-    // altura y, por encima, un plano inclinado que entra hacia la cumbrera. No aplana el
-    // techo (no impide otro piso): sólo achaflana el borde. ──────────────────────────
+    // ── RASANTE COMO FALDÓN — sólido HERMÉTICO construido desde la HUELLA (esquinas de base
+    // compartidas) emparejada con la CUMBRERA por deslinde. Por cada arista de huella: muro
+    // vertical hasta el alero `hWall` + faldón inclinado hasta la cumbrera. Cada esquina se
+    // cierra con un triángulo de limatesa (aleros vecinos a distinta altura). ──
     const tanR = Math.tan(((rasAngle ?? 70) * Math.PI) / 180);
-    const icx = inset.reduce((s, p) => s + p[0], 0) / m, icy = inset.reduce((s, p) => s + p[1], 0) / m;
-    // Distancia horizontal desde el ORIGEN de la rasante (eje de calzada en vía; deslinde en
-    // vecino) hasta el plano del muro, por deslinde.
-    const dOrigEdge = inset.map((_, i) => (polyEdges && polyEdges[i])
-      ? (inputs.edgeAnte?.[i] ?? 5) + (inputs.edgeVia?.[i] ?? 8) / 2
-      : (inputs.edgeDist?.[i] ?? 3));
-    const hWallEdge = dOrigEdge.map((d) => Math.min(h, 3.5 + Math.max(0, d) * tanR)); // altura del muro vertical
-    // Distancia perpendicular centroide→arista (para no invertir el techo al retirar la cumbrera).
-    const edgePerp = inset.map((a, i) => {
-      const b = inset[(i + 1) % m]!; const nx = b[1] - a[1], ny = -(b[0] - a[0]); const L = Math.hypot(nx, ny) || 1;
-      return Math.abs((icx - a[0]) * (nx / L) + (icy - a[1]) * (ny / L));
-    });
-    const ridgeOff = hWallEdge.map((hw, i) => Math.min(tanR > 0 ? Math.max(0, (h - hw) / tanR) : 0, edgePerp[i]! * 0.9));
-    let topInset = insetPolygon(inset, ridgeOff);
-    if (!topInset.every((q) => Number.isFinite(q[0]) && Number.isFinite(q[1]))) topInset = inset;
-    const hEaveVert = inset.map((_, v) => Math.min(hWallEdge[(v - 1 + m) % m]!, hWallEdge[v]!)); // techo del muro por vértice
-    const basePts = inset.map(([x, y]) => Pr(x, y, 0));
-    const eavePts = inset.map(([x, y], v) => Pr(x, y, hEaveVert[v]!));
-    const topPts = topInset.map(([x, y]) => Pr(x, y, h));
-    const minEave = Math.min(...hEaveVert);
+    const hWallOf = (d: number) => Math.min(h, 3.5 + Math.max(0, offs[d]! + qOff[d]!) * tanR); // alero del deslinde d
+    const sRidge = poly.map((_, i) => (tanR > 0 ? (h - 3.5) / tanR - qOff[i]! : offs[i]!)); // retiro para alcanzar `h`
+    const topOffs = poly.map((_, i) => Math.max(offs[i]!, sRidge[i]!));
+    let baseRing = miterOffsetTagged(poly as Pt2[], offs);        // HUELLA edificable (retiro por bisectrices)
+    if (baseRing.length < 3 || ringArea(baseRing.map((r) => r.p)) < ringArea(poly as Pt2[]) * 0.04) baseRing = (poly as Pt2[]).map((p, i) => ({ p, e: i }));
+    let topRing = miterOffsetTagged(poly as Pt2[], topOffs);      // CUMBRERA (techo plano a `h`)
+    let flatTop: number | null = null;                           // si la cumbrera colapsa → techo plano
+    if (topRing.length < 3) { topRing = baseRing; flatTop = Math.min(...baseRing.map((r) => hWallOf(r.e))); }
+    const topZ = flatTop != null ? flatTop : h;
+    const B = baseRing.length;
     const zsP: number[] = [];
-    for (let k = 1; k * PISO < minEave - 1e-6; k++) zsP.push(k * PISO);
+    for (let k = 1; k * PISO < topZ - 1e-6; k++) zsP.push(k * PISO); // TODOS los pisos hasta la altura del techo
+
+    // Cumbrera indexada por deslinde: la arista de cumbrera con el mismo tag que la de huella.
+    const topByTag = new Map<number, { a: Pt2; b: Pt2 }>();
+    for (let t = 0; t < topRing.length; t++) { const d = topRing[t]!.e; if (!topByTag.has(d)) topByTag.set(d, { a: topRing[t]!.p, b: topRing[(t + 1) % topRing.length]!.p }); }
+    const depthOf = (p: Pt2, q: Pt2) => { const a = rotXY(p[0], p[1]), b = rotXY(q[0], q[1]); return a[0] - a[1] + b[0] - b[1]; };
+
+    type Piece = { kind: 'wall' | 'faldon' | 'hip'; depth: number; quad: Array<{ x: number; y: number }>; floor?: { hA: Pt2; hB: Pt2; cA: Pt2; cB: Pt2; eaveH: number; zmin: number } };
+    const pieces: Piece[] = [];
+    for (let j = 0; j < B; j++) {
+      const d = baseRing[j]!.e; const hA = baseRing[j]!.p, hB = baseRing[(j + 1) % B]!.p;
+      const eaveH = flatTop != null ? topZ : hWallOf(d);
+      const top = topByTag.get(d);
+      pieces.push({ kind: 'wall', depth: depthOf(hA, hB), quad: [Pr(hA[0], hA[1], 0), Pr(hB[0], hB[1], 0), Pr(hB[0], hB[1], eaveH), Pr(hA[0], hA[1], eaveH)], floor: { hA, hB, cA: hA, cB: hB, eaveH, zmin: 0 } });
+      if (flatTop == null && top && eaveH < topZ - 1e-6) {
+        const cA = top.a, cB = top.b;
+        pieces.push({ kind: 'faldon', depth: depthOf(hA, hB) + 0.01, quad: [Pr(hA[0], hA[1], eaveH), Pr(hB[0], hB[1], eaveH), Pr(cB[0], cB[1], topZ), Pr(cA[0], cA[1], topZ)], floor: { hA, hB, cA, cB, eaveH, zmin: eaveH } });
+      }
+    }
+    if (flatTop == null) { // triángulos de limatesa: cierran la ranura de esquina entre aleros vecinos
+      for (let j = 0; j < B; j++) {
+        const d = baseRing[j]!.e, d2 = baseRing[(j + 1) % B]!.e;
+        const corner = baseRing[(j + 1) % B]!.p; const t1 = topByTag.get(d), t2 = topByTag.get(d2);
+        if (!t1 || !t2) continue;
+        const e1 = hWallOf(d), e2 = hWallOf(d2); if (Math.abs(e1 - e2) < 1e-3) continue;
+        const apex = t1.b; // vértice de cumbrera compartido entre las cumbreras de d y d2
+        if (Math.hypot(apex[0] - t2.a[0], apex[1] - t2.a[1]) > 0.5) continue; // sólo si de veras comparten vértice
+        pieces.push({ kind: 'hip', depth: depthOf(corner, corner) + 0.02, quad: [Pr(corner[0], corner[1], e1), Pr(corner[0], corner[1], e2), Pr(apex[0], apex[1], topZ)] });
+      }
+    }
+    pieces.sort((u, v) => u.depth - v.depth);
+    const topCap = topRing.map(({ p }) => Pr(p[0], p[1], topZ));
 
     // Calles: banda gris hacia afuera por cada deslinde de vía; esquinas unidas (miter)
     // entre deslindes de vía contiguos; eje discontinuo PARALELO al frente.
@@ -239,54 +286,41 @@ function Visualizador3D({ inputs, resultados, poly, polyEdges, polyAdosa, hOverr
       return { quad: quad.map(([x, y]) => Pr(x, y, 0)), eje: eje.map(([x, y]) => Pr(x, y, 0)) };
     }).filter(Boolean) as Array<{ quad: Array<{ x: number; y: number }>; eje: Array<{ x: number; y: number }> }>;
 
-    // Bloque de ADOSAMIENTO: muro ≤3,5 m en ≤40% del deslinde adosado. Sólo es válido si
-    // NO invade el retiro (distanciamiento/antejardín) del deslinde vecino NO adosado: se
-    // despeja en cada esquina la franja que el vecino exige, y si no cabe, no se dibuja.
+    // Bloque de ADOSAMIENTO: muro ≤3,5 m en ≤40% (centrado) del deslinde adosado. Se RECORTA
+    // por el retiro de cada deslinde vecino NO adosado, de modo que NO invada su
+    // distanciamiento/antejardín; si tras el recorte no queda superficie, no se dibuja.
     const adosaBlocks = poly.map(([ax, ay], i) => {
       const street = !!(polyEdges && polyEdges[i]);
       if (street || !(polyAdosa && polyAdosa[i])) return null;
-      const b = poly[(i + 1) % n]!; const [nx, ny] = outN(i);
-      const ex = b[0] - ax, ey = b[1] - ay; const L = Math.hypot(ex, ey) || 1;
+      const b = poly[(i + 1) % n]!; const [nx, ny] = nInner[i]!;
+      const ex = b[0] - ax, ey = b[1] - ay;
       const off = inputs.edgeDist?.[i] ?? 3;
-      const clearOf = (k: number) => {
+      const lerp = (t: number): [number, number] => [ax + ex * t, ay + ey * t];
+      const p0 = lerp(0.3), p1 = lerp(0.7);                               // 40% centrado (tope OGUC)
+      let ring: TaggedPt[] = [
+        { p: p0, e: i }, { p: p1, e: i },
+        { p: [p1[0] + nx * off, p1[1] + ny * off], e: i },                // hacia adentro por el distanciamiento
+        { p: [p0[0] + nx * off, p0[1] + ny * off], e: i },
+      ];
+      for (const k of [(i - 1 + n) % n, (i + 1) % n]) {                   // recorta esquinas vs. vecinos
         const st = !!(polyEdges && polyEdges[k]);
         const ad = !!(polyAdosa && polyAdosa[k]) && !st;
-        if (ad) return 0;                                              // vecino también adosado → sin despeje
-        return st ? (inputs.edgeAnte?.[k] ?? 5) : (inputs.edgeDist?.[k] ?? 3);
-      };
-      let a0 = clearOf((i - 1 + n) % n) / L;                          // despeje esquina inicial
-      let a1 = 1 - clearOf((i + 1) % n) / L;                          // despeje esquina final
-      if (a1 - a0 <= 1e-3) return null;                              // no cabe sin invadir retiros vecinos
-      const maxFrac = 0.4;                                            // tope OGUC: 40% del lado
-      if (a1 - a0 > maxFrac) { const c = (a0 + a1) / 2; a0 = c - maxFrac / 2; a1 = c + maxFrac / 2; }
-      const lerp = (t: number): [number, number] => [ax + ex * t, ay + ey * t];
-      const p0 = lerp(a0), p1 = lerp(a1);
-      const q0: [number, number] = [p0[0] - nx * off, p0[1] - ny * off];
-      const q1: [number, number] = [p1[0] - nx * off, p1[1] - ny * off];
+        if (ad) continue;                                                 // vecino también adosado → sin recorte
+        const clr = st ? (inputs.edgeAnte?.[k] ?? 5) : (inputs.edgeDist?.[k] ?? 3);
+        const [kx, ky] = nInner[k]!;
+        ring = clipTagged(ring, [poly[k]![0] + kx * clr, poly[k]![1] + ky * clr], [kx, ky], k);
+        if (ring.length < 3) return null;                                 // no cabe sin invadir retiro vecino
+      }
       const hA = Math.min(3.5, h);
-      const ring: Array<[number, number]> = [p0, p1, q1, q0];
-      return { bpts: ring.map(([x, y]) => Pr(x, y, 0)), tpts: ring.map(([x, y]) => Pr(x, y, hA)) };
+      return { bpts: ring.map(({ p }) => Pr(p[0], p[1], 0)), tpts: ring.map(({ p }) => Pr(p[0], p[1], hA)) };
     }).filter(Boolean) as Array<{ bpts: Array<{ x: number; y: number }>; tpts: Array<{ x: number; y: number }> }>;
 
-    const allP = [...groundPts, ...basePts, ...eavePts, ...topPts, ...streets.flatMap((s) => s.quad), ...adosaBlocks.flatMap((a) => a.tpts)];
+    const allP = [...groundPts, ...pieces.flatMap((p) => p.quad), ...topCap, ...streets.flatMap((s) => s.quad), ...adosaBlocks.flatMap((a) => a.tpts)];
     const axs = allP.map((q) => q.x), ays = allP.map((q) => q.y);
     const nX = Math.min(...axs), xX = Math.max(...axs), nY = Math.min(...ays), xY = Math.max(...ays);
     const pfit = Math.min(340 / Math.max(1, xX - nX), 340 / Math.max(1, xY - nY));
     const pcx = (nX + xX) / 2, pcy = (nY + xY) / 2;
     const pT = `translate(200 200) scale(${pfit.toFixed(4)}) translate(${(-pcx).toFixed(2)} ${(-pcy).toFixed(2)})`;
-
-    // Caras ordenadas por profundidad (pintor): por deslinde, un muro vertical (base→alero)
-    // y su faldón inclinado (alero→cumbrera). Se dibujan de lejos a cerca.
-    const faces = Array.from({ length: m }, (_, i) => {
-      const j = (i + 1) % m;
-      const a = rotXY(inset[i]![0], inset[i]![1]);
-      const b = rotXY(inset[j]![0], inset[j]![1]);
-      return {
-        i, j, depth: a[0] - a[1] + b[0] - b[1],
-        wall: [basePts[i]!, basePts[j]!, eavePts[j]!, eavePts[i]!],
-        faldon: [eavePts[i]!, eavePts[j]!, topPts[j]!, topPts[i]!],
-      };
-    }).sort((u, v) => u.depth - v.depth);
 
     const labels = poly.map(([ax, ay], i) => {
       const b = poly[(i + 1) % n]!; const [nx, ny] = outN(i);
@@ -323,21 +357,23 @@ function Visualizador3D({ inputs, resultados, poly, polyEdges, polyAdosa, hOverr
                 const col = street ? '#7a1f2b' : (adosa ? 'var(--primary)' : '#111111');
                 return <line key={`d${i}`} x1={a.x} y1={a.y} x2={b.x} y2={b.y} stroke={col} strokeWidth={street ? 3.2 : 1.6} vectorEffect="non-scaling-stroke" />;
               })}
-              {faces.map(({ i, j, wall, faldon }, k) => (
+              {pieces.map((f, k) => (
                 <g key={k}>
-                  <polygon points={pts(wall)} fill="var(--destructive)" fillOpacity={0.5} stroke="var(--foreground)" strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
-                  {zsP.map((zz, z) => {
-                    if (zz >= hEaveVert[i]! - 1e-6 || zz >= hEaveVert[j]! - 1e-6) return null; // sólo sobre el muro vertical
-                    const p1 = Pr(inset[i]![0], inset[i]![1], zz), p2 = Pr(inset[j]![0], inset[j]![1], zz);
-                    return <line key={z} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="var(--foreground)" strokeWidth={0.7} strokeOpacity={0.6} vectorEffect="non-scaling-stroke" />;
+                  <polygon points={pts(f.quad)} fill="var(--destructive)" fillOpacity={f.kind === 'wall' ? 0.5 : f.kind === 'hip' ? 0.6 : 0.68} stroke="var(--foreground)" strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+                  {f.floor && zsP.map((zz, z) => { // línea de piso: en el muro (t=0) o interpolada sobre el faldón
+                    if (zz <= f.floor!.zmin - 1e-6 || zz >= topZ - 1e-6) return null;
+                    const t1 = zz <= f.floor!.eaveH || topZ <= f.floor!.eaveH ? 0 : (zz - f.floor!.eaveH) / (topZ - f.floor!.eaveH);
+                    const ax = f.floor!.hA[0] + (f.floor!.cA[0] - f.floor!.hA[0]) * t1, ay = f.floor!.hA[1] + (f.floor!.cA[1] - f.floor!.hA[1]) * t1;
+                    const bx = f.floor!.hB[0] + (f.floor!.cB[0] - f.floor!.hB[0]) * t1, by = f.floor!.hB[1] + (f.floor!.cB[1] - f.floor!.hB[1]) * t1;
+                    const p1 = Pr(ax, ay, zz), p2 = Pr(bx, by, zz);
+                    return <line key={z} x1={p1.x} y1={p1.y} x2={p2.x} y2={p2.y} stroke="var(--foreground)" strokeWidth={0.7} strokeOpacity={0.5} vectorEffect="non-scaling-stroke" />;
                   })}
-                  <polygon points={pts(faldon)} fill="var(--destructive)" fillOpacity={0.68} stroke="var(--foreground)" strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                 </g>
               ))}
-              <polygon points={pts(topPts)} fill="var(--destructive)" fillOpacity={0.9} stroke="var(--foreground)" strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
+              {topCap.length >= 3 && <polygon points={pts(topCap)} fill="var(--destructive)" fillOpacity={0.9} stroke="var(--foreground)" strokeWidth={1} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />}
               {adosaBlocks.map((ab, k) => (
                 <g key={`ad${k}`}>
-                  {[0, 1, 2, 3].map((eIdx) => { const j = (eIdx + 1) % 4; return <polygon key={eIdx} points={pts([ab.bpts[eIdx]!, ab.bpts[j]!, ab.tpts[j]!, ab.tpts[eIdx]!])} fill="var(--primary)" fillOpacity={0.6} stroke="var(--foreground)" strokeWidth={0.8} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />; })}
+                  {ab.bpts.map((_, eIdx) => { const j = (eIdx + 1) % ab.bpts.length; return <polygon key={eIdx} points={pts([ab.bpts[eIdx]!, ab.bpts[j]!, ab.tpts[j]!, ab.tpts[eIdx]!])} fill="var(--primary)" fillOpacity={0.6} stroke="var(--foreground)" strokeWidth={0.8} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />; })}
                   <polygon points={pts(ab.tpts)} fill="var(--primary)" fillOpacity={0.85} stroke="var(--foreground)" strokeWidth={0.8} strokeLinejoin="round" vectorEffect="non-scaling-stroke" />
                 </g>
               ))}
@@ -517,10 +553,11 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
   }, [project?.id, isCloud]);
 
   const resultados = useMemo(() => calcular(inputs), [inputs]);
-  // Rasante por región (OGUC) + tope de altura: la rasante nace a 3,5 m sobre el deslinde
-  // (o el eje de calzada en los frentes) y sube con el ángulo regional. El tope es el mínimo
-  // entre deslindes (los adosados no limitan; son la excepción ≤3,5 m / ≤40%).
-  const rasAngle = rasanteAngleForRegion(project?.region);
+  // Ángulo de rasante: se SIEMBRA por región (OGUC: sur 60° / resto 70°) pero es EDITABLE por el
+  // usuario en el campo "Ángulo Rasante". Se usa el valor ingresado; si está vacío/0, cae a la
+  // región. La rasante nace a 3,5 m sobre el deslinde (o el eje de calzada en los frentes) y sube
+  // con este ángulo, recortando el volumen en diagonal cerca de cada deslinde (también los frentes).
+  const rasAngle = Number(inputs.rasante) > 0 ? Number(inputs.rasante) : rasanteAngleForRegion(project?.region);
   const rasMaxH = useMemo(() => {
     const tanR = Math.tan((rasAngle * Math.PI) / 180);
     let m = Infinity;
@@ -653,7 +690,7 @@ export default function VolumenTeoricoView({ projectId, access = 'edit' }: ToolP
                       </div>
                     ))}
                     <div style={{ fontSize: 11, fontWeight: 700, marginTop: 4 }}>
-                      Rasante {rasAngle}° (según región{project?.region ? `: ${project.region}` : ''}) · Altura máx. por rasante ≈ {rasMaxH ? rasMaxH.toFixed(1) : '—'} m
+                      Rasante {rasAngle}° (editable en «Ángulo Rasante»; por defecto según región{project?.region ? `: ${project.region}` : ''}) · Altura máx. por rasante ≈ {rasMaxH ? rasMaxH.toFixed(1) : '—'} m
                     </div>
                   </div>
                 ) : (
