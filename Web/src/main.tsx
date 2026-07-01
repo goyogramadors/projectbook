@@ -20,6 +20,20 @@ import { ActiveSectionProvider } from './core/ui/ActiveSection';
 import { router } from './core/router';
 import './archibots.css';
 
+/* ── Guardián de chunks tras deploy ──────────────────────────────────────────
+   Cuando Cloudflare publica una versión nueva, los chunks cambian de hash y una
+   pestaña abierta con el index viejo falla al hacer lazy-import ("Failed to fetch
+   dynamically imported module"). Vite dispara el evento `vite:preloadError`; aquí
+   recargamos la página UNA sola vez (flag en sessionStorage) para tomar el index
+   nuevo. El flag se limpia al montar bien, para no bloquear recargas futuras. */
+const CHUNK_RELOAD_KEY = 'ab-chunk-reload';
+window.addEventListener('vite:preloadError', (e) => {
+  e.preventDefault(); // evita que Vite propague el error a la app
+  if (sessionStorage.getItem(CHUNK_RELOAD_KEY)) return; // ya recargamos → no hacer bucle
+  try { sessionStorage.setItem(CHUNK_RELOAD_KEY, '1'); } catch { /* ignore */ }
+  window.location.reload();
+});
+
 const AuthModal = lazy(() => import('./views/AuthModal'));
 
 function ThemedApp() {
@@ -70,3 +84,7 @@ createRoot(document.getElementById('root')!).render(
     </AuthProvider>
   </StrictMode>,
 );
+
+// La app montó bien → libera el flag para permitir una recarga futura si otro
+// deploy vuelve a invalidar los chunks de una pestaña abierta.
+window.setTimeout(() => { try { sessionStorage.removeItem(CHUNK_RELOAD_KEY); } catch { /* ignore */ } }, 5000);

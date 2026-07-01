@@ -79,6 +79,7 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
   const mapDivRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<MapsAny>(null);
   const polygonRef = useRef<MapsAny>(null);
+  const appendingRef = useRef(false); // distingue append (dibujo) de midpoint (subdivisión)
   const geocoderRef = useRef<MapsAny>(null);
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
@@ -166,7 +167,11 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
         });
         polygonRef.current = polygon;
         const gmaps: MapsAny = (window as MapsAny).google;
-        if (!readOnly) map.addListener('click', (e: MapsAny) => { if (e.latLng) polygon.getPath().push(e.latLng); });
+        if (!readOnly) map.addListener('click', (e: MapsAny) => {
+          if (!e.latLng) return;
+          appendingRef.current = true;      // inserción intencional al final (dibujo)
+          polygon.getPath().push(e.latLng);
+        });
 
         const recomputeArea = async () => {
           const path: MapsAny = polygon.getPath();
@@ -183,7 +188,13 @@ export default function UbicacionView({ projectId, access = 'edit' }: ToolProps)
           }
         };
         const pPath: MapsAny = polygon.getPath();
-        gmaps.maps.event.addListener(pPath, 'insert_at', recomputeArea);
+        // Sin SUBDIVISIONES: el polígono editable inserta un vértice al arrastrar un
+        // "midpoint". Solo permitimos agregar puntos al DIBUJAR (append); cualquier otra
+        // inserción (midpoint) se deshace, conservando el trazo con los menos puntos posibles.
+        gmaps.maps.event.addListener(pPath, 'insert_at', (index: number) => {
+          if (appendingRef.current) { appendingRef.current = false; void recomputeArea(); }
+          else { pPath.removeAt(index); }
+        });
         gmaps.maps.event.addListener(pPath, 'set_at', recomputeArea);
         gmaps.maps.event.addListener(pPath, 'remove_at', recomputeArea);
 

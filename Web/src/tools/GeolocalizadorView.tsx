@@ -129,6 +129,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
   const geocoderRef = useRef<MapsAny>(null);
   const polygonRef = useRef<MapsAny>(null);
   const ringRef = useRef<Array<[number, number]>>([]);
+  const appendingRef = useRef(false); // distingue append (dibujo) de midpoint (subdivisión)
   const [mapReady, setMapReady] = useState(false);
   const [mapsError, setMapsError] = useState<string | null>(null);
   const [satelite, setSatelite] = useState(false);
@@ -182,6 +183,7 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
         map.addListener('click', (e: MapsAny) => {
           if (readOnly || !e.latLng) return;
           setPoint(e.latLng.lat(), e.latLng.lng()); // mantiene el punto de analisis
+          appendingRef.current = true;               // inserción intencional (append)
           polygon.getPath().push(e.latLng);          // y construye el poligono del terreno
         });
 
@@ -201,7 +203,11 @@ export default function GeolocalizadorView({ projectId, access = 'edit' }: ToolP
           }
         };
         const pPath: MapsAny = polygon.getPath();
-        gmaps.maps.event.addListener(pPath, 'insert_at', recomputeArea);
+        // Sin subdivisiones por midpoint: solo se agregan puntos al dibujar (append).
+        gmaps.maps.event.addListener(pPath, 'insert_at', (index: number) => {
+          if (appendingRef.current) { appendingRef.current = false; void recomputeArea(); }
+          else { pPath.removeAt(index); }
+        });
         gmaps.maps.event.addListener(pPath, 'set_at', recomputeArea);
         gmaps.maps.event.addListener(pPath, 'remove_at', recomputeArea);
 

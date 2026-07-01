@@ -17,7 +17,9 @@
 import { doc, getDoc, setDoc, deleteDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../core/firebase';
 
-export interface TerrenoGuardado { ring: Array<[number, number]>; areaM2: number; }
+/** Metadato por deslinde (segmento i une ring[i]→ring[i+1]; el último cierra con el primero). */
+export interface DeslindeMeta { faceStreet: boolean; }
+export interface TerrenoGuardado { ring: Array<[number, number]>; areaM2: number; edges?: DeslindeMeta[]; }
 
 const localKey = (pid: string) => `ab-mapa-terreno-${pid}`;
 const cloudRef = (pid: string) => doc(db, 'projects', pid, 'toolData', 'terreno');
@@ -51,7 +53,7 @@ export function readTerrenoLocal(pid: string): TerrenoGuardado | null {
     if (!raw) return null;
     const d = JSON.parse(raw) as Partial<TerrenoGuardado>;
     if (!Array.isArray(d.ring) || typeof d.areaM2 !== 'number') return null;
-    return { ring: d.ring, areaM2: d.areaM2 };
+    return { ring: d.ring, areaM2: d.areaM2, edges: Array.isArray(d.edges) ? d.edges : undefined };
   } catch { return null; }
 }
 
@@ -64,10 +66,11 @@ export async function loadTerreno(pid: string, isCloud: boolean): Promise<Terren
     try {
       const snap = await getDoc(cloudRef(pid));
       if (snap.exists()) {
-        const payload = (snap.data() as { payload?: { ring?: unknown; areaM2?: unknown } }).payload;
+        const payload = (snap.data() as { payload?: { ring?: unknown; areaM2?: unknown; edges?: unknown } }).payload;
         const ring = decodeRing(payload?.ring);
         if (payload && ring && typeof payload.areaM2 === 'number') {
-          const value: TerrenoGuardado = { ring, areaM2: payload.areaM2 };
+          const edges = Array.isArray(payload.edges) ? (payload.edges as DeslindeMeta[]) : undefined;
+          const value: TerrenoGuardado = { ring, areaM2: payload.areaM2, edges };
           try { localStorage.setItem(localKey(pid), JSON.stringify(value)); } catch { /* ignore */ }
           return value;
         }
@@ -90,7 +93,7 @@ export function saveTerreno(pid: string, value: TerrenoGuardado, isCloud: boolea
     try {
       void setDoc(
         cloudRef(pid),
-        { payload: { ring: encodeRing(value.ring), areaM2: value.areaM2 }, updatedAt: serverTimestamp() },
+        { payload: { ring: encodeRing(value.ring), areaM2: value.areaM2, ...(value.edges ? { edges: value.edges } : {}) }, updatedAt: serverTimestamp() },
         { merge: true },
       ).catch(() => { /* reglas / offline: ya quedó en local */ });
     } catch { /* validación síncrona: ya quedó en local */ }

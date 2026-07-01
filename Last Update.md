@@ -32,6 +32,21 @@
 
 ---
 
+## 2026-07-01 (Chile) — Trazado sin subdivisión + guardián de chunks + base de deslindes (Fase 1 en curso)
+
+**Crash del Geolocalizador** ("Failed to fetch dynamically imported module …"): NO es bug de código (el build de Vite transforma los 2.460 módulos OK; solo falla el borrado de `dist` por el sandbox `EPERM`). Es una **pestaña con la versión vieja** tras un deploy (chunk con hash antiguo ya no existe). Se resuelve con Ctrl+Shift+R.
+
+**Guardián de chunks (`main.tsx`):** listener global `vite:preloadError` → recarga la página UNA vez (flag en `sessionStorage`, se limpia al montar) para tomar el index nuevo automáticamente. Así ningún usuario queda con el módulo roto tras un deploy.
+
+**Trazado del terreno — sin subdivisiones (Ubicación + Geolocalizador):** el polígono editable insertaba un vértice al arrastrar los "midpoints". Ahora un `appendingRef` distingue el *append* al DIBUJAR (clic en el mapa) de la subdivisión por midpoint; en `insert_at`, si no fue append se hace `removeAt(index)`. Se conserva mover vértices; no se crean subdivisiones (menos trazos posibles).
+
+**Modelo de deslindes (`terrenoStore`):** `TerrenoGuardado` ahora admite `edges?: DeslindeMeta[]` (`{ faceStreet }`) por segmento (ring[i]→ring[i+1]); encode/decode nube + local. Base para clasificar qué deslindes enfrentan vía y para el adosamiento por deslinde.
+
+**Decisiones (HITL) para la Fase 1 restante:** clasificación por **clic en el segmento del mapa + botón** "Enfrenta a una vía" (calle = burdeo grueso; negro = no enfrenta); Cabida usará la **forma real del polígono** + adosamiento por deslinde no-vía (retiros/rasantes siguen aproximados por ahora).
+
+**Pendiente (próximo paso, requiere prueba en mapa real):** (1) UI de clasificación de deslindes en Ubicación; (2) Cabida consumiendo el polígono real + adosamiento por deslinde. **Build:** `tsc -b` OK. **Publicar:** `2 - Commit y Push (main).bat` (solo frontend).
+---
+
 ## 2026-07-01 (Chile) — Cabida: Sync Terreno→Cabida + condiciones de edificación + modelo con pisos y calle al frente
 
 `VolumenTeoricoView.tsx` (Estudio de Cabida):
