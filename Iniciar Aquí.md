@@ -49,7 +49,7 @@ C:\G\Archiblocks\          ← raíz del repo (.git, .gitignore, Iniciar Aquí.m
 Está **en producción y funcionando**. El rol de cualquier sesión de desarrollo es **agregar valor sin romper la base existente**, implementando el modelo **"Dos Cerebros"**:
 
 - **Cerebro Espacial** — cálculo geográfico con `@turf/turf` aislado en un **Web Worker** (`src/workers/geo.worker.ts`). Hace intersecciones punto↔polígono y cálculo de áreas.
-- **Cerebro Normativo** — `NormativaService.ts` resuelve la ficha normativa (PRC) por zona desde **archivos estáticos locales `/norma-data/*.json`** (llave `{region}_{comunaSlug(comuna)}` vía `NormativaService.comunaSlug`). Desacoplado del cerebro espacial. ⚠️ *Legado:* la DB Firestore `coordenadasnormativas` y `core/geoUtils.generarLlaveMaestra` quedaron sin uso en el runtime; la implementación vigente es la de archivos locales.
+- **Cerebro Normativo** — `NormativaService.ts` resuelve la ficha normativa (PRC) por zona desde **archivos estáticos locales `/norma-data/*.json`** (llave `{region}_{comunaSlug(comuna)}` vía `NormativaService.comunaSlug`). **Multi-región:** el código de región (2 díg., ej. `13`, `05`) se **deriva de la comuna** con `data-chile.getCodigoRegionDeComuna` (fallback `13`), tanto en `NormativaService` como en `GeoJsonService`. Convención de archivos: norma-data `public/norma-data/{cod}_{comunaSlug SIN espacios ni tildes}.json` (ej. `13_lareina.json`, `05_algarrobo.json`); geo-data `public/geo-data/{cod}_PRC_{Comuna_Title_Case}.json`. Desacoplado del cerebro espacial. ⚠️ *Legado:* la DB Firestore `coordenadasnormativas` y `core/geoUtils.generarLlaveMaestra` quedaron sin uso en el runtime; la implementación vigente es la de archivos locales.
 
 > 🧱 **Terminología — el "Block":** cuando el usuario dice **"el Block"** se refiere al **elemento isométrico del header que representa una construcción** (el SVG de bloques/edificio) y que funciona como **navegador con accesos directos a las secciones de la página**. Componente: `src/components/ArchiblocksNav.tsx` + escena `src/components/archiblocks-scene.html` (Archiblocks). El producto "Libro de Obra Digital" usa una escena de Block **reducida y en archivo aparte** (`librodeobra-scene.html`). Cualquier referencia futura a "el Block" apunta a este elemento.
 
@@ -103,7 +103,7 @@ La **"Coreografía de Conexión"** (flujo de 4 pasos) une ambos cerebros:
 - `firestore.rules` — reglas zero-trust DB `(default)`
 - `firestore.coordenadasnormativas.rules` — reglas DB nombrada (lectura con auth, escritura prohibida)
 - `firestore.indexes.json` — índices compuestos
-- `functions/src/index.ts` — Cloud Functions: `onProjectDeleted`, `sendInviteEmail`, `sendPremiumInviteEmail`, `apiProxy` (BIM), `setUserState`
+- `functions/src/index.ts` — Cloud Functions: `onProjectDeleted`, `sendInviteEmail`, `sendPremiumInviteEmail` (PRE-CREA la cuenta del invitado Premium + envío de correo best-effort), `activateMyAccount` (el invitado activa su propia cuenta Pendiente→Activo al 1er ingreso; el cliente la llama tras autenticarse), `apiProxy` (BIM). ⚠️ `setUserState` quedó **huérfana** (no existe en el código; suspender/activar se hace por `updateDoc` directo en `AdminService`).
 - `scripts/` — administración/migración de datos (`migrate-projects.mjs`, `seed-normativas.mjs`)
 - `public/geo-data/` — GeoJSON PRC por comuna (servido como CDN)
 - `public/Biblioteca/` — formularios MINVU en PDF
@@ -253,7 +253,7 @@ Actúa como **Senior Full-Stack Engineer** sobre un entorno **de producción ya 
 ### Reglas técnicas heredadas (por el stack)
 - `import type { X }` o `{ type X }` **obligatorio** para Vite/oxc (su ausencia produce pantalla en blanco).
 - El `db` normativo usa **Firestore DB nombrada** (`coordenadasnormativas`), no `(default)`.
-- Archivos grandes (>100 líneas): trabajar en scratch (`/outputs/`), validar con esbuild (`transformSync` loader `tsx`) y luego copiar — el montaje puede truncar ediciones directas largas.
+- **Edición de archivos del repo: SIEMPRE atómica** (escribir a tmp en la MISMA carpeta y `os.replace` vía Python por bash, validando luego con `tsc -b`). La edición directa del montaje/host trunca archivos en disco **incluso chicos** (se confirmó de nuevo el 2026-06-30: se recuperó con `git show HEAD:` + reescritura atómica). Para validar TS aislado, esbuild (`transformSync` loader `tsx`).
 - Cada herramienta nueva: registrar en `registry.ts` + `catalog.ts`, lazy load, tipos en `types.ts`.
 
 ---

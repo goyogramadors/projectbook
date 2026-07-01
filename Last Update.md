@@ -10,6 +10,69 @@
 
 ---
 
+## ⭐ ESTADO AL CIERRE (2026-06-30) — LEER PRIMERO · PENDIENTES ABIERTOS
+
+> Resumen de continuidad para la instancia siguiente. El detalle está en las entradas de abajo.
+
+**Pendientes de DESPLIEGUE (críticos):**
+1. **Cloud Functions SIN desplegar** → `cd Web/functions && npm run build && firebase deploy --only functions`
+   (publica `sendPremiumInviteEmail` reescrita + nueva `activateMyAccount`). **Sin esto el flujo de invitación Premium NO opera.** (NO lo cubre ningún `.bat`.)
+2. **Frontend sin subir** → correr **`2 - Commit y Push (main).bat`** (todo el código del día: nube-para-todos, homologaciones, formularios DOM, branding/favicon/tema washi, Ubicación, terreno, etc.).
+3. **Reglas Firestore**: ya desplegadas por Andrés (modelo "nube para todos"). **Verificar** en el simulador si algo escribe y da `permission-denied`.
+
+**Limpieza / operativos:**
+4. Borrar `Web/__synctest.txt` (archivo de prueba; el montaje no permite unlink desde la sesión).
+5. Si git reclama `index.lock` / `HEAD.lock` → correr **`5 - Desbloquear Git (borrar locks).bat`** antes de cualquier git.
+6. `.bat` viejos obsoletos recomendados para borrar: `commit-push.bat` (mensaje hardcodeado), `guardar.bat` (duplica `2`), `actualizar.bat` (reemplazado por `0`).
+
+**Decisiones cerradas (no reabrir):** `superficieTerrenoLegal` ≠ `superficieManual` (terreno vs obra, NO fusionar).
+**Pendiente de producto:** binds de RUT/dirección/email por profesional en los PDF DOM (rótulos ambiguos por rol; el dato ya está en `bindCtx`).
+
+**Convención de edición (§8):** editar archivos del repo SIEMPRE de forma atómica (Python `os.replace`); el montaje trunca ediciones directas.
+
+---
+
+## 2026-07-01 (Chile) — Consolidación semanal (23–30 jun): cerrado vs. pendiente + revisión invitaciones + MAPA de datos
+
+**A) CERRADO esta semana (resumen; detalle en las entradas respectivas):**
+- **23 jun:** Térmico acredita CUMPLE/NO CUMPLE (tablas RT + Web Worker); Obra Digital doc-por-folio + adjuntos UUID en Storage; Frontend en Cloudflare Pages conectado a GitHub (auto-build); deploy backend reglas Storage+Firestore; UX Carpeta/Libro de Obra.
+- **24 jun:** DOM-Formularios llenables (5, Obra Nueva); `tipoProyecto`; refactor Header + "Block" navegador; rebrand; cambio de raíz de repo.
+- **26 jun:** Libro de Obra Digital (fases 2/3, Block LDO, conmutador de producto); fix skill `ordenanza-a-json` (Firestore→local); EETT + Presupuesto; Carta Gantt; Región/Ciudad no manuales; auditoría YAGNI; **Legal real + App Check + rate limits**; **flujo invitación Premium + Free en panel**; guía dominio LDO; limpieza DESARROLLO.
+- **30 jun:** MAPA_DE_DATOS (arqueo); **nube para TODO usuario logueado**; homologaciones DOM (104 binds); branding + propietario + scripts `.bat`; Ubicación robusta; **FIX invalid-argument (array anidado del terreno)**; terreno borrar/reemplazar + traspaso + campo **N° Casa/Depto** + **norma-data multi-región**; **invitación Premium PRE-CREA la cuenta** + `activateMyAccount` + "olvidé mi clave"; correo de invitación best-effort.
+
+**B) Revisión "invitados no aparecen en el listado" (reportado ayer):**
+- **El código está correcto** (`listUsers` lee `users` + `premiumInvitations where pendiente==true`; con pre-creación el invitado además queda como doc `users` estado 'Pendiente'). El fallo es de **despliegue/configuración**, no de código. Causa(s) probable(s), en orden:
+  1. **`sendPremiumInviteEmail` estaba abortando** (versión previa: si el correo/SendGrid fallaba, lanzaba y NO creaba nada → no aparecía ni pendiente). **Ya corregido** (best-effort) pero **falta desplegar Functions**.
+  2. **`firestore.rules` sin desplegar** con la regla `premiumInvitations` (del 26 jun): si no está, el admin NO puede leer esa colección → las filas 'Pendiente' se ocultan silenciosamente.
+  3. **App Check** (`enforceAppCheck:true` en las callables): si falta `VITE_RECAPTCHA_V3_SITE_KEY` / registro reCAPTCHA v3, la llamada a la Cloud Function se rechaza → la invitación falla entera.
+- **Verificación decisiva:** `firebase functions:log` filtrando `sendPremiumInviteEmail` (ver si el error es App Check, SendGrid o permisos). Confirmar que el admin tenga el **claim real `admin==true`** (no solo el fallback de correo), porque las reglas de lectura dependen de él.
+
+**C) MAPA_DE_DATOS_Y_ESTADO.md actualizado a 2026-07-01:** campo `depto`, `terreno.ring` serializado `{lng,lat}[]` en Firestore + `clearTerreno`, y Cerebro Normativo/Espacial multi-región (`getCodigoRegionDeComuna`).
+
+**D) PENDIENTE / accionable ahora (priorizado):**
+1. 🔴 **Desplegar (crítico):** (a) `firebase deploy --only firestore:rules`; (b) `cd Web/functions && npm run build && firebase deploy --only functions`; (c) `2 - Commit y Push (main).bat` (frontend + datos norma-data). Muchas mejoras de esta semana están **sin publicar**.
+2. 🔴 **App Check:** registrar reCAPTCHA v3 y setear `VITE_RECAPTCHA_V3_SITE_KEY` (Cloudflare + .env.local), o las callables (invitación, activación, apiProxy) rechazan al frontend.
+3. 🟠 **SendGrid:** verificar secreto `SENDGRID_API_KEY` y remitente `contacto@archibots.cl` (si el correo no sale). Con el fix best-effort la cuenta igual se crea.
+4. 🟠 **Legal:** completar `[PENDIENTE]` en `legalContent.ts` (razón social/RUT/domicilio) + validación de abogado antes de publicar.
+5. 🟡 **Respaldos:** no hay backups de Firestore/Storage (riesgo abierto, Iniciar Aquí §5) — definir exports programados.
+6. 🟡 **Sync Terreno→Cabida:** input "área de terreno" en Cabida (hoy usa largo×ancho).
+7. 🟡 **Binds DOM ambiguos:** RUT/profesionales por rol, email/teléfono, superficies edificadas (requiere confirmar rol por campo).
+8. ⚪ **Limpieza:** borrar `Web/__synctest.txt` y la función huérfana `setUserState`.
+- **Cerrado por decisión:** homologar `superficieTerrenoLegal` vs `superficieManual` → NO se fusionan (Andrés confirmó; son lote vs obra).
+
+---
+
+## 2026-06-30 17:45 (Chile) — Cierre: actualización de `Iniciar Aquí.md`
+
+Registrada la sesión completa (entradas 16:14 / 16:40 / 17:10 / 17:35). Actualizado `Iniciar Aquí.md`:
+- Lista de Cloud Functions: `sendPremiumInviteEmail` ahora PRE-CREA la cuenta + correo best-effort; nueva `activateMyAccount`; `setUserState` marcada como huérfana.
+- Cerebro Normativo documentado como **multi-región** (`getCodigoRegionDeComuna`, fallback 13) con la convención de nombres de archivos norma-data/geo-data.
+- Regla §8 reforzada: edición de archivos del repo SIEMPRE atómica (Python `os.replace`), porque el host/montaje trunca incluso archivos chicos.
+
+**Pendiente de despliegue (de las sesiones de hoy):** `firebase deploy --only functions` (sendPremiumInviteEmail + activateMyAccount) y `2 - Commit y Push (main).bat` (frontend + datos norma-data). Revisar SENDGRID_API_KEY si el correo no sale. Borrar `Web/__synctest.txt`.
+
+---
+
 ## 2026-06-30 17:35 (Chile) — Invitación Premium: correo best-effort + mensaje del panel coherente
 
 - **Causa del "correo NO se envió":** la Cloud Function fallaba al enviar por SendGrid (SENDGRID_API_KEY no disponible para la nueva versión, o excepción) y eso abortaba TODO. Además el mensaje "reservado al registrarse" era texto del **frontend viejo** (aún sin push).
@@ -85,7 +148,7 @@
 
 ---
 
-## 2026-06-30 (Chile) — Ubicación: guardado robusto + vista satélite + cursor lápiz
+## 2026-06-30 15:50 (Chile) — Ubicación: guardado robusto + vista satélite + cursor lápiz  ⚠️ SUPERADA (parcial) por la entrada 16:14 (causa raíz real: array anidado del terreno)
 
 **1. Guardado de Ubicación (no persistía / mostraba error):**
 - `handleSave` reescrito: el `reload()` se **desacopla** del éxito del guardado (antes, si fallaba el refresco de la lista, mostraba "Error al guardar" pese a haber guardado). Ahora solo el `repo.save` cuenta como guardado.
@@ -101,7 +164,7 @@
 
 ---
 
-## 2026-06-30 (Chile) — Branding, propietario por defecto y scripts .bat de publicación
+## 2026-06-30 15:20 (Chile) — Branding, propietario por defecto y scripts .bat de publicación
 
 - **Título de pestaña**: `index.html` `Project_Book` → **`Archiblocks | Gestión Documental`**.
 - **Favicon**: nuevo `Web/public/favicon.svg` ("A" negra + "B" roja) enlazado en `index.html`.
@@ -115,7 +178,7 @@
 
 ---
 
-## 2026-06-30 (Chile) — Participantes: campos email/teléfono tras "Agregar más datos"
+## 2026-06-30 14:40 (Chile) — Participantes: campos email/teléfono tras "Agregar más datos"
 
 - `Participante` (ParticipantesView): agregados `email?` y `fono?` (opcionales). UI: el botón **"Agregar más datos"** (antes "Agregar dirección") despliega Dirección + Correo + Teléfono; **no aparecen por defecto** (se muestran solo si se abren o si ya hay datos). Estado de expansión por participante (no se persiste).
 - `FormulariosDOMView`: `bindCtx` y write-back ahora exponen `participant.<rol>.{nombre,rut,direccion,email,fono}`.
@@ -124,7 +187,7 @@
 
 ---
 
-## 2026-06-30 (Chile) — Homologación de datos en formularios municipales (DOM)
+## 2026-06-30 14:00 (Chile) — Homologación de datos en formularios municipales (DOM)
 
 **Más coincidencias formulario↔herramientas, con prellenado y write-back.**
 
@@ -139,7 +202,7 @@
 
 ---
 
-## 2026-06-30 (Chile) — Nube para todo usuario logueado + homologaciones + sincronizaciones
+## 2026-06-30 12:30 (Chile) — Nube para todo usuario logueado + homologaciones + sincronizaciones
 
 **Cambio mayor de modelo de persistencia + homologaciones de datos + sincronizaciones.**
 
@@ -169,7 +232,7 @@
 
 ---
 
-## 2026-06-30 (Chile) — Arqueo de datos: MAPA_DE_DATOS_Y_ESTADO.md
+## 2026-06-30 11:00 (Chile) — Arqueo de datos: MAPA_DE_DATOS_Y_ESTADO.md
 
 **Contexto:** se solicitó un arqueo completo de la persistencia de proyectos (diccionario de datos + matriz de interdependencias).
 

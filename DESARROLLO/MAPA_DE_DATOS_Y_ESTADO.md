@@ -6,7 +6,7 @@
 > **Alcance:** datos de proyecto (no auth/usuarios). Basado en `src/core/types.ts`, las interfaces
 > locales de `src/tools/` y los hooks `useToolData` / `useDimensionadorSync` / `terrenoStore` y el
 > `ProjectRepository`.
-> **Fecha de arqueo:** 2026-06-30 · **Repo:** `C:\G\Archiblocks\Web`
+> **Fecha de arqueo:** 2026-06-30 · **Actualizado:** 2026-07-01 (campo `depto`, terreno encode `{lng,lat}[]`, multi-región norma/geo) · **Repo:** `C:\G\Archiblocks\Web`
 
 ---
 
@@ -41,6 +41,7 @@ herramientas NO deben engordarlo con historiales.
 | `rol` | `string` | Ficha / Ubicación | Rol SII del predio. |
 | `direccion` | `string` | **Ubicación** | Dirección. Consumida por Geolocalizador (geocode), Contratos. |
 | `comuna` | `string` | **Ubicación** (+ input Geolocalizador) | Comuna. **Dato pivote**: Geolocalizador, InformeTérmico, EETT, Gantt, Propuesta, FormulariosDOM. |
+| `depto?` | `string` | **Ubicación** | ⟲ 2026-07-01. N° de casa o departamento (complemento de `direccion`, no la ensucia). Consumible por formularios DOM. |
 | `region?` | `string` | **Ubicación** (geocode) | Región derivada (no manual). Consumida por EETT/Gantt. |
 | `ciudad?` | `string` | **Ubicación** (geocode; fallback comuna) | Ciudad/localidad (no manual). |
 | `destino` | `string` | Ficha / DatosProyecto | Destino (Habitacional, etc.). |
@@ -94,7 +95,7 @@ herramientas NO deben engordarlo con historiales.
 
 | Herramienta (`toolId`) | Store / ubicación | Interfaz | Notas |
 |---|---|---|---|
-| `terreno` (compartido) | `terrenoStore` → `projects/{pid}/toolData/terreno` + `ab-mapa-terreno-{pid}` | `TerrenoGuardado { ring: [lng,lat][]; areaM2 }` | **Productores y consumidores: Ubicación + Geolocalizador** (mutuo). Espeja siempre a local. |
+| `terreno` (compartido) | `terrenoStore` → `projects/{pid}/toolData/terreno` + `ab-mapa-terreno-{pid}` | `TerrenoGuardado { ring: [lng,lat][]; areaM2 }` | **Productores y consumidores: Ubicación + Geolocalizador** (mutuo). Espeja siempre a local. ⟲ 2026-07-01: en Firestore el `ring` se serializa como **`{lng,lat}[]`** (Firestore NO admite arrays anidados; escribir `[lng,lat][]` lanzaba `invalid-argument` síncrono y abortaba el guardado). `clearTerreno()` borra local+nube (Limpiar/reemplazar). |
 | `volumen` (Cabida) | **bespoke** → `projects/{pid}/volumen/estado` + `ab-volumen-{pid}` | `Inputs { largo; ancho; coefConstructibilidad; ocupacionSuelo; alturaMaxima; ... }` | ⚠️ **No usa `useToolData`** ni lee la ficha normativa del Geolocalizador (ver §5). |
 | `libro-obras` | `libroStore` → `projects/{pid}/libroObras/state` + `/folios/{id}` | `LibroObrasState { libros; folios; seq; perms }` (types.ts) | Doc-por-folio + meta (counters Año→Mes, paginación). Adjuntos reales en Storage. |
 | `carpeta-digital` | `carpetaStore` → `projects/{pid}/carpetaDigital/state` + `/archivos/{id}` | `CarpetaDigitalState { iniciado; contratoKey; archivos; seq; perms }` (types.ts) | Doc-por-archivo + meta. Adjuntos reales en Storage. |
@@ -109,7 +110,7 @@ herramientas NO deben engordarlo con historiales.
 | `propuesta` | PropuestaView | `superficieTerrenoLegal`, `superficieProyecto()`, comuna | `SavedPropuesta` |
 | `seguimiento` | SeguimientoObrasView | name | `SeguimientoData { avance; etapaObra; bitacora[] }` |
 | `geolocalizador` | GeolocalizadorView | comuna, direccion | terreno (store) + **ficha normativa EFÍMERA** (no persiste, ver §5) |
-| `ubicacion` | UbicacionView | comuna, direccion | **escribe Master** (region, ciudad, comuna, direccion) + terreno |
+| `ubicacion` | UbicacionView | comuna, direccion, depto | **escribe Master** (region, ciudad, comuna, direccion, **depto**, rol, superficieTerrenoLegal, superficieCalculada) + terreno (dibuja/limpia) |
 | `volumen` | VolumenTeoricoView | name | `Inputs` (bespoke) |
 
 ---
@@ -124,13 +125,14 @@ Cruce de los datos **compartidos entre herramientas**. "Productor" = quien lo es
 | `comuna` | **Ubicación** (+ input Geoloc.) | Geolocalizador, InformeTérmico, EETT, Gantt, Propuesta, FormulariosDOM | Master |
 | `region` / `ciudad` | **Ubicación** (geocode) | EETT, Gantt (vía EETT), FormulariosDOM | Master |
 | `direccion` | **Ubicación** | Geolocalizador (geocode), Contratos, FormulariosDOM | Master |
+| `depto` | **Ubicación** | FormulariosDOM (potencial), Contratos | Master |
 | `superficieCalculada` + `superficieOrigen` | **Dimensionador**, **Dim-Públicos**, **Geolocalizador** (`syncSuperficie`) | Ficha, Propuesta, Presupuesto, Cuadro (vía `superficieProyecto`) | Master |
 | `superficieTerrenoLegal` | **DatosProyecto**, **Cuadro de Superficies** | Cuadro, Propuesta, Ficha | Master |
 | `superficieManual` / `superficieProyecto()` | DatosProyecto | Presupuesto, Propuesta | Master |
 | `presupuestoUF` | Ficha | Honorarios, Contratos, ExpedienteMunicipal | Master |
 | `tipoProyecto` | **DatosProyecto** | FormulariosDOM (visibilidad + bind), Catálogo (filtro) | Master ⚠️ + duplicado en `datos-proyecto`.payload |
 | `toolStates[*]` | **`setToolState`** (Informes, FormulariosDOM, Libro, Carpeta…) | BinderFicha, WorkspaceView | Master |
-| `terreno { ring, areaM2 }` | **Ubicación**, **Geolocalizador** | Ubicación, Geolocalizador (mutuo) | ToolData (`toolData/terreno`) + local |
+| `terreno { ring, areaM2 }` | **Ubicación**, **Geolocalizador** | Ubicación, Geolocalizador (mutuo) | ToolData (`toolData/terreno`, ring como `{lng,lat}[]`) + local |
 | `SeleccionConstruccion` (naturaleza/estructura/terminaciones) | **`eett-generador`** (GeneradorEETT) | **Presupuesto**, **Gantt** | ToolData (`toolData/eett-generador`) |
 | `participantes[]` | **`participantes`** (ParticipantesView) | **FormulariosDOM** | ToolData (`participantes`) ⚠️ leído por DOM vía `localStorage['ab-participantes-{pid}']` |
 | Ficha normativa PRC (`alturaMaxima`, `constructibilidad`, `coeficienteOcupacion`) | **Geolocalizador** (Cerebro Normativo) | — (hoy nadie; re-ingreso manual en Cabida) | **EFÍMERA — no se persiste** |
@@ -248,6 +250,7 @@ El dato YA está disponible en `bindCtx` para marcarlos manualmente cuando se co
 - **`comuna` y `superficie*` son los pivotes de mayor acoplamiento.** Un cambio en su forma o en `superficieProyecto()`
   impacta ≥6 herramientas. Cualquier refactor debe pasar por estos contratos centrales en `types.ts`.
 - **La ficha normativa ya no se descarta** (⟲ 2026-06-30): se persiste en `toolData/normativa` y siembra la Cabida.
+- **Cerebro Normativo/Espacial multi-región (⟲ 2026-07-01):** `NormativaService` y `GeoJsonService` derivan el código de región (2 díg.) desde la comuna (`data-chile.getCodigoRegionDeComuna`, fallback `13`). Archivos: norma-data `public/norma-data/{cod}_{comunaSlug}.json` (ej. `13_lareina.json`, `05_algarrobo.json`); geo-data `public/geo-data/{cod}_PRC_{Comuna_Title}.json`. Antes la región estaba fija en `13` → otras regiones (ej. Algarrobo/05) no cargaban.
 - **Nuevo modelo de persistencia (⟲ 2026-06-30):** nube para TODO usuario logueado; local solo invitados. Requiere
   **desplegar `firestore.rules`** para habilitar las escrituras Free (ver §7.6).
 - **Mayor potencial restante:** habilitar los binds de los formularios municipales (RUT/profesionales→Participantes,
